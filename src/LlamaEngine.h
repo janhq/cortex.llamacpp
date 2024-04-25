@@ -10,30 +10,30 @@ class LlamaEngine : public EngineI {
   // #### Interface ####
   void HandleChatCompletion(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback) final;
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void HandleEmbedding(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback) final;
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void LoadModel(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback) final;
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void UnloadModel(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback) final;
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void GetModelStatus(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback) final;
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
   void HandleInferenceImpl(
       llama::inferences::ChatCompletionRequest&& completion,
-      std::function<void(TaskResult&&)>&& callback);
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback);
   void HandleEmbeddingImpl(
       std::shared_ptr<Json::Value> jsonBody,
-      std::function<void(TaskResult&&)>&& callback);
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback);
   bool CheckModelLoaded(
-      std::function<void(TaskResult&&)>& callback);
+      std::function<void(Json::Value&&, Json::Value&&)>& callback);
   void WarmUpModel();
   void HandleBackgroundTask();
   void StopBackgroundTask();

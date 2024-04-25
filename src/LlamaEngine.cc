@@ -5,6 +5,11 @@
 #include "trantor/utils/Logger.h"
 
 namespace {
+constexpr const int k200OK = 200;
+constexpr const int k400BadRequest = 400;
+constexpr const int k409Conflict = 409;
+constexpr const int k500InternalServerError = 500;
+
 enum class InferenceStatus { PENDING, RUNNING, EOS, FINISHED };
 struct inferenceState {
   int task_id;
@@ -113,7 +118,7 @@ LlamaEngine::~LlamaEngine() {
 
 void LlamaEngine::HandleChatCompletion(
     std::shared_ptr<Json::Value> jsonBody,
-    std::function<void(TaskResult&&)>&& callback) {
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   // Check if model is loaded
   if (CheckModelLoaded(callback)) {
     // Model is loaded
@@ -125,7 +130,7 @@ void LlamaEngine::HandleChatCompletion(
 
 void LlamaEngine::HandleEmbedding(
     std::shared_ptr<Json::Value> jsonBody,
-    std::function<void(TaskResult&&)>&& callback) {
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   // Check if model is loaded
   if (CheckModelLoaded(callback)) {
     // Run embedding
@@ -133,19 +138,21 @@ void LlamaEngine::HandleEmbedding(
   }
 }
 
-void LlamaEngine::LoadModel(std::shared_ptr<Json::Value> jsonBody,
-                            std::function<void(TaskResult&&)>&& callback) {
+void LlamaEngine::LoadModel(
+    std::shared_ptr<Json::Value> jsonBody,
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   if (!llama_utils::isAVX2Supported() && ggml_cpu_has_avx2()) {
     LOG_ERROR << "AVX2 is not supported by your processor";
     Json::Value jsonResp;
     jsonResp["message"] =
         "AVX2 is not supported by your processor, please download and replace "
         "the correct Nitro asset version";
-    callback({.is_done = false,
-              .has_error = true,
-              .is_stream = false,
-              .status = HttpCode::k500InternalServerError,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = false;
+    status["has_error"] = true;
+    status["is_stream"] = false;
+    status["status_code"] = k500InternalServerError;
+    callback(std::move(status), std::move(jsonResp));
     return;
   }
 
@@ -153,40 +160,43 @@ void LlamaEngine::LoadModel(std::shared_ptr<Json::Value> jsonBody,
     LOG_INFO << "Model already loaded";
     Json::Value jsonResp;
     jsonResp["message"] = "Model already loaded";
-    callback({.is_done = true,
-              .has_error = false,
-              .is_stream = false,
-              .status = HttpCode::k409Conflict,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = false;
+    status["is_stream"] = false;
+    status["status_code"] = k409Conflict;
+    callback(std::move(status), std::move(jsonResp));
     return;
   }
 
-  // const auto& jsonBody = req->getJsonObject();
   if (!LoadModelImpl(jsonBody)) {
     // Error occurred during model loading
     Json::Value jsonResp;
     jsonResp["message"] = "Failed to load model";
-
-    callback({.is_done = false,
-              .has_error = true,
-              .is_stream = false,
-              .status = HttpCode::k500InternalServerError,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = false;
+    status["has_error"] = true;
+    status["is_stream"] = false;
+    status["status_code"] = k500InternalServerError;
+    callback(std::move(status), std::move(jsonResp));
   } else {
     // Model loaded successfully
     Json::Value jsonResp;
     jsonResp["message"] = "Model loaded successfully";
-    callback({.is_done = true,
-              .has_error = false,
-              .is_stream = false,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = false;
+    status["is_stream"] = false;
+    status["status_code"] = k200OK;
+    callback(std::move(status), std::move(jsonResp));
     LOG_INFO << "Model loaded successfully";
   }
 }
 
-void LlamaEngine::UnloadModel(std::shared_ptr<Json::Value> jsonBody,
-                              std::function<void(TaskResult&&)>&& callback) {
-  Json::Value jsonResp;
+void LlamaEngine::UnloadModel(
+    std::shared_ptr<Json::Value> jsonBody,
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+
   if (CheckModelLoaded(callback)) {
     StopBackgroundTask();
 
@@ -194,26 +204,34 @@ void LlamaEngine::UnloadModel(std::shared_ptr<Json::Value> jsonBody,
     llama_free_model(llama_.model);
     llama_.ctx = nullptr;
     llama_.model = nullptr;
+    Json::Value jsonResp;
     jsonResp["message"] = "Model unloaded successfully";
-    callback({.is_done = true,
-              .has_error = false,
-              .is_stream = false,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = false;
+    status["is_stream"] = false;
+    status["status_code"] = k200OK;
+    callback(std::move(status), std::move(jsonResp));
+
     LOG_INFO << "Model unloaded successfully";
   }
 }
 
-void LlamaEngine::GetModelStatus(std::shared_ptr<Json::Value> jsonBody,
-                                 std::function<void(TaskResult&&)>&& callback) {
-  Json::Value jsonResp;
+void LlamaEngine::GetModelStatus(
+    std::shared_ptr<Json::Value> jsonBody,
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+
   bool is_model_loaded = llama_.model_loaded_external;
   if (CheckModelLoaded(callback)) {
+    Json::Value jsonResp;
     jsonResp["model_loaded"] = is_model_loaded;
     jsonResp["model_data"] = llama_.get_model_props().dump();
-    callback({.is_done = true,
-              .has_error = false,
-              .is_stream = false,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = false;
+    status["is_stream"] = false;
+    status["status_code"] = k200OK;
+    callback(std::move(status), std::move(jsonResp));
     LOG_INFO << "Model status responded";
   }
 }
@@ -335,16 +353,17 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 
 void LlamaEngine::HandleInferenceImpl(
     llama::inferences::ChatCompletionRequest&& completion,
-    std::function<void(TaskResult&&)>&& callback) {
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   if (llama_.model_type == ModelType::EMBEDDING) {
     LOG_WARN << "Not support completion for embedding model";
     Json::Value jsonResp;
     jsonResp["message"] = "Not support completion for embedding model";
-    callback({.is_done = true,
-              .has_error = true,
-              .is_stream = false,
-              .status = HttpCode::k400BadRequest,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = true;
+    status["is_stream"] = false;
+    status["status_code"] = k400BadRequest;
+    callback(std::move(status), std::move(jsonResp));
     return;
   }
   std::string formatted_output = pre_prompt;
@@ -511,10 +530,12 @@ void LlamaEngine::HandleInferenceImpl(
               "\n\n";
           Json::Value respData;
           respData["data"] = str;
-          cb({.is_done = false,
-              .has_error = false,
-              .is_stream = true,
-              .result_json = respData});
+          Json::Value status;
+          status["is_done"] = false;
+          status["has_error"] = false;
+          status["is_stream"] = true;
+          status["status_code"] = k200OK;
+          cb(std::move(status), std::move(respData));
 
           if (result.stop) {
             state->llama.request_cancel(state->task_id);
@@ -525,10 +546,12 @@ void LlamaEngine::HandleInferenceImpl(
                                    "", "stop") +
                 "\n\n" + "data: [DONE]" + "\n\n";
             respData["data"] = str;
-            cb({.is_done = true,
-                .has_error = false,
-                .is_stream = true,
-                .result_json = respData});
+            Json::Value status;
+            status["is_done"] = true;
+            status["has_error"] = false;
+            status["is_stream"] = true;
+            status["status_code"] = k200OK;
+            cb(std::move(status), std::move(respData));
             break;
           }
 
@@ -538,10 +561,12 @@ void LlamaEngine::HandleInferenceImpl(
                     << "Error during inference";
           Json::Value respData;
           respData["data"] = std::string();
-          cb({.is_done = false,
-              .has_error = true,
-              .is_stream = true,
-              .result_json = respData});
+          Json::Value status;
+          status["is_done"] = false;
+          status["has_error"] = true;
+          status["is_stream"] = true;
+          status["status_code"] = k200OK;
+          cb(std::move(status), std::move(respData));
           break;
         }
       }
@@ -576,10 +601,13 @@ void LlamaEngine::HandleInferenceImpl(
               LOG_ERROR << "Request " << request_id << ": "
                         << "Error during inference";
             }
-            cb({.is_done = true,
-                .has_error = has_error,
-                .is_stream = false,
-                .result_json = respData});
+            Json::Value status;
+            status["is_done"] = true;
+            status["has_error"] = has_error;
+            status["is_stream"] = false;
+            status["status_code"] = k200OK;
+            cb(std::move(status), std::move(respData));
+
             LOG_INFO << "Request " << request_id << ": "
                      << "Inference completed";
           }
@@ -589,7 +617,7 @@ void LlamaEngine::HandleInferenceImpl(
 
 void LlamaEngine::HandleEmbeddingImpl(
     std::shared_ptr<Json::Value> jsonBody,
-    std::function<void(TaskResult&&)>&& callback) {
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   int request_id = ++no_of_requests;
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for embedding request";
@@ -632,28 +660,31 @@ void LlamaEngine::HandleEmbeddingImpl(
     usage["prompt_tokens"] = 0;
     usage["total_tokens"] = 0;
     root["usage"] = usage;
+    Json::Value status;
+    status["is_done"] = true;
+    status["has_error"] = false;
+    status["is_stream"] = false;
+    status["status_code"] = k200OK;
+    callback(std::move(status), std::move(root));
 
-    callback({.is_done = true,
-              .has_error = false,
-              .is_stream = false,
-              .result_json = root});
     LOG_INFO << "Request " << request_id << ": "
              << "Embedding completed";
   });
 }
 
 bool LlamaEngine::CheckModelLoaded(
-    std::function<void(TaskResult&&)>& callback) {
+    std::function<void(Json::Value&&, Json::Value&&)>& callback) {
   if (!llama_.model_loaded_external) {
     LOG_ERROR << "Model has not been loaded";
     Json::Value jsonResp;
     jsonResp["message"] =
         "Model has not been loaded, please load model into nitro";
-    callback({.is_done = false,
-              .has_error = true,
-              .is_stream = false,
-              .status = HttpCode::k409Conflict,
-              .result_json = jsonResp});
+    Json::Value status;
+    status["is_done"] = false;
+    status["has_error"] = true;
+    status["is_stream"] = false;
+    status["status_code"] = k409Conflict;
+    callback(std::move(status), std::move(jsonResp));
     return false;
   }
   return true;
