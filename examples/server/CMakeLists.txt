@@ -1,17 +1,10 @@
 cmake_minimum_required(VERSION 3.5)
-project(cortex.llamacpp)
-SET(TARGET engine)
+project(server)
+
+find_package(Threads REQUIRED)
 
 if(UNIX AND NOT APPLE)
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fPIC")
-  add_compile_options(-fPIC)
-endif()
-
-set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build_deps/_install)
-set(CORTEX_COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/base/)
-
-if(UNIX AND NOT APPLE)
-  add_compile_options(-fPIC)
+  set(LINKER_FLAGS -ldl)
 endif()
 
 include(CheckIncludeFileCXX)
@@ -32,14 +25,14 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
-
-add_subdirectory(llama.cpp/examples/llava)
-add_subdirectory(llama.cpp)
-
-add_library(${TARGET} SHARED 
-    src/LlamaEngine.cc
+add_executable(${PROJECT_NAME}
+    server.cc
+    dylib.h
+    httplib.h
 )
+
+set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../build_deps/_install)
+set(CORTEX_COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../base/)
 
 find_library(JSONCPP
     NAMES jsoncpp
@@ -51,9 +44,9 @@ find_library(TRANTOR
     HINTS "${THIRD_PARTY_PATH}/lib"
 )
 
-target_link_libraries(${TARGET} PRIVATE common llama llava ${JSONCPP} ${TRANTOR}
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JSONCPP} ${TRANTOR} ${LINKER_FLAGS}
                                               ${CMAKE_THREAD_LIBS_INIT})
-target_include_directories(${TARGET} PRIVATE 
-            ${CORTEX_COMMON_PATH}
-            ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp 
-            ${THIRD_PARTY_PATH}/include)
+
+target_include_directories(${PROJECT_NAME} PRIVATE 
+                                    ${CORTEX_COMMON_PATH}
+                                    ${THIRD_PARTY_PATH}/include)
