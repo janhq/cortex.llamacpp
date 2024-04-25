@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  ubuntu-amd64-build:
+    runs-on: ubuntu-18-04-cuda-12-0
+    timeout-minutes: 40
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          make build
+
+  macOS-silicon-build:
+    runs-on: mac-silicon
+    timeout-minutes: 40
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          make build
+
+  macOS-amd64-build:
+    runs-on: macos-13
+    timeout-minutes: 40
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Build
+        run: |
+          make build
+
+  windows-amd64-build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: install make-gnu
+        run: |
+          choco install make -y
+
+      - name: Build
+        run: |
+          make build
