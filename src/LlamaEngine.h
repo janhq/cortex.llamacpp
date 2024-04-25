@@ -1,0 +1,59 @@
+#pragma once
+#include "cortex-common/EngineI.h"
+#include "llama_server_context.h"
+#include "trantor/utils/ConcurrentTaskQueue.h"
+#include "chat_completion_request.h"
+
+class LlamaEngine : public EngineI {
+ public:
+    ~LlamaEngine() final;
+  // #### Interface ####
+  void HandleChatCompletion(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback) final;
+  void HandleEmbedding(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback) final;
+  void LoadModel(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback) final;
+  void UnloadModel(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback) final;
+  void GetModelStatus(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback) final;
+
+ private:
+  bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
+  void HandleInferenceImpl(
+      llama::inferences::ChatCompletionRequest&& completion,
+      std::function<void(TaskResult&&)>&& callback);
+  void HandleEmbeddingImpl(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(TaskResult&&)>&& callback);
+  bool CheckModelLoaded(
+      std::function<void(TaskResult&&)>& callback);
+  void WarmUpModel();
+  void HandleBackgroundTask();
+  void StopBackgroundTask();
+
+  //TODO(sang) public for now, should move all variables to private section later
+ public:
+  llama_server_context llama_;
+  std::unique_ptr<trantor::ConcurrentTaskQueue> queue_;
+  std::thread bgr_thread_;
+
+  size_t sent_count = 0;
+  size_t sent_token_probs_index = 0;
+  std::string user_prompt;
+  std::string ai_prompt;
+  std::string system_prompt_;
+  std::string pre_prompt;
+  int repeat_last_n;
+  bool caching_enabled;
+  std::atomic<int> no_of_requests = 0;
+  std::atomic<int> no_of_chats = 0;
+  int clean_cache_threshold;
+  std::string grammar_file_content_;
+};
