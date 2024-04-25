@@ -204,6 +204,7 @@ void LlamaEngine::UnloadModel(
     llama_free_model(llama_.model);
     llama_.ctx = nullptr;
     llama_.model = nullptr;
+    llama_backend_free();
     Json::Value jsonResp;
     jsonResp["message"] = "Model unloaded successfully";
     Json::Value status;
@@ -573,6 +574,17 @@ void LlamaEngine::HandleInferenceImpl(
       LOG_INFO << "Request " << request_id << ": "
                << "Task completed, release it";
       // Request completed, release it
+      if(!state->llama.model_loaded_external) {
+        LOG_WARN << "Model unloaded during inference";
+        Json::Value respData;
+          respData["data"] = std::string();
+          Json::Value status;
+          status["is_done"] = false;
+          status["has_error"] = true;
+          status["is_stream"] = true;
+          status["status_code"] = k200OK;
+          cb(std::move(status), std::move(respData));
+      }
       LOG_INFO << "Request " << request_id << ": "
                << "Inference completed";
     });
