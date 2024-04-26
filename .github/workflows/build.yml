@@ -7,8 +7,21 @@ on:
 
 jobs:
   ubuntu-amd64-build:
-    runs-on: ubuntu-18-04-cuda-12-0
+    runs-on: ubuntu-18-04-cuda-11-7
     timeout-minutes: 40
+
+    strategy:
+      matrix:
+        include:
+          - build: "amd64-avx2"
+            defines: "-DLLAMA_NATIVE=OFF"
+          - build: "amd64-avx"
+            defines: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+          - build: "amd64-avx512"
+            defines: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+          - build: "amd64-vulkan"
+            defines: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF"
+
     steps:
       - name: Clone
         id: checkout
@@ -16,9 +29,39 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Prepare Vulkan SDK
+        if: ${{ matrix.build == 'amd64-vulkan' }}
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: 1.3.275.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
       - name: Build
         run: |
-          make build
+          ./configure.sh
+          make build CMAKE_EXTRA_FLAGS="${{ matrix.defines }}"
+
+  ubuntu-amd64-cuda-build:
+    runs-on: ubuntu-18-04-cuda-${{ matrix.cuda }}
+    timeout-minutes: 40
+
+    strategy:
+      matrix:
+        cuda: ["12-0", "11-7"]
+    
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Build
+        run: |
+          ./configure.sh
+          make build CMAKE_EXTRA_FLAGS="-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+
 
   macOS-silicon-build:
     runs-on: mac-silicon
@@ -32,7 +75,9 @@ jobs:
 
       - name: Build
         run: |
+          ./configure.sh
           make build
+          ls -la
 
   macOS-amd64-build:
     runs-on: macos-13
@@ -45,12 +90,28 @@ jobs:
           submodules: recursive
 
       - name: Build
+        id: cmake_build
         run: |
+          ./configure.sh
           make build
+          ls -la
 
   windows-amd64-build:
     runs-on: windows-latest
     timeout-minutes: 40
+
+    strategy:
+      matrix:
+        include:
+          - build: "amd64-avx2"
+            defines: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - build: "amd64-avx"
+            defines: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - build: "amd64-avx512"
+            defines: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - build: "amd64-vulkan"
+            defines: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+ 
     steps:
       - name: Clone
         id: checkout
@@ -62,6 +123,59 @@ jobs:
         run: |
           choco install make -y
 
+      - name: Prepare Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        if: ${{ matrix.build == 'amd64-vulkan' }}
+        with:
+          vulkan-query-version: 1.3.275.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+
       - name: Build
+        shell: cmd
         run: |
-          make build
+          ./configure.bat
+          make build CMAKE_EXTRA_FLAGS="${{ matrix.defines }}"
+
+  windows-amd64-cuda-build:
+    runs-on: windows-cuda-${{ matrix.cuda }}
+    timeout-minutes: 40
+
+    strategy:
+      matrix:
+        include:
+          - cuda: "12-0"
+            instructions: "-DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - cuda: "12-0"
+            instructions: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - cuda: "12-0"
+            instructions: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - cuda: "11-7"
+            instructions: "-DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - cuda: "11-7"
+            instructions: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+          - cuda: "11-7"
+            instructions: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+    
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+ 
+      - name: Build
+        shell: cmd
+        run: |
+          ./configure.bat
+          mkdir -p build
+          cd build
+          cmake .. ${{ matrix.instructions }} ${{ matrix.flags }}
+          cmake --build . --config Release
+          
