@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
-project(llama-engine-lib)
+project(cortex.llamacpp)
+SET(TARGET engine)
 
 set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build_deps/_install)
 set(CORTEX_COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/base/)
@@ -29,13 +30,13 @@ SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
 
-add_library(${PROJECT_NAME} SHARED 
+add_library(${TARGET} SHARED 
     src/LlamaEngine.cc
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE common llama llava jsoncpplib trantorlib
+target_link_libraries(${TARGET} PRIVATE common llama llava jsoncpplib trantorlib
                                               ${CMAKE_THREAD_LIBS_INIT})
-target_include_directories(${PROJECT_NAME} PRIVATE 
+target_include_directories(${TARGET} PRIVATE 
             ${CORTEX_COMMON_PATH}
             ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp 
             ${THIRD_PARTY_PATH}/include)
