@@ -76,14 +76,14 @@ int main(int argc, char** argv) {
   if (argc > 2) {
     port = std::atoi(argv[2]);  // Convert string argument to int
   }
-  
+
   Server server;
   Json::Reader r;
   auto svr = std::make_unique<httplib::Server>();
 
   if (!svr->bind_to_port(hostname, port)) {
     fprintf(stderr, "\ncouldn't bind to server socket: hostname=%s port=%d\n\n",
-            hostname, port);
+            hostname.c_str(), port);
     return 1;
   }
 
