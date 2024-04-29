@@ -37,10 +37,17 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      - name: Build
+      - name: Build library
         run: |
           ./configure.sh
           make build CMAKE_EXTRA_FLAGS="${{ matrix.defines }}"
+
+      - name: Build server example
+        run: |
+          mkdir -p examples/server/build
+          cd examples/server/build
+          cmake .. ${{ matrix.defines }}
+          cmake --build . --config Release
 
   ubuntu-amd64-cuda-build:
     runs-on: ubuntu-18-04-cuda-${{ matrix.cuda }}
@@ -57,10 +64,17 @@ jobs:
         with:
           submodules: recursive
       
-      - name: Build
+      - name: Build library
         run: |
           ./configure.sh
           make build CMAKE_EXTRA_FLAGS="-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+      
+      - name: Build server example
+        run: |
+          mkdir -p examples/server/build
+          cd examples/server/build
+          cmake .. -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON
+          cmake --build . --config Release
 
 
   macOS-silicon-build:
@@ -73,11 +87,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build
+      - name: Build library
         run: |
           ./configure.sh
           make build
-          ls -la
+          
+      - name: Build server example
+        run: |
+          mkdir -p examples/server/build
+          cd examples/server/build
+          cmake ..
+          cmake --build . --config Release
 
   macOS-amd64-build:
     runs-on: macos-13
@@ -89,12 +109,18 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build
+      - name: Build library
         id: cmake_build
         run: |
           ./configure.sh
           make build
-          ls -la
+
+      - name: Build server example
+        run: |
+          mkdir -p examples/server/build
+          cd examples/server/build
+          cmake ..
+          cmake --build . --config Release
 
   windows-amd64-build:
     runs-on: windows-latest
@@ -131,11 +157,23 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
-      - name: Build
+      - name: Build library
         shell: cmd
         run: |
-          ./configure.bat
-          make build CMAKE_EXTRA_FLAGS="${{ matrix.defines }}"
+          cmake -S ./third-party -B ./build_deps/third-party
+          cmake --build ./build_deps/third-party --config Release -j %NUMBER_OF_PROCESSORS%
+          mkdir -p build
+          cd build
+          cmake .. ${{ matrix.defines }}
+          cmake --build . --config Release
+      
+      - name: Build server example
+        shell: cmd
+        run: |
+          mkdir .\examples\server\build
+          cd .\examples\server\build
+          cmake .. ${{ matrix.defines }}
+          cmake --build . --config Release
 
   windows-amd64-cuda-build:
     runs-on: windows-cuda-${{ matrix.cuda }}
@@ -170,12 +208,21 @@ jobs:
         with:
           submodules: recursive
  
-      - name: Build
+      - name: Build library
         shell: cmd
         run: |
-          ./configure.bat
+          cmake -S ./third-party -B ./build_deps/third-party
+          cmake --build ./build_deps/third-party --config Release -j %NUMBER_OF_PROCESSORS%
           mkdir -p build
           cd build
+          cmake .. ${{ matrix.instructions }} ${{ matrix.flags }}
+          cmake --build . --config Release
+          
+      - name: Build server example
+        shell: cmd
+        run: |
+          mkdir .\examples\server\build
+          cd .\examples\server\build
           cmake .. ${{ matrix.instructions }} ${{ matrix.flags }}
           cmake --build . --config Release
           
