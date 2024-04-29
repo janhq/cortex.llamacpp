@@ -18,7 +18,7 @@ class Server {
   }
 
   ~Server() {
-    if(engine_) {
+    if (engine_) {
       delete engine_;
     }
   }
@@ -49,9 +49,6 @@ class Server {
   };
 };
 
-constexpr static auto hostname = "127.0.0.1";
-constexpr int port = 3928;
-
 std::function<void(int)> shutdown_handler;
 std::atomic_flag is_terminating = ATOMIC_FLAG_INIT;
 
@@ -69,6 +66,17 @@ inline void signal_handler(int signal) {
 using SyncQueue = Server::SyncQueue;
 
 int main(int argc, char** argv) {
+  std::string hostname = "127.0.0.1";
+  int port = 3928;
+  if (argc > 1) {
+    hostname = argv[1];
+  }
+
+  // Check for port argument
+  if (argc > 2) {
+    port = std::atoi(argv[2]);  // Convert string argument to int
+  }
+  
   Server server;
   Json::Reader r;
   auto svr = std::make_unique<httplib::Server>();
