@@ -539,6 +539,7 @@ void LlamaEngine::HandleInferenceImpl(
           cb(std::move(status), std::move(respData));
 
           if (result.stop) {
+            LOG_INFO << "Request " << request_id << ": " << "End of result";
             state->llama.request_cancel(state->task_id);
             Json::Value respData;
             const std::string str =

@@ -19,7 +19,7 @@ ExternalProject_Add(
     CMAKE_ARGS
     	-DCARES_SHARED=OFF
 	    -DCARES_STATIC=ON
-        -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+      -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     	-DCMAKE_INSTALL_PREFIX=${THIRD_PARTY_INSTALL_PATH}
 )
 
@@ -43,17 +43,5 @@ ExternalProject_Add(
       -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     	-DCMAKE_INSTALL_PREFIX=${THIRD_PARTY_INSTALL_PATH}
 )
-
-# This is tricky, can find a better way?
-if(WIN32)
-  set(prefix "")
-  set(suffix ".lib")
-elseif(APPLE)
-  set(prefix "lib")
-  set(suffix ".a")
-else()
-  set(prefix "lib")
-  set(suffix ".a")
-endif()
 
 add_dependencies(trantor c-ares)
