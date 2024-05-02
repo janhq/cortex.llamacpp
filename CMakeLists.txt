@@ -5,9 +5,11 @@ SET(TARGET engine)
 set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build_deps/_install)
 set(CORTEX_COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/base/)
 
+if(UNIX AND NOT APPLE)
+  add_compile_options(-fPIC)
+endif()
 
 include(CheckIncludeFileCXX)
-include(third-party/third-party.cmake)
 # CPP version
 check_include_file_cxx(any HAS_ANY)
 check_include_file_cxx(string_view HAS_STRING_VIEW)
@@ -34,7 +36,17 @@ add_library(${TARGET} SHARED
     src/LlamaEngine.cc
 )
 
-target_link_libraries(${TARGET} PRIVATE common llama llava jsoncpplib trantorlib
+find_library(JSONCPP
+    NAMES jsoncpp
+    HINTS "${THIRD_PARTY_PATH}/lib"
+)
+
+find_library(TRANTOR
+    NAMES trantor
+    HINTS "${THIRD_PARTY_PATH}/lib"
+)
+
+target_link_libraries(${TARGET} PRIVATE common llama llava ${JSONCPP} ${TRANTOR}
                                               ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(${TARGET} PRIVATE 
             ${CORTEX_COMMON_PATH}
