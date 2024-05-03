@@ -1,6 +1,26 @@
 name: CI
 
 on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    paths:
+      [
+        ".github/scripts/**",
+        ".github/workflows/build.yml",
+        "**/CMakeLists.txt",
+        "**/Makefile",
+        "**/*.h",
+        "**/*.hpp",
+        "**/*.c",
+        "**/*.cpp",
+        "**/*.cu",
+        "**/*.cc",
+        "**/*.cxx",
+        "llama.cpp",
+        "!docs/**",
+        "!.gitignore",
+        "!README.md",
+      ]
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
@@ -10,8 +30,77 @@ env:
   EMBEDDING_MODEL_URL: https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf
 
 jobs:
+  create-draft-release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    permissions:
+      contents: write
+    steps:
+      - name: Extract tag name without v prefix
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV && echo "::set-output name=version::${GITHUB_REF#refs/tags/v}"
+        env:
+          GITHUB_REF: ${{ github.ref }}
+      - name: Create Draft Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "${{ env.VERSION }}"
+          draft: true
+          prerelease: false
+
+  # Get the latest version of the release
+  set-cortex-llamacpp-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version_update.outputs.new_version }}
+    steps:
+      - name: Get latest release
+        id: version_update
+        run: |
+          if [[ ${{ github.event_name }} == push && ${{ github.ref }} == refs/tags/* ]]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}"
+            NEW_VERSION="${VERSION#v}"
+            echo "::set-output name=new_version::$NEW_VERSION"
+          else
+            # Function to get the latest release tag
+            get_latest_tag() {
+              local retries=0
+              local max_retries=3
+              local tag
+              while [ $retries -lt $max_retries ]; do
+                tag=$(curl -s https://api.github.com/repos/janhq/cortex.llamacpp/releases/latest | jq -r .tag_name)
+                if [ -n "$tag" ] && [ "$tag" != "null" ]; then
+                  echo $tag
+                  return
+                else
+                  let retries++
+                  sleep 2
+                fi
+              done
+              echo "Failed to fetch latest tag after $max_retries attempts."
+              exit 1
+            }
+            # Get the latest release tag from GitHub API
+            LATEST_TAG=$(get_latest_tag)
+            
+            # Remove the 'v' and append the build number to the version
+            NEW_VERSION="${LATEST_TAG#v}-${GITHUB_RUN_NUMBER}"
+            echo "New version: $NEW_VERSION"
+            echo "::set-output name=new_version::$NEW_VERSION"
+          fi
+          echo "Version: $NEW_VERSION"
+
   ubuntu-amd64-build:
     runs-on: ubuntu-18-04-cuda-11-7
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
 
     strategy:
@@ -52,6 +141,20 @@ jobs:
           cd examples/server/build
           cmake .. ${{ matrix.defines }}
           cmake --build . --config Release
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p cortex.llamacpp
+          cp build/libengine.so cortex.llamacpp
+          tar -czvf cortex.llamacpp.tar.gz cortex.llamacpp
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+        with:
+          name: cortex.llamacpp-linux-${{ matrix.build }}
+          path: ./cortex.llamacpp
       
       - name: Run e2e testing
         shell: bash
@@ -62,8 +165,20 @@ jobs:
           cp ../../../build/libengine.so engines/cortex.llamacpp/
           chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server ${{ env.LLM_MODEL_URL }} ${{ env.EMBEDDING_MODEL_URL }}
 
+      - uses: actions/upload-release-asset@v1.0.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./cortex.llamacpp.tar.gz
+          asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-linux-${{ matrix.build }}.tar.gz
+          asset_content_type: application/gzip
+
   ubuntu-amd64-cuda-build:
     runs-on: ubuntu-18-04-cuda-${{ matrix.cuda }}
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
 
     strategy:
@@ -82,16 +197,41 @@ jobs:
           ./configure.sh
           make build CMAKE_EXTRA_FLAGS="-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
       
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p cortex.llamacpp
+          cp build/libengine.so cortex.llamacpp
+          tar -czvf cortex.llamacpp.tar.gz cortex.llamacpp
+          
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+        with:
+          name: cortex.llamacpp-linux-amd64-cuda-${{ matrix.cuda }}
+          path: ./cortex.llamacpp
+
       - name: Build server example
         run: |
           mkdir -p examples/server/build
           cd examples/server/build
           cmake .. -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON
           cmake --build . --config Release
-
+          
+      - uses: actions/upload-release-asset@v1.0.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./cortex.llamacpp.tar.gz
+          asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-linux-amd64-cuda-${{ matrix.cuda }}.tar.gz
+          asset_content_type: application/gzip
 
   macOS-silicon-build:
     runs-on: mac-silicon
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
     steps:
       - name: Clone
@@ -112,6 +252,18 @@ jobs:
           cmake ..
           cmake --build . --config Release
 
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p cortex.llamacpp
+          cp build/libengine.dylib cortex.llamacpp/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cortex.llamacpp-mac-arm64
+          path: ./cortex.llamacpp
+
       - name: Run e2e testing
         shell: bash
         run: |
@@ -123,6 +275,8 @@ jobs:
 
   macOS-amd64-build:
     runs-on: macos-13
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
     steps:
       - name: Clone
@@ -144,6 +298,18 @@ jobs:
           cmake ..
           cmake --build . --config Release
 
+      - name: Package
+        shell: bash
+        run: |
+          mkdir -p cortex.llamacpp
+          cp build/libengine.dylib cortex.llamacpp/
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cortex.llamacpp-mac-amd64
+          path: ./cortex.llamacpp
+      
       - name: Run e2e testing
         shell: bash
         run: |
@@ -152,9 +318,53 @@ jobs:
           cp ../../../build/libengine.dylib engines/cortex.llamacpp/
           chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server ${{ env.LLM_MODEL_URL }} ${{ env.EMBEDDING_MODEL_URL }}
     
+  universal-cortex-llamacpp-artifact-macos:
+    runs-on: macos-latest
+    needs: [create-draft-release, set-cortex-llamacpp-version, macOS-silicon-build, macOS-amd64-build]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success' 
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - name: download artifact amd64
+        uses: actions/download-artifact@v2
+        with:
+          name: cortex.llamacpp-mac-amd64
+          path: ./cortex.llamacpp-mac-amd64
+        
+      - name: download artifact arm64
+        uses: actions/download-artifact@v2
+        with:
+          name: cortex.llamacpp-mac-arm64
+          path: ./cortex.llamacpp-mac-arm64
+              
+      - name: bundle universal binary
+        run: |
+          mkdir -p cortex.llamacpp
+          ls ./cortex.llamacpp-mac-amd64
+          lipo -create ./cortex.llamacpp-mac-amd64/libengine.dylib ./cortex.llamacpp-mac-arm64/libengine.dylib -output ./cortex.llamacpp/libengine.dylib
+          tar -czvf cortex.llamacpp.tar.gz cortex.llamacpp
+        
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cortex.llamacpp-mac-universal
+          path: ./cortex.llamacpp
+        
+      - uses: actions/upload-release-asset@v1.0.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./cortex.llamacpp.tar.gz
+          asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-mac-universal.tar.gz
+          asset_content_type: application/gzip
 
   windows-amd64-build:
     runs-on: windows-latest
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
 
     strategy:
@@ -205,6 +415,15 @@ jobs:
           cd .\examples\server\build
           cmake .. ${{ matrix.defines }}
           cmake --build . --config Release
+      
+      - name: Pack artifacts
+        id: pack_artifacts
+        shell: cmd
+        run: |
+          dotnet tool install --global AzureSignTool
+          azuresigntool.exe sign -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" -kvi "${{ secrets.AZURE_CLIENT_ID }}" -kvt "${{ secrets.AZURE_TENANT_ID }}" -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" -kvc ${{ secrets.AZURE_CERT_NAME }} -tr http://timestamp.globalsign.com/tsa/r6advanced1 -v ".\build\Release\engine.dll"
+          7z a -ttar temp.tar .\build\Release\*
+          7z a -tgzip cortex.llamacpp.tar.gz temp.tar
 
       - name: Run e2e testing
         shell: cmd
@@ -214,32 +433,58 @@ jobs:
           cd examples\server\build\Release
           copy ..\..\..\..\build\Release\engine.dll engines\cortex.llamacpp\
           ..\..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe ${{ env.LLM_MODEL_URL }} ${{ env.EMBEDDING_MODEL_URL }}
+      
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+        with:
+          name: cortex.llamacpp-win-${{ matrix.build }}
+          path: ./build/Release
+
+      - uses: actions/upload-release-asset@v1.0.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./cortex.llamacpp.tar.gz
+          asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-win-${{ matrix.build }}.tar.gz
+          asset_content_type: application/gzip
+        
 
   windows-amd64-cuda-build:
     runs-on: windows-cuda-${{ matrix.cuda }}
+    needs: [create-draft-release, set-cortex-llamacpp-version]
+    if: always() && (needs.create-draft-release.result == 'success' || needs.create-draft-release.result == 'skipped') && needs.set-cortex-llamacpp-version.result == 'success'
     timeout-minutes: 40
 
     strategy:
       matrix:
         include:
           - cuda: "12-0"
-            instructions: "-DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx2"
+            inst-flags: "-DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
           - cuda: "12-0"
-            instructions: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx"
+            inst-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
           - cuda: "12-0"
-            instructions: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx512"
+            inst-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
           - cuda: "11-7"
-            instructions: "-DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx2"
+            inst-flags: "-DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
           - cuda: "11-7"
-            instructions: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx"
+            inst-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
           - cuda: "11-7"
-            instructions: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
-            flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            instructions: "amd64-avx512"
+            inst-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
     
     steps:
       - name: Clone
@@ -255,7 +500,7 @@ jobs:
           cmake --build ./build_deps/third-party --config Release -j %NUMBER_OF_PROCESSORS%
           mkdir -p build
           cd build
-          cmake .. ${{ matrix.instructions }} ${{ matrix.flags }}
+          cmake .. ${{ matrix.inst-flags }} ${{ matrix.cmake-flags }}
           cmake --build . --config Release
           
       - name: Build server example
@@ -263,6 +508,31 @@ jobs:
         run: |
           mkdir .\examples\server\build
           cd .\examples\server\build
-          cmake .. ${{ matrix.instructions }} ${{ matrix.flags }}
+          cmake .. ${{ matrix.inst-flags }} ${{ matrix.cmake-flags }}
           cmake --build . --config Release
-          
+      
+      - name: Pack artifacts
+        id: pack_artifacts
+        shell: cmd
+        run: |
+          dotnet tool install --global AzureSignTool
+          azuresigntool.exe sign -kvu "${{ secrets.AZURE_KEY_VAULT_URI }}" -kvi "${{ secrets.AZURE_CLIENT_ID }}" -kvt "${{ secrets.AZURE_TENANT_ID }}" -kvs "${{ secrets.AZURE_CLIENT_SECRET }}" -kvc ${{ secrets.AZURE_CERT_NAME }} -tr http://timestamp.globalsign.com/tsa/r6advanced1 -v ".\build\Release\engine.dll"
+          7z a -ttar temp.tar .\build\Release\*
+          7z a -tgzip cortex.llamacpp.tar.gz temp.tar
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
+        with:
+          name: cortex.llamacpp-win-${{ matrix.instructions }}-cuda-${{ matrix.cuda }}
+          path: ./build/Release
+
+      - uses: actions/upload-release-asset@v1.0.1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./cortex.llamacpp.tar.gz
+          asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-win-${{ matrix.instructions }}-cuda-${{ matrix.cuda }}.tar.gz
+          asset_content_type: application/gzip
