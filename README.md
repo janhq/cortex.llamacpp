@@ -1,6 +1,15 @@
 # cortex.llamacpp
 cortex.llamacpp is a high-efficiency C++ inference engine for edge computing.
 
+# Repo Structure
+```
+.
+├── base -> Engine interface
+├── examples -> Server example to integrate engine
+├── llama.cpp -> Upstream llama C++
+├── src -> Engine implementation
+├── third-party -> Dependencies of the cortex.llamacpp project
+```
 # Quickstart
 // TODO
 
