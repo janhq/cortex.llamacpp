@@ -378,9 +378,8 @@ void LlamaEngine::HandleInferenceImpl(
   // To set default value
 
   // Default values to enable auto caching
-  //data["cache_prompt"] = caching_enabled;
-  data["cache_prompt"] = false;
-  data["n_keep"] = -1;
+  data["cache_prompt"] = caching_enabled;
+  data["n_keep"] = 0;
 
   // Passing load value
   data["repeat_last_n"] = this->repeat_last_n;
