@@ -30,10 +30,12 @@ If you don't have git, you can download the source code as a file archive from [
 
 Next, let's install the necessary dependencies.
 
-- **On MacOS with Apple Silicon:**
+- **On MacOS and Linux:**
 
   ```bash
-  ./install_deps.sh
+  cmake -S ./third-party -B ./build_deps/third-party;
+  make -C ./build_deps/third-party -j4;
+  rm -rf ./build_deps/third-party;
   ```
 
 - **On Windows:**
@@ -49,11 +51,17 @@ This creates a `build_deps` folder.
 
 Now, let's generate the build files.
 
-- **On MacOS, Linux, and Windows:**
+- **On Linux, and Windows:**
 
   ```bash
   mkdir build && cd build
   cmake ..
+  ```
+- **On MacOS with Apple Silicon:**
+
+  ```bash
+  mkdir build && cd build
+  cmake -DLLAMA_METAL_EMBED_LIBRARY=ON ..
   ```
 
 - **On MacOS with Intel processors:**
@@ -127,10 +135,19 @@ Time to build Cortex.llamacpp!
 ## Start process
 
 Finally, let's start Server.
+- **On MacOS and Linux:**
+
+  ```bash
+  mkdir engines\cortex.llamacpp\
+  cp ../../build/libengine.dylib engines/cortex.llamacpp/
+  ./server
+  ```
 
 - **On MacOS and Linux:**
 
   ```bash
+  mkdir engines\cortex.llamacpp\
+  cp ../../build/libengine.so engines/cortex.llamacpp/
   ./server
   ```
 
