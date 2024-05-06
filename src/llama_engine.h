@@ -1,5 +1,5 @@
 #pragma once
-#include "cortex-common/EngineI.h"
+#include "cortex-common/enginei.h"
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
 #include "chat_completion_request.h"
@@ -40,7 +40,7 @@ class LlamaEngine : public EngineI {
   void StopBackgroundTask();
 
  private:
-  llama_server_context llama_;
+  LlamaServerContext llama_;
   std::unique_ptr<trantor::ConcurrentTaskQueue> queue_;
   std::thread bgr_thread_;
 
