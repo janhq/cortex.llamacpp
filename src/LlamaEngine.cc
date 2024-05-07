@@ -112,6 +112,10 @@ std::string create_return_json(const std::string& id, const std::string& model,
 }
 }  // namespace
 
+LlamaEngine::LlamaEngine() {
+  log_disable();
+}
+
 LlamaEngine::~LlamaEngine() {
   StopBackgroundTask();
 }
