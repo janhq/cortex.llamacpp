@@ -10,8 +10,6 @@ cortex.llamacpp is a high-efficiency C++ inference engine for edge computing.
 ├── src -> Engine implementation
 ├── third-party -> Dependencies of the cortex.llamacpp project
 ```
-# Quickstart
-// TODO
 
 ## Build from source
 
@@ -26,110 +24,37 @@ git clone --recurse https://github.com/janhq/cortex.llamacpp.git
 ```
 
 If you don't have git, you can download the source code as a file archive from [cortex.llamacpp GitHub](https://github.com/janhq/cortex.llamacpp). 
-## Install Dependencies
 
-Next, let's install the necessary dependencies.
-
-- **On MacOS and Linux:**
-
-  ```bash
-  cmake -S ./third-party -B ./build_deps/third-party;
-  make -C ./build_deps/third-party -j4;
-  rm -rf ./build_deps/third-party;
+## Build library with server example
+- **On Windows**
+  Install choco
+  Install make
   ```
-
-- **On Windows:**
-
-  ```bash
-  cmake -S ./third-party -B ./build_deps/third-party
-  cmake --build ./build_deps/third-party --config Release
+  choco install make -y
   ```
-
-This creates a `build_deps` folder.
-
-## Generate build file
-
-Now, let's generate the build files.
 
 - **On Linux, and Windows:**
 
   ```bash
-  mkdir build && cd build
-  cmake ..
+  make build-example-server
   ```
+  
 - **On MacOS with Apple Silicon:**
 
   ```bash
-  mkdir build && cd build
-  cmake -DLLAMA_METAL_EMBED_LIBRARY=ON ..
+  make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_METAL_EMBED_LIBRARY=ON"
   ```
 
 - **On MacOS with Intel processors:**
 
   ```bash
-  mkdir build && cd build
-  cmake -DLLAMA_METAL=OFF ..
+  make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_METAL=OFF"
   ```
 
 - **On Linux with CUDA:**
 
   ```bash
-  mkdir build && cd build
-  cmake -DLLAMA_CUDA=ON ..
-  ```
-
-## Build the library
-
-Time to build Cortex.llamacpp!
-
-- **On MacOS:**
-
-  ```bash
-  make -j $(sysctl -n hw.physicalcpu)
-  ```
-
-- **On Linux:**
-
-  ```bash
-  make -j $(nproc)
-  ```
-
-- **On Windows:**
-
-  ```bash
-  make -j $(%NUMBER_OF_PROCESSORS%)
-  ```
-
-## Build server example
-
-- **On MacOS:**
-
-  ```bash
-  cd ..
-  mkdir -p examples/server/build
-  cd examples/server/build
-  cmake ..
-  make -j $(sysctl -n hw.physicalcpu)
-  ```
-
-- **On Linux:**
-
-  ```bash
-  cd ..
-  mkdir -p examples/server/build
-  cd examples/server/build
-  cmake ..
-  make -j $(nproc)
-  ```
-
-- **On Windows:**
-
-  ```bash
-  cd ..
-  mkdir  examples\server\build
-  cd examples\server\build
-  cmake ..
-  make -j $(%NUMBER_OF_PROCESSORS%)
+  make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_CUDA=ON"
   ```
 
 ## Start process
@@ -159,3 +84,5 @@ Finally, let's start Server.
   copy ..\..\..\build\Release\engine.dll engines\cortex.llamacpp\
   server.exe
   ```
+# Quickstart
+// TODO
