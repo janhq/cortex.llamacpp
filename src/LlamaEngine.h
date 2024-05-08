@@ -6,6 +6,7 @@
 
 class LlamaEngine : public EngineI {
  public:
+    LlamaEngine();
     ~LlamaEngine() final;
   // #### Interface ####
   void HandleChatCompletion(
@@ -38,8 +39,7 @@ class LlamaEngine : public EngineI {
   void HandleBackgroundTask();
   void StopBackgroundTask();
 
-  //TODO(sang) public for now, should move all variables to private section later
- public:
+ private:
   llama_server_context llama_;
   std::unique_ptr<trantor::ConcurrentTaskQueue> queue_;
   std::thread bgr_thread_;
