@@ -299,15 +299,15 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
         jsonBody->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
-    this->clean_cache_threshold =
+    this->clean_cache_threshold_ =
         jsonBody->get("clean_cache_threshold", 5).asInt();
-    this->caching_enabled = jsonBody->get("caching_enabled", false).asBool();
-    this->user_prompt = jsonBody->get("user_prompt", "USER: ").asString();
-    this->ai_prompt = jsonBody->get("ai_prompt", "ASSISTANT: ").asString();
+    this->caching_enabled_ = jsonBody->get("caching_enabled", false).asBool();
+    this->user_prompt_ = jsonBody->get("user_prompt", "USER: ").asString();
+    this->ai_prompt_ = jsonBody->get("ai_prompt", "ASSISTANT: ").asString();
     this->system_prompt_ =
         jsonBody->get("system_prompt", "ASSISTANT's RULE: ").asString();
-    this->pre_prompt = jsonBody->get("pre_prompt", "").asString();
-    this->repeat_last_n = jsonBody->get("repeat_last_n", 32).asInt();
+    this->pre_prompt_ = jsonBody->get("pre_prompt", "").asString();
+    this->repeat_last_n_ = jsonBody->get("repeat_last_n", 32).asInt();
 
     if (!jsonBody->operator[]("llama_log_folder").isNull()) {
       log_enable();
@@ -369,8 +369,8 @@ void LlamaEngine::HandleInferenceImpl(
     callback(std::move(status), std::move(jsonResp));
     return;
   }
-  std::string formatted_output = pre_prompt;
-  int request_id = ++no_of_requests;
+  std::string formatted_output = pre_prompt_;
+  int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for inference request";
 
@@ -380,11 +380,11 @@ void LlamaEngine::HandleInferenceImpl(
   // To set default value
 
   // Default values to enable auto caching
-  data["cache_prompt"] = caching_enabled;
+  data["cache_prompt"] = caching_enabled_;
   data["n_keep"] = 0;
 
   // Passing load value
-  data["repeat_last_n"] = this->repeat_last_n;
+  data["repeat_last_n"] = this->repeat_last_n_;
   LOG_INFO << "Request " << request_id << ": "
            << "Stop words:" << completion.stop.toStyledString();
 
@@ -405,11 +405,11 @@ void LlamaEngine::HandleInferenceImpl(
       std::string input_role = message["role"].asString();
       std::string role;
       if (input_role == "user") {
-        role = user_prompt;
+        role = user_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "assistant") {
-        role = ai_prompt;
+        role = ai_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "system") {
@@ -423,7 +423,7 @@ void LlamaEngine::HandleInferenceImpl(
         formatted_output += role + content;
       }
     }
-    formatted_output += ai_prompt;
+    formatted_output += ai_prompt_;
   } else {
     data["image_data"] = json::array();
     for (const auto& message : messages) {
@@ -432,7 +432,7 @@ void LlamaEngine::HandleInferenceImpl(
       if (input_role == "user") {
         formatted_output += role;
         for (auto content_piece : message["content"]) {
-          role = user_prompt;
+          role = user_prompt_;
 
           json content_piece_image_data;
           content_piece_image_data["data"] = "";
@@ -471,7 +471,7 @@ void LlamaEngine::HandleInferenceImpl(
         }
 
       } else if (input_role == "assistant") {
-        role = ai_prompt;
+        role = ai_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "system") {
@@ -485,7 +485,7 @@ void LlamaEngine::HandleInferenceImpl(
         formatted_output += role + content;
       }
     }
-    formatted_output += ai_prompt;
+    formatted_output += ai_prompt_;
     LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
@@ -496,7 +496,7 @@ void LlamaEngine::HandleInferenceImpl(
   // specify default stop words
   // Ensure success case for chatML
   stopWords.push_back("<|im_end|>");
-  stopWords.push_back(llama_utils::rtrim(user_prompt));
+  stopWords.push_back(llama_utils::rtrim(user_prompt_));
   data["stop"] = stopWords;
 
   bool is_streamed = data["stream"];
@@ -640,7 +640,7 @@ void LlamaEngine::HandleInferenceImpl(
 void LlamaEngine::HandleEmbeddingImpl(
     std::shared_ptr<Json::Value> jsonBody,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  int request_id = ++no_of_requests;
+  int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for embedding request";
   // Queue embedding task
