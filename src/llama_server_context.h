@@ -29,7 +29,7 @@ struct ServerParams {
   int32_t write_timeout = 600;
 };
 
-enum class TaskType : uint8_t { COMPLETION_TASK, CANCEL_TASK };
+enum class TaskType : uint8_t { kCompletionTask, kCancelTask };
 
 struct TaskServer {
   int id;
@@ -58,11 +58,11 @@ struct TaskMulti {
 // completion token output with probabilities
 
 enum class StopType : uint8_t {
-  STOP_FULL,
-  STOP_PARTIAL,
+  kStopFull,
+  kStopPartial,
 };
 
-enum class ModelType: uint8_t { LLM = 0, EMBEDDING };
+enum class ModelType: uint8_t { kLlm = 0, kEmbedding };
 
 // TODO: reuse llama_detokenize
 template <class Iter>
@@ -142,7 +142,7 @@ struct LlamaServerContext {
   std::condition_variable condition_tasks;
   std::mutex mutex_results;
   std::condition_variable condition_results;
-  ModelType model_type = ModelType::LLM;
+  ModelType model_type = ModelType::kLlm;
 
   ~LlamaServerContext();
 

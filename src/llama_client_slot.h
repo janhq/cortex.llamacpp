@@ -39,14 +39,14 @@ static bool server_verbose = false;
 using json = nlohmann::json;
 
 enum class SlotState: uint8_t {
-  IDLE,
-  PROCESSING,
+  kIdle,
+  kProcessing,
 };
 
 enum class SlotCommand: uint8_t {
-  NONE,
-  LOAD_PROMPT,
-  RELEASE,
+  kNone,
+  kLoadPrompt,
+  kRelease,
 };
 
 struct SlotParams {
@@ -93,8 +93,8 @@ struct LlamaClientSlot {
 
   struct SlotParams params;
 
-  SlotState state = SlotState::IDLE;
-  SlotCommand command = SlotCommand::NONE;
+  SlotState state = SlotState::kIdle;
+  SlotCommand command = SlotCommand::kNone;
 
   // used to determine the slot that has been used the longest
   int64_t t_last_used = -1;

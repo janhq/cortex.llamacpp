@@ -10,10 +10,8 @@ constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
 constexpr const int k500InternalServerError = 500;
 
-enum class InferenceStatus: uint8_t { PENDING, RUNNING, EOS, FINISHED };
 struct inferenceState {
   int task_id;
-  InferenceStatus inference_status = InferenceStatus::PENDING;
   LlamaServerContext& llama;
   // Check if we receive the first token, set it to false after receiving
   bool is_first_token = true;
@@ -290,9 +288,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     params.embedding = jsonBody->get("embedding", true).asBool();
     model_type = jsonBody->get("model_type", "llm").asString();
     if (model_type == "llm") {
-      llama_.model_type = ModelType::LLM;
+      llama_.model_type = ModelType::kLlm;
     } else {
-      llama_.model_type = ModelType::EMBEDDING;
+      llama_.model_type = ModelType::kEmbedding;
     }
     // Check if n_parallel exists in jsonBody, if not, set to drogon_thread
     params.n_batch = jsonBody->get("n_batch", 512).asInt();
@@ -350,7 +348,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 
   // For model like nomic-embed-text-v1.5.f16.gguf, etc, we don't need to warm up model.
   // So we use this variable to differentiate with other models
-  if (llama_.model_type == ModelType::LLM) {
+  if (llama_.model_type == ModelType::kLlm) {
     WarmUpModel();
   }
   return true;
@@ -359,7 +357,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 void LlamaEngine::HandleInferenceImpl(
     llama::inferences::ChatCompletionRequest&& completion,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  if (llama_.model_type == ModelType::EMBEDDING) {
+  if (llama_.model_type == ModelType::kEmbedding) {
     LOG_WARN << "Not support completion for embedding model";
     Json::Value jsonResp;
     jsonResp["message"] = "Not support completion for embedding model";

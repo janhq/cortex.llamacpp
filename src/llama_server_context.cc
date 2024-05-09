@@ -252,7 +252,7 @@ int LlamaServerContext::RequestCompletion(json data, bool infill,
   task.data = std::move(data);
   task.infill_mode = infill;
   task.embedding_mode = embedding;
-  task.type = TaskType::COMPLETION_TASK;
+  task.type = TaskType::kCompletionTask;
   task.multitask_id = multitask_id;
 
   // when a completion task's prompt array is not a singleton, we split it
@@ -301,7 +301,7 @@ void LlamaServerContext::RequestCancel(int task_id) {
   std::unique_lock<std::mutex> lock(mutex_tasks);
   TaskServer task;
   task.id = id_gen++;
-  task.type = TaskType::CANCEL_TASK;
+  task.type = TaskType::kCancelTask;
   task.target_id = task_id;
   queue_tasks.push_back(task);
   condition_tasks.notify_one();
@@ -372,9 +372,9 @@ bool LlamaServerContext::UpdateSlots() {
   // decode any currently ongoing sequences
   for (auto& slot : slots) {
     // release the slot
-    if (slot.command == SlotCommand::RELEASE) {
-      slot.state = SlotState::IDLE;
-      slot.command = SlotCommand::NONE;
+    if (slot.command == SlotCommand::kRelease) {
+      slot.state = SlotState::kIdle;
+      slot.command = SlotCommand::kNone;
       slot.t_last_used = ggml_time_us();
 
       LOG_INFO << "slot released: "
@@ -387,7 +387,7 @@ bool LlamaServerContext::UpdateSlots() {
       continue;
     }
 
-    if (slot.state == SlotState::IDLE) {
+    if (slot.state == SlotState::kIdle) {
       continue;
     }
 
@@ -424,8 +424,8 @@ bool LlamaServerContext::UpdateSlots() {
                               !slot.images.empty();
 
       // empty prompt passed -> release the slot and send empty response
-      if (slot.state == SlotState::IDLE &&
-          slot.command == SlotCommand::LOAD_PROMPT && !has_prompt) {
+      if (slot.state == SlotState::kIdle &&
+          slot.command == SlotCommand::kLoadPrompt && !has_prompt) {
         slot.Release();
         slot.PrintTimings();
         SendFinalResponse(slot);
@@ -433,8 +433,8 @@ bool LlamaServerContext::UpdateSlots() {
       }
 
       // need process the prompt
-      if (slot.state == SlotState::IDLE &&
-          slot.command == SlotCommand::LOAD_PROMPT) {
+      if (slot.state == SlotState::kIdle &&
+          slot.command == SlotCommand::kLoadPrompt) {
         auto& prompt_tokens = slot.prompt_tokens;
 
         // we haven't tokenized the prompt yet - do it now:
@@ -498,8 +498,8 @@ bool LlamaServerContext::UpdateSlots() {
                            "num_promt_tokens = "
                         << slot.num_prompt_tokens
                         << ", n_ubatch = " << n_ubatch;
-              slot.state = SlotState::PROCESSING;
-              slot.command = SlotCommand::NONE;
+              slot.state = SlotState::kProcessing;
+              slot.command = SlotCommand::kNone;
               slot.Release();
               slot.PrintTimings();
               SendFinalResponse(slot);
@@ -653,8 +653,8 @@ bool LlamaServerContext::UpdateSlots() {
 
         // entire prompt has been processed - start decoding new tokens
         if (slot.n_past == slot.num_prompt_tokens) {
-          slot.state = SlotState::PROCESSING;
-          slot.command = SlotCommand::NONE;
+          slot.state = SlotState::kProcessing;
+          slot.command = SlotCommand::kNone;
 
           GGML_ASSERT(batch.n_tokens > 0);
 
@@ -704,8 +704,8 @@ bool LlamaServerContext::UpdateSlots() {
                   << "i = " << i << ", n_batch = " << n_batch
                   << ", ret = " << ret;
         for (auto& slot : slots) {
-          slot.state = SlotState::PROCESSING;
-          slot.command = SlotCommand::NONE;
+          slot.state = SlotState::kProcessing;
+          slot.command = SlotCommand::kNone;
           slot.Release();
           // SendError(slot,
           //            "Input prompt is too big compared to KV size. Please "
@@ -1037,7 +1037,7 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   }
   slot->ctx_sampling = llama_sampling_init(slot->sparams);
   llama_set_rng_seed(ctx, slot->params.seed);
-  slot->command = SlotCommand::LOAD_PROMPT;
+  slot->command = SlotCommand::kLoadPrompt;
   slot->prompt_tokens.clear();
 
   all_slots_are_idle = false;
@@ -1100,7 +1100,7 @@ size_t LlamaServerContext::FindStoppingStrings(const std::string& text,
 
   for (const std::string& word : slot.params.antiprompt) {
     size_t pos;
-    if (type == StopType::STOP_FULL) {
+    if (type == StopType::kStopFull) {
       const size_t tmp = word.size() + last_token_size;
       const size_t from_pos = text.size() > tmp ? text.size() - tmp : 0;
       pos = text.find(word, from_pos);
@@ -1109,7 +1109,7 @@ size_t LlamaServerContext::FindStoppingStrings(const std::string& text,
     }
     if (pos != std::string::npos &&
         (stop_pos == std::string::npos || pos < stop_pos)) {
-      if (type == StopType::STOP_FULL) {
+      if (type == StopType::kStopFull) {
         slot.stopped_word = true;
         slot.stopping_word = word;
         slot.has_next_token = false;
@@ -1165,7 +1165,7 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     const std::string str_test = slot.generated_text.substr(pos);
     bool is_stop_full = false;
     size_t stop_pos = FindStoppingStrings(str_test, token_str.size(),
-                                          StopType::STOP_FULL, slot);
+                                          StopType::kStopFull, slot);
     if (stop_pos != std::string::npos) {
       is_stop_full = true;
       slot.generated_text.erase(slot.generated_text.begin() + pos + stop_pos,
@@ -1174,7 +1174,7 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     } else {
       is_stop_full = false;
       stop_pos = FindStoppingStrings(str_test, token_str.size(),
-                                     StopType::STOP_PARTIAL, slot);
+                                     StopType::kStopPartial, slot);
     }
 
     // check if there is any token to predict
@@ -1551,7 +1551,7 @@ void LlamaServerContext::ProcessTasks() {
     TaskServer task = queue_tasks.front();
     queue_tasks.erase(queue_tasks.begin());
     switch (task.type) {
-      case TaskType::COMPLETION_TASK: {
+      case TaskType::kCompletionTask: {
         LlamaClientSlot* slot = GetSlot(json_value(task.data, "slot_id", -1));
         if (slot == nullptr) {
           LOG_WARN << "slot unavailable";
@@ -1577,7 +1577,7 @@ void LlamaServerContext::ProcessTasks() {
           break;
         }
       } break;
-      case TaskType::CANCEL_TASK: {  // release slot linked with the task id
+      case TaskType::kCancelTask: {  // release slot linked with the task id
         for (auto& slot : slots) {
           if (slot.task_id == task.target_id) {
             slot.Release();

@@ -37,25 +37,25 @@ bool LlamaClientSlot::HasBudget(gpt_params& global_params) {
 }
 
 bool LlamaClientSlot::Available() const {
-  return state == SlotState::IDLE && command == SlotCommand::NONE;
+  return state == SlotState::kIdle && command == SlotCommand::kNone;
 }
 
 bool LlamaClientSlot::IsProcessing() const {
-  return (state == SlotState::IDLE && command == SlotCommand::LOAD_PROMPT) ||
-         state == SlotState::PROCESSING;
+  return (state == SlotState::kIdle && command == SlotCommand::kLoadPrompt) ||
+         state == SlotState::kProcessing;
 }
 
 void LlamaClientSlot::AddTokenString(const CompletionTokenOutput& token) {
-  if (command == SlotCommand::RELEASE) {
+  if (command == SlotCommand::kRelease) {
     return;
   }
   generated_token_probs.push_back(token);
 }
 
 void LlamaClientSlot::Release() {
-  if (state == SlotState::IDLE || state == SlotState::PROCESSING) {
+  if (state == SlotState::kIdle || state == SlotState::kProcessing) {
     t_token_generation = (ggml_time_us() - t_start_genereration) / 1e3;
-    command = SlotCommand::RELEASE;
+    command = SlotCommand::kRelease;
   }
 }
 
