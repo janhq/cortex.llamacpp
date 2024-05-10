@@ -1,9 +1,9 @@
 #include "llama_engine.h"
 
+#include "cpuid/cpu_info.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
-
 namespace {
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
@@ -140,6 +140,8 @@ void LlamaEngine::HandleEmbedding(
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> jsonBody,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+  cpuid::CpuInfo cpu_info;
+  LOG_DEBUG << "CPU info: " << cpu_info.to_string();
   if (!llama_utils::isAVX2Supported() && ggml_cpu_has_avx2()) {
     LOG_ERROR << "AVX2 is not supported by your processor";
     Json::Value jsonResp;

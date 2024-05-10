@@ -36,7 +36,7 @@ If you don't have git, you can download the source code as a file archive from [
 - **On Linux, and Windows:**
 
   ```bash
-  make build-example-server
+  make build-example-server CMAKE_EXTRA_FLAGS=""
   ```
   
 - **On MacOS with Apple Silicon:**

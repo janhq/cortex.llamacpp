@@ -40,6 +40,7 @@ add_library(${TARGET} SHARED
     src/llama_engine.cc
     src/llama_server_context.cc
     src/llama_client_slot.cc
+    src/cpuid/cpu_info.cc
 )
 
 find_library(JSONCPP
@@ -57,4 +58,5 @@ target_link_libraries(${TARGET} PRIVATE common llama llava ${JSONCPP} ${TRANTOR}
 target_include_directories(${TARGET} PRIVATE 
             ${CMAKE_CURRENT_SOURCE_DIR}/base
             ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp 
+            ${CMAKE_CURRENT_SOURCE_DIR}/src
             ${THIRD_PARTY_PATH}/include)
