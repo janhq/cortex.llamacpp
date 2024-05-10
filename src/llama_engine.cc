@@ -10,26 +10,26 @@ constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
 constexpr const int k500InternalServerError = 500;
 
-struct inferenceState {
+struct InferenceState {
   int task_id;
   LlamaServerContext& llama;
   // Check if we receive the first token, set it to false after receiving
   bool is_first_token = true;
 
-  inferenceState(LlamaServerContext& l) : llama(l) {}
+  InferenceState(LlamaServerContext& l) : llama(l) {}
 };
 
 /**
- * This function is to create the smart pointer to inferenceState, hence the
- * inferenceState will be persisting even tho the lambda in streaming might go
+ * This function is to create the smart pointer to InferenceState, hence the
+ * InferenceState will be persisting even tho the lambda in streaming might go
  * out of scope and the handler already moved on
  */
-std::shared_ptr<inferenceState> create_inference_state(
+std::shared_ptr<InferenceState> CreateInferenceState(
     LlamaServerContext& l) {
-  return std::make_shared<inferenceState>(l);
+  return std::make_shared<InferenceState>(l);
 }
 
-Json::Value create_embedding_payload(const std::vector<float>& embedding,
+Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
                                      int prompt_tokens) {
   Json::Value dataItem;
 
@@ -45,7 +45,7 @@ Json::Value create_embedding_payload(const std::vector<float>& embedding,
   return dataItem;
 }
 
-Json::Value create_full_return_json(const std::string& id,
+Json::Value CreateFullReturnJson(const std::string& id,
                                     const std::string& model,
                                     const std::string& content,
                                     const std::string& system_fingerprint,
@@ -81,7 +81,7 @@ Json::Value create_full_return_json(const std::string& id,
   return root;
 }
 
-std::string create_return_json(const std::string& id, const std::string& model,
+std::string CreateReturnJson(const std::string& id, const std::string& model,
                                const std::string& content,
                                Json::Value finish_reason = Json::Value()) {
   Json::Value root;
@@ -510,7 +510,7 @@ void LlamaEngine::HandleInferenceImpl(
   if (is_streamed) {
     LOG_INFO << "Request " << request_id << ": "
              << "Streamed, waiting for respone";
-    auto state = create_inference_state(llama_);
+    auto state = CreateInferenceState(llama_);
 
     // Queued task
     queue_->runTaskInQueue([cb = std::move(callback), state, data,
@@ -527,7 +527,7 @@ void LlamaEngine::HandleInferenceImpl(
 
           const std::string str =
               "data: " +
-              create_return_json(llama_utils::generate_random_string(20), "_",
+              CreateReturnJson(llama_utils::generate_random_string(20), "_",
                                  to_send) +
               "\n\n";
           Json::Value respData;
@@ -546,7 +546,7 @@ void LlamaEngine::HandleInferenceImpl(
             Json::Value respData;
             const std::string str =
                 "data: " +
-                create_return_json(llama_utils::generate_random_string(20), "_",
+                CreateReturnJson(llama_utils::generate_random_string(20), "_",
                                    "", "stop") +
                 "\n\n" + "data: [DONE]" + "\n\n";
             respData["data"] = str;
@@ -614,7 +614,7 @@ void LlamaEngine::HandleInferenceImpl(
           // `length` if the maximum number of tokens specified in the request was reached,
           // `content_filter` if content was omitted due to a flag from our content filters,
           // `tool_calls` if the model called a tool, or `function_call` (deprecated) if the model called a function.
-          respData = create_full_return_json(
+          respData = CreateFullReturnJson(
               llama_utils::generate_random_string(20), "_", to_send, "_",
               prompt_tokens, predicted_tokens, "stop" /*finish_reason*/);
         } else {
@@ -644,7 +644,7 @@ void LlamaEngine::HandleEmbeddingImpl(
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for embedding request";
   // Queue embedding task
-  auto state = create_inference_state(llama_);
+  auto state = CreateInferenceState(llama_);
 
   queue_->runTaskInQueue([this, state, jsonBody, callback, request_id]() {
     Json::Value responseData(Json::arrayValue);
@@ -657,7 +657,7 @@ void LlamaEngine::HandleEmbeddingImpl(
             {{"prompt", input.asString()}, {"n_predict", 0}}, false, true, -1);
         TaskResult result = llama_.NextResult(state->task_id);
         std::vector<float> embedding_result = result.result_json["embedding"];
-        responseData.append(create_embedding_payload(embedding_result, 0));
+        responseData.append(CreateEmbeddingPayload(embedding_result, 0));
       } else if (input.isArray()) {
         // Process each element in the array input
         for (const auto& elem : input) {
@@ -668,7 +668,7 @@ void LlamaEngine::HandleEmbeddingImpl(
             TaskResult result = llama_.NextResult(task_id);
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-            responseData.append(create_embedding_payload(embedding_result, 0));
+            responseData.append(CreateEmbeddingPayload(embedding_result, 0));
           }
         }
       }
