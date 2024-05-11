@@ -1,4 +1,4 @@
-#include "LlamaEngine.h"
+#include "llama_engine.h"
 
 #include "json/writer.h"
 #include "llama_utils.h"
@@ -10,28 +10,26 @@ constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
 constexpr const int k500InternalServerError = 500;
 
-enum class InferenceStatus { PENDING, RUNNING, EOS, FINISHED };
-struct inferenceState {
+struct InferenceState {
   int task_id;
-  InferenceStatus inference_status = InferenceStatus::PENDING;
-  llama_server_context& llama;
+  LlamaServerContext& llama;
   // Check if we receive the first token, set it to false after receiving
   bool is_first_token = true;
 
-  inferenceState(llama_server_context& l) : llama(l) {}
+  InferenceState(LlamaServerContext& l) : llama(l) {}
 };
 
 /**
- * This function is to create the smart pointer to inferenceState, hence the
- * inferenceState will be persisting even tho the lambda in streaming might go
+ * This function is to create the smart pointer to InferenceState, hence the
+ * InferenceState will be persisting even tho the lambda in streaming might go
  * out of scope and the handler already moved on
  */
-std::shared_ptr<inferenceState> create_inference_state(
-    llama_server_context& l) {
-  return std::make_shared<inferenceState>(l);
+std::shared_ptr<InferenceState> CreateInferenceState(
+    LlamaServerContext& l) {
+  return std::make_shared<InferenceState>(l);
 }
 
-Json::Value create_embedding_payload(const std::vector<float>& embedding,
+Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
                                      int prompt_tokens) {
   Json::Value dataItem;
 
@@ -47,7 +45,7 @@ Json::Value create_embedding_payload(const std::vector<float>& embedding,
   return dataItem;
 }
 
-Json::Value create_full_return_json(const std::string& id,
+Json::Value CreateFullReturnJson(const std::string& id,
                                     const std::string& model,
                                     const std::string& content,
                                     const std::string& system_fingerprint,
@@ -83,7 +81,7 @@ Json::Value create_full_return_json(const std::string& id,
   return root;
 }
 
-std::string create_return_json(const std::string& id, const std::string& model,
+std::string CreateReturnJson(const std::string& id, const std::string& model,
                                const std::string& content,
                                Json::Value finish_reason = Json::Value()) {
   Json::Value root;
@@ -230,7 +228,7 @@ void LlamaEngine::GetModelStatus(
   if (CheckModelLoaded(callback)) {
     Json::Value jsonResp;
     jsonResp["model_loaded"] = is_model_loaded;
-    jsonResp["model_data"] = llama_.get_model_props().dump();
+    jsonResp["model_data"] = llama_.GetModelProps().dump();
     Json::Value status;
     status["is_done"] = true;
     status["has_error"] = false;
@@ -290,9 +288,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     params.embedding = jsonBody->get("embedding", true).asBool();
     model_type = jsonBody->get("model_type", "llm").asString();
     if (model_type == "llm") {
-      llama_.model_type = ModelType::LLM;
+      llama_.model_type = ModelType::kLlm;
     } else {
-      llama_.model_type = ModelType::EMBEDDING;
+      llama_.model_type = ModelType::kEmbedding;
     }
     // Check if n_parallel exists in jsonBody, if not, set to drogon_thread
     params.n_batch = jsonBody->get("n_batch", 512).asInt();
@@ -301,15 +299,15 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
         jsonBody->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
-    this->clean_cache_threshold =
+    this->clean_cache_threshold_ =
         jsonBody->get("clean_cache_threshold", 5).asInt();
-    this->caching_enabled = jsonBody->get("caching_enabled", false).asBool();
-    this->user_prompt = jsonBody->get("user_prompt", "USER: ").asString();
-    this->ai_prompt = jsonBody->get("ai_prompt", "ASSISTANT: ").asString();
+    this->caching_enabled_ = jsonBody->get("caching_enabled", false).asBool();
+    this->user_prompt_ = jsonBody->get("user_prompt", "USER: ").asString();
+    this->ai_prompt_ = jsonBody->get("ai_prompt", "ASSISTANT: ").asString();
     this->system_prompt_ =
         jsonBody->get("system_prompt", "ASSISTANT's RULE: ").asString();
-    this->pre_prompt = jsonBody->get("pre_prompt", "").asString();
-    this->repeat_last_n = jsonBody->get("repeat_last_n", 32).asInt();
+    this->pre_prompt_ = jsonBody->get("pre_prompt", "").asString();
+    this->repeat_last_n_ = jsonBody->get("repeat_last_n", 32).asInt();
 
     if (!jsonBody->operator[]("llama_log_folder").isNull()) {
       log_enable();
@@ -334,11 +332,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
                  });
 
   // load the model
-  if (!llama_.load_model(params)) {
+  if (!llama_.LoadModel(params)) {
     LOG_ERROR << "Error loading the model";
     return false;  // Indicate failure
   }
-  llama_.initialize();
+  llama_.Initialize();
 
   queue_ = std::make_unique<trantor::ConcurrentTaskQueue>(params.n_parallel,
                                                           "llamaCPP");
@@ -350,7 +348,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 
   // For model like nomic-embed-text-v1.5.f16.gguf, etc, we don't need to warm up model.
   // So we use this variable to differentiate with other models
-  if (llama_.model_type == ModelType::LLM) {
+  if (llama_.model_type == ModelType::kLlm) {
     WarmUpModel();
   }
   return true;
@@ -359,7 +357,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 void LlamaEngine::HandleInferenceImpl(
     llama::inferences::ChatCompletionRequest&& completion,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  if (llama_.model_type == ModelType::EMBEDDING) {
+  if (llama_.model_type == ModelType::kEmbedding) {
     LOG_WARN << "Not support completion for embedding model";
     Json::Value jsonResp;
     jsonResp["message"] = "Not support completion for embedding model";
@@ -371,8 +369,8 @@ void LlamaEngine::HandleInferenceImpl(
     callback(std::move(status), std::move(jsonResp));
     return;
   }
-  std::string formatted_output = pre_prompt;
-  int request_id = ++no_of_requests;
+  std::string formatted_output = pre_prompt_;
+  int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for inference request";
 
@@ -382,11 +380,11 @@ void LlamaEngine::HandleInferenceImpl(
   // To set default value
 
   // Default values to enable auto caching
-  data["cache_prompt"] = caching_enabled;
+  data["cache_prompt"] = caching_enabled_;
   data["n_keep"] = 0;
 
   // Passing load value
-  data["repeat_last_n"] = this->repeat_last_n;
+  data["repeat_last_n"] = this->repeat_last_n_;
   LOG_INFO << "Request " << request_id << ": "
            << "Stop words:" << completion.stop.toStyledString();
 
@@ -407,11 +405,11 @@ void LlamaEngine::HandleInferenceImpl(
       std::string input_role = message["role"].asString();
       std::string role;
       if (input_role == "user") {
-        role = user_prompt;
+        role = user_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "assistant") {
-        role = ai_prompt;
+        role = ai_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "system") {
@@ -425,7 +423,7 @@ void LlamaEngine::HandleInferenceImpl(
         formatted_output += role + content;
       }
     }
-    formatted_output += ai_prompt;
+    formatted_output += ai_prompt_;
   } else {
     data["image_data"] = json::array();
     for (const auto& message : messages) {
@@ -434,7 +432,7 @@ void LlamaEngine::HandleInferenceImpl(
       if (input_role == "user") {
         formatted_output += role;
         for (auto content_piece : message["content"]) {
-          role = user_prompt;
+          role = user_prompt_;
 
           json content_piece_image_data;
           content_piece_image_data["data"] = "";
@@ -473,7 +471,7 @@ void LlamaEngine::HandleInferenceImpl(
         }
 
       } else if (input_role == "assistant") {
-        role = ai_prompt;
+        role = ai_prompt_;
         std::string content = message["content"].asString();
         formatted_output += role + content;
       } else if (input_role == "system") {
@@ -487,7 +485,7 @@ void LlamaEngine::HandleInferenceImpl(
         formatted_output += role + content;
       }
     }
-    formatted_output += ai_prompt;
+    formatted_output += ai_prompt_;
     LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
@@ -498,7 +496,7 @@ void LlamaEngine::HandleInferenceImpl(
   // specify default stop words
   // Ensure success case for chatML
   stopWords.push_back("<|im_end|>");
-  stopWords.push_back(llama_utils::rtrim(user_prompt));
+  stopWords.push_back(llama_utils::rtrim(user_prompt_));
   data["stop"] = stopWords;
 
   bool is_streamed = data["stream"];
@@ -512,14 +510,14 @@ void LlamaEngine::HandleInferenceImpl(
   if (is_streamed) {
     LOG_INFO << "Request " << request_id << ": "
              << "Streamed, waiting for respone";
-    auto state = create_inference_state(llama_);
+    auto state = CreateInferenceState(llama_);
 
     // Queued task
     queue_->runTaskInQueue([cb = std::move(callback), state, data,
                             request_id]() {
-      state->task_id = state->llama.request_completion(data, false, false, -1);
+      state->task_id = state->llama.RequestCompletion(data, false, false, -1);
       while (state->llama.model_loaded_external) {
-        task_result result = state->llama.next_result(state->task_id);
+        TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
           std::string to_send = result.result_json["content"];
           // trim the leading space if it is the first token
@@ -529,7 +527,7 @@ void LlamaEngine::HandleInferenceImpl(
 
           const std::string str =
               "data: " +
-              create_return_json(llama_utils::generate_random_string(20), "_",
+              CreateReturnJson(llama_utils::generate_random_string(20), "_",
                                  to_send) +
               "\n\n";
           Json::Value respData;
@@ -544,11 +542,11 @@ void LlamaEngine::HandleInferenceImpl(
           if (result.stop) {
             LOG_INFO << "Request " << request_id << ": "
                      << "End of result";
-            state->llama.request_cancel(state->task_id);
+            state->llama.RequestCancel(state->task_id);
             Json::Value respData;
             const std::string str =
                 "data: " +
-                create_return_json(llama_utils::generate_random_string(20), "_",
+                CreateReturnJson(llama_utils::generate_random_string(20), "_",
                                    "", "stop") +
                 "\n\n" + "data: [DONE]" + "\n\n";
             respData["data"] = str;
@@ -562,7 +560,7 @@ void LlamaEngine::HandleInferenceImpl(
           }
 
         } else {
-          state->llama.request_cancel(state->task_id);
+          state->llama.RequestCancel(state->task_id);
           LOG_ERROR << "Request " << request_id << ": "
                     << "Error during inference";
           Json::Value respData;
@@ -597,13 +595,13 @@ void LlamaEngine::HandleInferenceImpl(
     queue_->runTaskInQueue([this, request_id, cb = std::move(callback),
                             d = std::move(data)]() {
       Json::Value respData;
-      int task_id = llama_.request_completion(d, false, false, -1);
+      int task_id = llama_.RequestCompletion(d, false, false, -1);
       LOG_INFO << "Request " << request_id << ": "
                << "Non stream, waiting for respone";
       if (!json_value(d, "stream", false)) {
         bool has_error = false;
         std::string completion_text;
-        task_result result = llama_.next_result(task_id);
+        TaskResult result = llama_.NextResult(task_id);
         if (!result.error && result.stop) {
           int prompt_tokens = result.result_json["tokens_evaluated"];
           int predicted_tokens = result.result_json["tokens_predicted"];
@@ -616,7 +614,7 @@ void LlamaEngine::HandleInferenceImpl(
           // `length` if the maximum number of tokens specified in the request was reached,
           // `content_filter` if content was omitted due to a flag from our content filters,
           // `tool_calls` if the model called a tool, or `function_call` (deprecated) if the model called a function.
-          respData = create_full_return_json(
+          respData = CreateFullReturnJson(
               llama_utils::generate_random_string(20), "_", to_send, "_",
               prompt_tokens, predicted_tokens, "stop" /*finish_reason*/);
         } else {
@@ -642,11 +640,11 @@ void LlamaEngine::HandleInferenceImpl(
 void LlamaEngine::HandleEmbeddingImpl(
     std::shared_ptr<Json::Value> jsonBody,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  int request_id = ++no_of_requests;
+  int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ": "
            << "Generating reponse for embedding request";
   // Queue embedding task
-  auto state = create_inference_state(llama_);
+  auto state = CreateInferenceState(llama_);
 
   queue_->runTaskInQueue([this, state, jsonBody, callback, request_id]() {
     Json::Value responseData(Json::arrayValue);
@@ -655,22 +653,22 @@ void LlamaEngine::HandleEmbeddingImpl(
       const Json::Value& input = (*jsonBody)["input"];
       if (input.isString()) {
         // Process the single string input
-        state->task_id = llama_.request_completion(
+        state->task_id = llama_.RequestCompletion(
             {{"prompt", input.asString()}, {"n_predict", 0}}, false, true, -1);
-        task_result result = llama_.next_result(state->task_id);
+        TaskResult result = llama_.NextResult(state->task_id);
         std::vector<float> embedding_result = result.result_json["embedding"];
-        responseData.append(create_embedding_payload(embedding_result, 0));
+        responseData.append(CreateEmbeddingPayload(embedding_result, 0));
       } else if (input.isArray()) {
         // Process each element in the array input
         for (const auto& elem : input) {
           if (elem.isString()) {
-            const int task_id = llama_.request_completion(
+            const int task_id = llama_.RequestCompletion(
                 {{"prompt", elem.asString()}, {"n_predict", 0}}, false, true,
                 -1);
-            task_result result = llama_.next_result(task_id);
+            TaskResult result = llama_.NextResult(task_id);
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-            responseData.append(create_embedding_payload(embedding_result, 0));
+            responseData.append(CreateEmbeddingPayload(embedding_result, 0));
           }
         }
       }
@@ -721,9 +719,9 @@ void LlamaEngine::WarmUpModel() {
   pseudo["prompt"] = "Hello";
   pseudo["n_predict"] = 2;
   pseudo["stream"] = false;
-  const int task_id = llama_.request_completion(pseudo, false, false, -1);
+  const int task_id = llama_.RequestCompletion(pseudo, false, false, -1);
   std::string completion_text;
-  task_result result = llama_.next_result(task_id);
+  TaskResult result = llama_.NextResult(task_id);
   if (!result.error && result.stop) {
     LOG_INFO << result.result_json.dump(-1, ' ', false,
                                         json::error_handler_t::replace);
@@ -733,10 +731,10 @@ void LlamaEngine::WarmUpModel() {
 void LlamaEngine::HandleBackgroundTask() {
   while (llama_.model_loaded_external) {
     // model_loaded =
-    llama_.update_slots();
+    llama_.UpdateSlots();
   }
   LOG_INFO << "Background task stopped! ";
-  llama_.kv_cache_clear();
+  llama_.KvCacheClear();
   LOG_INFO << "KV cache cleared!";
 }
 

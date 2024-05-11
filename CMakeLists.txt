@@ -8,7 +8,6 @@ if(UNIX AND NOT APPLE)
 endif()
 
 set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build_deps/_install)
-set(CORTEX_COMMON_PATH ${CMAKE_CURRENT_SOURCE_DIR}/base/)
 
 if(UNIX AND NOT APPLE)
   add_compile_options(-fPIC)
@@ -38,7 +37,9 @@ add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
 
 add_library(${TARGET} SHARED 
-    src/LlamaEngine.cc
+    src/llama_engine.cc
+    src/llama_server_context.cc
+    src/llama_client_slot.cc
 )
 
 find_library(JSONCPP
@@ -54,6 +55,6 @@ find_library(TRANTOR
 target_link_libraries(${TARGET} PRIVATE common llama llava ${JSONCPP} ${TRANTOR}
                                               ${CMAKE_THREAD_LIBS_INIT})
 target_include_directories(${TARGET} PRIVATE 
-            ${CORTEX_COMMON_PATH}
+            ${CMAKE_CURRENT_SOURCE_DIR}/base
             ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp 
             ${THIRD_PARTY_PATH}/include)
