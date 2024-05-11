@@ -167,4 +167,27 @@ inline void ltrim(std::string& s) {
           }));
 };
 
+inline std::string GetModelId(const Json::Value& jsonBody) {
+  // First check if model exists in request
+  if (!jsonBody["model"].isNull()) {
+    return jsonBody["model"].asString();
+  } else if (!jsonBody["model_alias"].isNull()) {
+    return jsonBody["model_alias"].asString();
+  }
+
+  // We check llama_model_path for loadmodel request
+  if (auto input = jsonBody["llama_model_path"]; !input.isNull()) {
+    auto s = input.asString();
+    std::replace(s.begin(), s.end(), '\\', '/');
+    auto const pos = s.find_last_of('/');
+    // We only truncate the extension if file name has gguf extension
+    if (s.substr(s.find_last_of('.') + 1) == "gguf") {
+      return s.substr(pos + 1, s.find_last_of('.') - pos - 1);
+    } else {
+      return s.substr(pos + 1);
+    }
+  }
+  return {};
+}
+
 }  // namespace llama_utils

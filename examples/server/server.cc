@@ -200,10 +200,11 @@ int main(int argc, char** argv) {
   };
 
   svr->Post("/loadmodel", handle_load_model);
-  svr->Get("/unloadmodel", handle_unload_model);
+  // Use POST since httplib does not read request body for GET method
+  svr->Post("/unloadmodel", handle_unload_model);
   svr->Post("/v1/chat/completions", handle_completions);
   svr->Post("/v1/embeddings", handle_embeddings);
-  svr->Get("/modelstatus", handle_get_model_status);
+  svr->Post("/modelstatus", handle_get_model_status);
 
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {

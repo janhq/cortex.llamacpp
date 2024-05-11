@@ -11,6 +11,7 @@ struct ChatCompletionRequest {
   float presence_penalty = 0;
   Json::Value stop = Json::Value(Json::arrayValue);
   Json::Value messages = Json::Value(Json::arrayValue);
+  std::string model_id;
 };
 
 inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
@@ -26,6 +27,7 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
         (*jsonBody).get("presence_penalty", 0).asFloat();
     completion.messages = (*jsonBody)["messages"];
     completion.stop = (*jsonBody)["stop"];
+    completion.model_id = (*jsonBody).get("model", {}).asString();
   }
   return completion;
 }
