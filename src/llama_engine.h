@@ -1,13 +1,13 @@
 #pragma once
+#include "chat_completion_request.h"
 #include "cortex-common/enginei.h"
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
-#include "chat_completion_request.h"
 
 class LlamaEngine : public EngineI {
  public:
-    LlamaEngine();
-    ~LlamaEngine() final;
+  LlamaEngine();
+  ~LlamaEngine() final;
   // #### Interface ####
   void HandleChatCompletion(
       std::shared_ptr<Json::Value> jsonBody,
@@ -34,24 +34,27 @@ class LlamaEngine : public EngineI {
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback);
   bool CheckModelLoaded(
-      std::function<void(Json::Value&&, Json::Value&&)>& callback);
-  void WarmUpModel();
-  void HandleBackgroundTask();
-  void StopBackgroundTask();
+      std::function<void(Json::Value&&, Json::Value&&)>& callback,
+      const std::string& model_id);
+  void WarmUpModel(const std::string& model_id);
+  bool ShouldInitBackend() const;
 
  private:
-  LlamaServerContext llama_;
-  std::unique_ptr<trantor::ConcurrentTaskQueue> queue_;
-  std::thread bgr_thread_;
+  struct ServerInfo {
+    LlamaServerContext ctx;
+    std::unique_ptr<trantor::ConcurrentTaskQueue> q;
+    std::string user_prompt;
+    std::string ai_prompt;
+    std::string system_prompt;
+    std::string pre_prompt;
+    int repeat_last_n;
+    bool caching_enabled;
+    std::string grammar_file_content;
+  };
 
-  std::string user_prompt_;
-  std::string ai_prompt_;
-  std::string system_prompt_;
-  std::string pre_prompt_;
-  int repeat_last_n_;
-  bool caching_enabled_;
+  // key: model_id, value: ServerInfo
+  std::unordered_map<std::string, ServerInfo> server_map_;
+
   std::atomic<int> no_of_requests_ = 0;
   std::atomic<int> no_of_chats_ = 0;
-  int clean_cache_threshold_;
-  std::string grammar_file_content_;
 };

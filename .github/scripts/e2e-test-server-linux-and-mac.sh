@@ -51,6 +51,7 @@ response1=$(curl --connect-timeout 60 -o /tmp/load-llm-model-res.log -s -w "%{ht
     --header 'Content-Type: application/json' \
     --data '{
     "llama_model_path": "/tmp/testllm",
+    "model_alias": "testllm",
     "ctx_len": 50,
     "ngl": 32,
     "embedding": false
@@ -73,7 +74,7 @@ response2=$(
             {"content": "Write a long and sad story for me", "role": "user"}
         ],
         "stream": true,
-        "model": "gpt-3.5-turbo",
+        "model": "testllm",
         "max_tokens": 50,
         "stop": ["hello"],
         "frequency_penalty": 0,
@@ -83,7 +84,7 @@ response2=$(
 )
 
 # unload model
-response3=$(curl --connect-timeout 60 -o /tmp/unload-model-res.log --request GET -s -w "%{http_code}" --location "http://127.0.0.1:$PORT/unloadmodel" \
+response3=$(curl --connect-timeout 60 -o /tmp/unload-model-res.log -s -w "%{http_code}" --location "http://127.0.0.1:$PORT/unloadmodel" \
     --header 'Content-Type: application/json' \
     --data '{
     "llama_model_path": "/tmp/testllm"

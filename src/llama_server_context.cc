@@ -230,6 +230,11 @@ void LlamaServerContext::Initialize() {
   // empty system prompt
   system_prompt = "";
   system_tokens.clear();
+
+  model_loaded_external = true;
+  LOG_INFO << "Started background task here!";
+  bgr_thread =
+      std::thread(std::bind(&LlamaServerContext::DoBackgroundTasks, this));
 }
 
 void LlamaServerContext::KvCacheClear() {
@@ -307,473 +312,22 @@ void LlamaServerContext::RequestCancel(int task_id) {
   condition_tasks.notify_one();
 }
 
-bool LlamaServerContext::UpdateSlots() {
-  // attend tasks
-  ProcessTasks();
+void LlamaServerContext::ReleaseResources() {
+  if (model_loaded_external) {
+    LOG_INFO << "Releasing llama_server_context resources";
+    model_loaded_external = false;
+    condition_tasks.notify_one();
 
-  // update the system prompt wait until all slots are idle state
-  if (system_need_update && all_slots_are_idle) {
-    LOG_DEBUG << "updating system prompt";
-    UpdateSystemPrompt();
+    if (bgr_thread.joinable()) {
+      bgr_thread.join();
+    }
+
+    llama_free(ctx);
+    llama_free_model(model);
+    ctx = nullptr;
+    model = nullptr;
+    LOG_INFO << "Released llama_server_context resources";
   }
-
-  llama_batch_clear(batch);
-
-  if (all_slots_are_idle) {
-    if (system_prompt.empty() && clean_kv_cache) {
-      LOG_DEBUG
-          << "all slots are idle and system prompt is empty, clear the KV "
-             "cache";
-      KvCacheClear();
-    }
-    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    //  TODO: Need to implement queueing using CV for better performance
-    std::unique_lock<std::mutex> lock(mutex_tasks);
-    condition_tasks.wait(lock, [&] {
-      return (!queue_tasks.empty() && model_loaded_external) ||
-             (queue_tasks.empty() && !model_loaded_external);
-    });
-  }
-
-  for (LlamaClientSlot& slot : slots) {
-    if (slot.IsProcessing() &&
-        (int)system_tokens.size() + slot.n_past >= slot.n_ctx) {
-      // Shift context
-      const int n_left = slot.n_past - slot.params.n_keep - 1;
-      const int n_discard = n_left / 2;
-
-      LOG_DEBUG << "slot " << slot.id
-                << " context shift - n_keep = " << slot.params.n_keep
-                << ", n_left = " << n_left << ", n_discard: " << n_discard
-                << ", n_ctx = " << n_ctx << ", n_past = " << slot.n_past
-                << ", n_system_tokens = " << system_tokens.size()
-                << ", n_cache_tokens = " << slot.cache_tokens.size();
-
-      llama_kv_cache_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
-                            slot.params.n_keep + n_discard + 1);
-      llama_kv_cache_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
-                             slot.n_past, -n_discard);
-
-      if (slot.params.cache_prompt) {
-        for (size_t i = slot.params.n_keep + 1 + n_discard;
-             i < slot.cache_tokens.size(); i++) {
-          slot.cache_tokens[i - n_discard] = slot.cache_tokens[i];
-        }
-
-        slot.cache_tokens.resize(slot.cache_tokens.size() - n_discard);
-      }
-
-      slot.n_past -= n_discard;
-
-      slot.truncated = true;
-    }
-  }
-
-  // decode any currently ongoing sequences
-  for (auto& slot : slots) {
-    // release the slot
-    if (slot.command == SlotCommand::kRelease) {
-      slot.state = SlotState::kIdle;
-      slot.command = SlotCommand::kNone;
-      slot.t_last_used = ggml_time_us();
-
-      LOG_INFO << "slot released: "
-               << "id_slot: " << slot.id << ", id_task: " << slot.task_id
-               << ", n_ctx: " << n_ctx << ", n_past: " << slot.n_past
-               << ", n_system_tokens: " << system_tokens.size()
-               << ", n_cache_tokens: " << slot.cache_tokens.size()
-               << ", truncated: " << slot.truncated;
-
-      continue;
-    }
-
-    if (slot.state == SlotState::kIdle) {
-      continue;
-    }
-
-    slot.i_batch = batch.n_tokens;
-
-    llama_batch_add(batch, slot.sampled, system_tokens.size() + slot.n_past,
-                    {slot.id}, true);
-
-    slot.n_decoded += 1;
-    slot.n_past += 1;
-
-    if (slot.params.cache_prompt) {
-      slot.cache_tokens.push_back(slot.sampled);
-    }
-
-    LOG_TRACE << "slot decode token - "
-              << " id_slot: " << slot.id << ", task_id: " << slot.task_id
-              << ", n_ctx: " << n_ctx << ", n_past: " << slot.n_past
-              << ", n_system_tokens: " << system_tokens.size()
-              << ", n_cache_tokens: " << slot.cache_tokens.size()
-              << ", truncated: " << slot.truncated;
-  }
-
-  // process in chunks of params.n_batch
-  int32_t n_batch = llama_n_batch(ctx);
-  int32_t n_ubatch = llama_n_ubatch(ctx);
-
-  // assign workload to the slots
-  if (params.cont_batching || batch.n_tokens == 0) {
-    for (auto& slot : slots) {
-      const bool has_prompt = slot.prompt.is_array() ||
-                              (slot.prompt.is_string() &&
-                               !slot.prompt.get<std::string>().empty()) ||
-                              !slot.images.empty();
-
-      // empty prompt passed -> release the slot and send empty response
-      if (slot.state == SlotState::kIdle &&
-          slot.command == SlotCommand::kLoadPrompt && !has_prompt) {
-        slot.Release();
-        slot.PrintTimings();
-        SendFinalResponse(slot);
-        continue;
-      }
-
-      // need process the prompt
-      if (slot.state == SlotState::kIdle &&
-          slot.command == SlotCommand::kLoadPrompt) {
-        auto& prompt_tokens = slot.prompt_tokens;
-
-        // we haven't tokenized the prompt yet - do it now:
-        if (prompt_tokens.empty()) {
-          slot.t_start_process_prompt = ggml_time_us();
-          slot.t_start_genereration = 0;
-
-          if (slot.infill) {
-            bool suff_rm_leading_spc = true;
-            if (params.input_suffix.find_first_of(' ') == 0 &&
-                params.input_suffix.size() > 1) {
-              params.input_suffix.erase(0, 1);
-              suff_rm_leading_spc = false;
-            }
-            auto prefix_tokens = Tokenize(slot.params.input_prefix, false);
-            auto suffix_tokens = Tokenize(slot.params.input_suffix, false);
-
-            const int space_token =
-                29871;  // TODO: this should not be hardcoded
-            if (suff_rm_leading_spc && !suffix_tokens.empty() &&
-                suffix_tokens[0] == space_token) {
-              suffix_tokens.erase(suffix_tokens.begin());
-            }
-
-            prefix_tokens.insert(prefix_tokens.begin(),
-                                 llama_token_prefix(model));
-            prefix_tokens.insert(prefix_tokens.begin(),
-                                 llama_token_bos(model));  // always add BOS
-            prefix_tokens.insert(prefix_tokens.end(),
-                                 llama_token_suffix(model));
-            prefix_tokens.insert(prefix_tokens.end(), suffix_tokens.begin(),
-                                 suffix_tokens.end());
-            prefix_tokens.push_back(llama_token_middle(model));
-            prompt_tokens = prefix_tokens;
-          } else {
-            prompt_tokens = Tokenize(
-                slot.prompt,
-                system_prompt.empty() &&
-                    add_bos_token);  // add BOS if there isn't system prompt
-          }
-
-          slot.n_past = 0;
-          slot.num_prompt_tokens = prompt_tokens.size();
-
-          LOG_VERBOSE(
-              "prompt tokenized",
-              {
-                  {"id_slot", slot.id},
-                  {"id_task", slot.task_id},
-                  {"n_ctx", slot.n_ctx},
-                  {"n_keep", slot.params.n_keep},
-                  {"n_prompt_tokens", slot.num_prompt_tokens},
-                  {"prompt_tokens", tokens_to_str(ctx, prompt_tokens.cbegin(),
-                                                  prompt_tokens.cend())},
-              });
-
-          if (slot.embedding) {
-            // this prompt is too large to process - discard it
-            if (slot.num_prompt_tokens > n_ubatch) {
-              LOG_DEBUG << "This prompt is too large to process: "
-                           "num_promt_tokens = "
-                        << slot.num_prompt_tokens
-                        << ", n_ubatch = " << n_ubatch;
-              slot.state = SlotState::kProcessing;
-              slot.command = SlotCommand::kNone;
-              slot.Release();
-              slot.PrintTimings();
-              SendFinalResponse(slot);
-              continue;
-            }
-          } else {
-            if (slot.params.n_keep < 0) {
-              slot.params.n_keep = slot.num_prompt_tokens;
-            }
-            slot.params.n_keep = std::min(slot.n_ctx - 4, slot.params.n_keep);
-
-            // if input prompt is too big, truncate it
-            if (slot.num_prompt_tokens >= slot.n_ctx) {
-              const int n_left = slot.n_ctx - slot.params.n_keep;
-              const int n_block_size = n_left / 2;
-              const int erased_blocks =
-                  (slot.num_prompt_tokens - slot.params.n_keep - n_block_size) /
-                  n_block_size;
-
-              std::vector<llama_token> new_tokens(
-                  prompt_tokens.begin(),
-                  prompt_tokens.begin() + slot.params.n_keep);
-              new_tokens.insert(new_tokens.end(),
-                                prompt_tokens.begin() + slot.params.n_keep +
-                                    erased_blocks * n_block_size,
-                                prompt_tokens.end());
-
-              LOG_VERBOSE("input truncated",
-                          {
-                              {"id_slot", slot.id},
-                              {"id_task", slot.task_id},
-                              {"n_ctx", slot.n_ctx},
-                              {"n_keep", slot.params.n_keep},
-                              {"n_left", n_left},
-                              {"n_prompt_tokens", slot.num_prompt_tokens},
-                              {"prompt_tokens",
-                               tokens_to_str(ctx, prompt_tokens.cbegin(),
-                                             prompt_tokens.cend())},
-                          });
-
-              slot.truncated = true;
-              prompt_tokens = new_tokens;
-
-              slot.num_prompt_tokens = prompt_tokens.size();
-              GGML_ASSERT(slot.num_prompt_tokens < slot.n_ctx);
-            }
-
-            llama_sampling_reset(slot.ctx_sampling);
-
-            if (!slot.params.cache_prompt) {
-              slot.n_past = 0;
-              slot.num_prompt_tokens_processed = slot.num_prompt_tokens;
-            } else {
-              // push the prompt into the sampling context (do not apply grammar)
-              for (auto& token : prompt_tokens) {
-                llama_sampling_accept(slot.ctx_sampling, ctx, token, false);
-              }
-
-              slot.n_past = common_part(slot.cache_tokens, prompt_tokens);
-              slot.num_prompt_tokens_processed =
-                  slot.num_prompt_tokens - slot.n_past;
-
-              LOG_TEE("slot %d : in cache: %i tokens | to process: %i tokens\n",
-                      slot.id, slot.n_past, slot.num_prompt_tokens_processed);
-            }
-          }
-
-          if (slot.n_past == slot.num_prompt_tokens) {
-            // we have to evaluate at least 1 token to generate logits.
-            LOG_DEBUG << "slot " << slot.id
-                      << " : we have to evaluate at least 1 token to "
-                         "generate logits";
-            slot.n_past--;
-          }
-
-          slot.num_prompt_tokens_processed = 0;
-        }
-
-        if (slot.embedding) {
-          // cannot fit the prompt in the current batch - will try next iter
-          if (batch.n_tokens + slot.num_prompt_tokens > n_batch) {
-            continue;
-          }
-        }
-
-        LOG_VERBOSE(
-            "prompt ingested",
-            {
-                {"n_past", slot.n_past},
-                {"cached",
-                 tokens_to_str(ctx, slot.cache_tokens.cbegin(),
-                               slot.cache_tokens.cbegin() + slot.n_past)},
-                {"to_eval",
-                 tokens_to_str(ctx, slot.cache_tokens.cbegin() + slot.n_past,
-                               slot.cache_tokens.cend())},
-            });
-
-        // keep only the common part
-        int p0 = (int)system_tokens.size() + slot.n_past;
-        if (!llama_kv_cache_seq_rm(ctx, slot.id, p0, -1)) {
-          // could not partially delete (likely using a non-Transformer model)
-          llama_kv_cache_seq_rm(ctx, slot.id, -1, -1);
-
-          p0 = (int)system_tokens.size();
-          if (p0 != 0) {
-            // copy over the system prompt when there is one
-            llama_kv_cache_seq_cp(ctx, 0, slot.id, -1, -1);
-          }
-
-          // there is no common part left (except for the system prompt)
-          slot.n_past = 0;
-          // TODO: is the system prompt ever in the sampling context?
-          llama_sampling_reset(slot.ctx_sampling);
-        }
-
-        // remove the non-common part from the cache
-        slot.cache_tokens.resize(slot.n_past);
-        LOG_INFO << "kv cache rm [p0, end) - "
-                 << " id_slot: " << slot.id << ", task_id: " << slot.task_id
-                 << ", p0: " << p0;
-
-        const bool has_images = ProcessImages(slot);
-
-        // process the prefix of first image
-        std::vector<llama_token> prefix_tokens =
-            has_images ? Tokenize(slot.images[0].prefix_prompt, add_bos_token)
-                       : prompt_tokens;
-        for (; slot.n_past < (int)prefix_tokens.size(); ++slot.n_past) {
-          llama_batch_add(batch, prefix_tokens[slot.n_past],
-                          system_tokens.size() + slot.n_past, {slot.id}, false);
-          if (slot.params.cache_prompt) {
-            slot.cache_tokens.push_back(prompt_tokens[slot.n_past]);
-          }
-          slot.num_prompt_tokens_processed++;
-        }
-
-        LOG_VERBOSE("prompt processing progress",
-                    {
-                        {"id_slot", slot.id},
-                        {"n_past", slot.n_past},
-                        {"n_ctx", n_ctx},
-                        {"n_tokens", batch.n_tokens},
-                        {"progress", (float)slot.num_prompt_tokens_processed /
-                                         slot.num_prompt_tokens},
-                    });
-
-        if (has_images && !IngestImages(slot, n_batch)) {
-          LOG_WARN << "failed processing images";
-          return false;
-        }
-
-        // entire prompt has been processed - start decoding new tokens
-        if (slot.n_past == slot.num_prompt_tokens) {
-          slot.state = SlotState::kProcessing;
-          slot.command = SlotCommand::kNone;
-
-          GGML_ASSERT(batch.n_tokens > 0);
-
-          // extract the logits only for the last token
-          batch.logits[batch.n_tokens - 1] = true;
-
-          slot.n_decoded = 0;
-          slot.i_batch = batch.n_tokens - 1;
-
-          LOG_VERBOSE("prompt done", {
-                                         {"id_slot", slot.id},
-                                         {"n_past", slot.n_past},
-                                         {"n_ctx", n_ctx},
-                                         {"n_tokens", batch.n_tokens},
-                                     });
-        }
-      }
-    }
-  }
-
-  if (batch.n_tokens == 0) {
-    all_slots_are_idle = true;
-    return true;
-  }
-
-  for (int32_t i = 0; i < (int32_t)batch.n_tokens; i += n_batch) {
-    const int32_t n_tokens = std::min(n_batch, (int32_t)(batch.n_tokens - i));
-    llama_batch batch_view = {
-        n_tokens,
-        batch.token + i,
-        nullptr,
-        batch.pos + i,
-        batch.n_seq_id + i,
-        batch.seq_id + i,
-        batch.logits + i,
-        0,
-        0,
-        0,  // unused
-    };
-
-    const int ret = llama_decode(ctx, batch_view);
-    if (ret != 0) {
-      if (n_batch == 1 || ret < 0) {
-        // if you get here, it means the KV cache is full - try increasing it via the context size
-        LOG_ERROR << "Failed to decode the batch: KV cache is full - try "
-                     "increasing it via the context size: "
-                  << "i = " << i << ", n_batch = " << n_batch
-                  << ", ret = " << ret;
-        for (auto& slot : slots) {
-          slot.state = SlotState::kProcessing;
-          slot.command = SlotCommand::kNone;
-          slot.Release();
-          // SendError(slot,
-          //            "Input prompt is too big compared to KV size. Please "
-          //            "try increasing KV size.");
-        }
-        break;  // break loop of n_batch
-      }
-
-      LOG_WARN << "Failed to find free space in the KV cache, retrying with "
-                  "smaller n_batch = "
-               << n_batch / 2;
-
-      // retry with half the batch size to try to find a free slot in the KV
-      // cache
-      n_batch /= 2;
-      i -= n_batch;
-      continue;
-    }
-
-    for (auto& slot : slots) {
-      if (slot.i_batch < (int)i || slot.i_batch >= (int)(i + n_tokens)) {
-        continue;
-      }
-
-      // prompt evaluated for embedding
-      if (slot.embedding) {
-        SendEmbedding(slot);
-        slot.Release();
-        slot.i_batch = -1;
-        return true;
-      }
-
-      CompletionTokenOutput result;
-      const llama_token id =
-          llama_sampling_sample(slot.ctx_sampling, ctx, NULL, slot.i_batch - i);
-
-      llama_sampling_accept(slot.ctx_sampling, ctx, id, true);
-
-      if (slot.n_decoded == 1) {
-        slot.t_start_genereration = ggml_time_us();
-        slot.t_prompt_processing =
-            (slot.t_start_genereration - slot.t_start_process_prompt) / 1e3;
-      }
-
-      llama_token_data_array cur_p = {slot.ctx_sampling->cur.data(),
-                                      slot.ctx_sampling->cur.size(), false};
-      result.tok = id;
-
-      const int32_t n_probs = slot.sparams.n_probs;
-      if (slot.sparams.temp <= 0 && n_probs > 0) {
-        // for llama_sample_token_greedy we need to sort candidates
-        llama_sample_softmax(ctx, &cur_p);
-      }
-
-      for (size_t i = 0; i < std::min(cur_p.size, (size_t)n_probs); ++i) {
-        result.probs.push_back({cur_p.data[i].id, cur_p.data[i].p});
-      }
-
-      if (!ProcessToken(result, slot)) {
-        slot.Release();
-        slot.PrintTimings();
-        SendFinalResponse(slot);
-      }
-
-      slot.i_batch = -1;
-    }
-  }
-  return true;
 }
 
 std::vector<llama_token> LlamaServerContext::Tokenize(const json& json_prompt,
@@ -1433,9 +987,8 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
     }
 
     if (embd == NULL) {
-      LOG_ERROR << "failed to get embeddings"
-                << " token " << batch.token[i] << ", seq_id "
-                << batch.seq_id[i][0];
+      LOG_ERROR << "failed to get embeddings" << " token " << batch.token[i]
+                << ", seq_id " << batch.seq_id[i][0];
 
       res.result_json = json{
           {"embedding", std::vector<float>(n_embd, 0.0f)},
@@ -1616,4 +1169,481 @@ void LlamaServerContext::ProcessTasks() {
       ++queue_iterator;
     }
   }
+}
+
+void LlamaServerContext::DoBackgroundTasks() {
+  while (model_loaded_external) {
+    UpdateSlots();
+  }
+  LOG_INFO << "Background task stopped! ";
+  KvCacheClear();
+  LOG_INFO << "KV cache cleared!";
+}
+
+bool LlamaServerContext::UpdateSlots() {
+  // attend tasks
+  ProcessTasks();
+
+  // update the system prompt wait until all slots are idle state
+  if (system_need_update && all_slots_are_idle) {
+    LOG_DEBUG << "updating system prompt";
+    UpdateSystemPrompt();
+  }
+
+  llama_batch_clear(batch);
+
+  if (all_slots_are_idle) {
+    if (system_prompt.empty() && clean_kv_cache) {
+      LOG_DEBUG
+          << "all slots are idle and system prompt is empty, clear the KV "
+             "cache";
+      KvCacheClear();
+    }
+    // std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    //  TODO: Need to implement queueing using CV for better performance
+    std::unique_lock<std::mutex> lock(mutex_tasks);
+    condition_tasks.wait(lock, [&] {
+      return (!queue_tasks.empty() && model_loaded_external) ||
+             (queue_tasks.empty() && !model_loaded_external);
+    });
+  }
+
+  for (LlamaClientSlot& slot : slots) {
+    if (slot.IsProcessing() &&
+        (int)system_tokens.size() + slot.n_past >= slot.n_ctx) {
+      // Shift context
+      const int n_left = slot.n_past - slot.params.n_keep - 1;
+      const int n_discard = n_left / 2;
+
+      LOG_DEBUG << "slot " << slot.id
+                << " context shift - n_keep = " << slot.params.n_keep
+                << ", n_left = " << n_left << ", n_discard: " << n_discard
+                << ", n_ctx = " << n_ctx << ", n_past = " << slot.n_past
+                << ", n_system_tokens = " << system_tokens.size()
+                << ", n_cache_tokens = " << slot.cache_tokens.size();
+
+      llama_kv_cache_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
+                            slot.params.n_keep + n_discard + 1);
+      llama_kv_cache_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
+                             slot.n_past, -n_discard);
+
+      if (slot.params.cache_prompt) {
+        for (size_t i = slot.params.n_keep + 1 + n_discard;
+             i < slot.cache_tokens.size(); i++) {
+          slot.cache_tokens[i - n_discard] = slot.cache_tokens[i];
+        }
+
+        slot.cache_tokens.resize(slot.cache_tokens.size() - n_discard);
+      }
+
+      slot.n_past -= n_discard;
+
+      slot.truncated = true;
+    }
+  }
+
+  // decode any currently ongoing sequences
+  for (auto& slot : slots) {
+    // release the slot
+    if (slot.command == SlotCommand::kRelease) {
+      slot.state = SlotState::kIdle;
+      slot.command = SlotCommand::kNone;
+      slot.t_last_used = ggml_time_us();
+
+      LOG_INFO << "slot released: " << "id_slot: " << slot.id
+               << ", id_task: " << slot.task_id << ", n_ctx: " << n_ctx
+               << ", n_past: " << slot.n_past
+               << ", n_system_tokens: " << system_tokens.size()
+               << ", n_cache_tokens: " << slot.cache_tokens.size()
+               << ", truncated: " << slot.truncated;
+
+      continue;
+    }
+
+    if (slot.state == SlotState::kIdle) {
+      continue;
+    }
+
+    slot.i_batch = batch.n_tokens;
+
+    llama_batch_add(batch, slot.sampled, system_tokens.size() + slot.n_past,
+                    {slot.id}, true);
+
+    slot.n_decoded += 1;
+    slot.n_past += 1;
+
+    if (slot.params.cache_prompt) {
+      slot.cache_tokens.push_back(slot.sampled);
+    }
+
+    LOG_TRACE << "slot decode token - " << " id_slot: " << slot.id
+              << ", task_id: " << slot.task_id << ", n_ctx: " << n_ctx
+              << ", n_past: " << slot.n_past
+              << ", n_system_tokens: " << system_tokens.size()
+              << ", n_cache_tokens: " << slot.cache_tokens.size()
+              << ", truncated: " << slot.truncated;
+  }
+
+  // process in chunks of params.n_batch
+  int32_t n_batch = llama_n_batch(ctx);
+  int32_t n_ubatch = llama_n_ubatch(ctx);
+
+  // assign workload to the slots
+  if (params.cont_batching || batch.n_tokens == 0) {
+    for (auto& slot : slots) {
+      const bool has_prompt = slot.prompt.is_array() ||
+                              (slot.prompt.is_string() &&
+                               !slot.prompt.get<std::string>().empty()) ||
+                              !slot.images.empty();
+
+      // empty prompt passed -> release the slot and send empty response
+      if (slot.state == SlotState::kIdle &&
+          slot.command == SlotCommand::kLoadPrompt && !has_prompt) {
+        slot.Release();
+        slot.PrintTimings();
+        SendFinalResponse(slot);
+        continue;
+      }
+
+      // need process the prompt
+      if (slot.state == SlotState::kIdle &&
+          slot.command == SlotCommand::kLoadPrompt) {
+        auto& prompt_tokens = slot.prompt_tokens;
+
+        // we haven't tokenized the prompt yet - do it now:
+        if (prompt_tokens.empty()) {
+          slot.t_start_process_prompt = ggml_time_us();
+          slot.t_start_genereration = 0;
+
+          if (slot.infill) {
+            bool suff_rm_leading_spc = true;
+            if (params.input_suffix.find_first_of(' ') == 0 &&
+                params.input_suffix.size() > 1) {
+              params.input_suffix.erase(0, 1);
+              suff_rm_leading_spc = false;
+            }
+            auto prefix_tokens = Tokenize(slot.params.input_prefix, false);
+            auto suffix_tokens = Tokenize(slot.params.input_suffix, false);
+
+            const int space_token =
+                29871;  // TODO: this should not be hardcoded
+            if (suff_rm_leading_spc && !suffix_tokens.empty() &&
+                suffix_tokens[0] == space_token) {
+              suffix_tokens.erase(suffix_tokens.begin());
+            }
+
+            prefix_tokens.insert(prefix_tokens.begin(),
+                                 llama_token_prefix(model));
+            prefix_tokens.insert(prefix_tokens.begin(),
+                                 llama_token_bos(model));  // always add BOS
+            prefix_tokens.insert(prefix_tokens.end(),
+                                 llama_token_suffix(model));
+            prefix_tokens.insert(prefix_tokens.end(), suffix_tokens.begin(),
+                                 suffix_tokens.end());
+            prefix_tokens.push_back(llama_token_middle(model));
+            prompt_tokens = prefix_tokens;
+          } else {
+            prompt_tokens = Tokenize(
+                slot.prompt,
+                system_prompt.empty() &&
+                    add_bos_token);  // add BOS if there isn't system prompt
+          }
+
+          slot.n_past = 0;
+          slot.num_prompt_tokens = prompt_tokens.size();
+
+          LOG_VERBOSE(
+              "prompt tokenized",
+              {
+                  {"id_slot", slot.id},
+                  {"id_task", slot.task_id},
+                  {"n_ctx", slot.n_ctx},
+                  {"n_keep", slot.params.n_keep},
+                  {"n_prompt_tokens", slot.num_prompt_tokens},
+                  {"prompt_tokens", tokens_to_str(ctx, prompt_tokens.cbegin(),
+                                                  prompt_tokens.cend())},
+              });
+
+          if (slot.embedding) {
+            // this prompt is too large to process - discard it
+            if (slot.num_prompt_tokens > n_ubatch) {
+              LOG_DEBUG << "This prompt is too large to process: "
+                           "num_promt_tokens = "
+                        << slot.num_prompt_tokens
+                        << ", n_ubatch = " << n_ubatch;
+              slot.state = SlotState::kProcessing;
+              slot.command = SlotCommand::kNone;
+              slot.Release();
+              slot.PrintTimings();
+              SendFinalResponse(slot);
+              continue;
+            }
+          } else {
+            if (slot.params.n_keep < 0) {
+              slot.params.n_keep = slot.num_prompt_tokens;
+            }
+            slot.params.n_keep = std::min(slot.n_ctx - 4, slot.params.n_keep);
+
+            // if input prompt is too big, truncate it
+            if (slot.num_prompt_tokens >= slot.n_ctx) {
+              const int n_left = slot.n_ctx - slot.params.n_keep;
+              const int n_block_size = n_left / 2;
+              const int erased_blocks =
+                  (slot.num_prompt_tokens - slot.params.n_keep - n_block_size) /
+                  n_block_size;
+
+              std::vector<llama_token> new_tokens(
+                  prompt_tokens.begin(),
+                  prompt_tokens.begin() + slot.params.n_keep);
+              new_tokens.insert(new_tokens.end(),
+                                prompt_tokens.begin() + slot.params.n_keep +
+                                    erased_blocks * n_block_size,
+                                prompt_tokens.end());
+
+              LOG_VERBOSE("input truncated",
+                          {
+                              {"id_slot", slot.id},
+                              {"id_task", slot.task_id},
+                              {"n_ctx", slot.n_ctx},
+                              {"n_keep", slot.params.n_keep},
+                              {"n_left", n_left},
+                              {"n_prompt_tokens", slot.num_prompt_tokens},
+                              {"prompt_tokens",
+                               tokens_to_str(ctx, prompt_tokens.cbegin(),
+                                             prompt_tokens.cend())},
+                          });
+
+              slot.truncated = true;
+              prompt_tokens = new_tokens;
+
+              slot.num_prompt_tokens = prompt_tokens.size();
+              GGML_ASSERT(slot.num_prompt_tokens < slot.n_ctx);
+            }
+
+            llama_sampling_reset(slot.ctx_sampling);
+
+            if (!slot.params.cache_prompt) {
+              slot.n_past = 0;
+              slot.num_prompt_tokens_processed = slot.num_prompt_tokens;
+            } else {
+              // push the prompt into the sampling context (do not apply grammar)
+              for (auto& token : prompt_tokens) {
+                llama_sampling_accept(slot.ctx_sampling, ctx, token, false);
+              }
+
+              slot.n_past = common_part(slot.cache_tokens, prompt_tokens);
+              slot.num_prompt_tokens_processed =
+                  slot.num_prompt_tokens - slot.n_past;
+
+              LOG_TEE("slot %d : in cache: %i tokens | to process: %i tokens\n",
+                      slot.id, slot.n_past, slot.num_prompt_tokens_processed);
+            }
+          }
+
+          if (slot.n_past == slot.num_prompt_tokens) {
+            // we have to evaluate at least 1 token to generate logits.
+            LOG_DEBUG << "slot " << slot.id
+                      << " : we have to evaluate at least 1 token to "
+                         "generate logits";
+            slot.n_past--;
+          }
+
+          slot.num_prompt_tokens_processed = 0;
+        }
+
+        if (slot.embedding) {
+          // cannot fit the prompt in the current batch - will try next iter
+          if (batch.n_tokens + slot.num_prompt_tokens > n_batch) {
+            continue;
+          }
+        }
+
+        LOG_VERBOSE(
+            "prompt ingested",
+            {
+                {"n_past", slot.n_past},
+                {"cached",
+                 tokens_to_str(ctx, slot.cache_tokens.cbegin(),
+                               slot.cache_tokens.cbegin() + slot.n_past)},
+                {"to_eval",
+                 tokens_to_str(ctx, slot.cache_tokens.cbegin() + slot.n_past,
+                               slot.cache_tokens.cend())},
+            });
+
+        // keep only the common part
+        int p0 = (int)system_tokens.size() + slot.n_past;
+        if (!llama_kv_cache_seq_rm(ctx, slot.id, p0, -1)) {
+          // could not partially delete (likely using a non-Transformer model)
+          llama_kv_cache_seq_rm(ctx, slot.id, -1, -1);
+
+          p0 = (int)system_tokens.size();
+          if (p0 != 0) {
+            // copy over the system prompt when there is one
+            llama_kv_cache_seq_cp(ctx, 0, slot.id, -1, -1);
+          }
+
+          // there is no common part left (except for the system prompt)
+          slot.n_past = 0;
+          // TODO: is the system prompt ever in the sampling context?
+          llama_sampling_reset(slot.ctx_sampling);
+        }
+
+        // remove the non-common part from the cache
+        slot.cache_tokens.resize(slot.n_past);
+        LOG_INFO << "kv cache rm [p0, end) - " << " id_slot: " << slot.id
+                 << ", task_id: " << slot.task_id << ", p0: " << p0;
+
+        const bool has_images = ProcessImages(slot);
+
+        // process the prefix of first image
+        std::vector<llama_token> prefix_tokens =
+            has_images ? Tokenize(slot.images[0].prefix_prompt, add_bos_token)
+                       : prompt_tokens;
+        for (; slot.n_past < (int)prefix_tokens.size(); ++slot.n_past) {
+          llama_batch_add(batch, prefix_tokens[slot.n_past],
+                          system_tokens.size() + slot.n_past, {slot.id}, false);
+          if (slot.params.cache_prompt) {
+            slot.cache_tokens.push_back(prompt_tokens[slot.n_past]);
+          }
+          slot.num_prompt_tokens_processed++;
+        }
+
+        LOG_VERBOSE("prompt processing progress",
+                    {
+                        {"id_slot", slot.id},
+                        {"n_past", slot.n_past},
+                        {"n_ctx", n_ctx},
+                        {"n_tokens", batch.n_tokens},
+                        {"progress", (float)slot.num_prompt_tokens_processed /
+                                         slot.num_prompt_tokens},
+                    });
+
+        if (has_images && !IngestImages(slot, n_batch)) {
+          LOG_WARN << "failed processing images";
+          return false;
+        }
+
+        // entire prompt has been processed - start decoding new tokens
+        if (slot.n_past == slot.num_prompt_tokens) {
+          slot.state = SlotState::kProcessing;
+          slot.command = SlotCommand::kNone;
+
+          GGML_ASSERT(batch.n_tokens > 0);
+
+          // extract the logits only for the last token
+          batch.logits[batch.n_tokens - 1] = true;
+
+          slot.n_decoded = 0;
+          slot.i_batch = batch.n_tokens - 1;
+
+          LOG_VERBOSE("prompt done", {
+                                         {"id_slot", slot.id},
+                                         {"n_past", slot.n_past},
+                                         {"n_ctx", n_ctx},
+                                         {"n_tokens", batch.n_tokens},
+                                     });
+        }
+      }
+    }
+  }
+
+  if (batch.n_tokens == 0) {
+    all_slots_are_idle = true;
+    return true;
+  }
+
+  for (int32_t i = 0; i < (int32_t)batch.n_tokens; i += n_batch) {
+    const int32_t n_tokens = std::min(n_batch, (int32_t)(batch.n_tokens - i));
+    llama_batch batch_view = {
+        n_tokens,
+        batch.token + i,
+        nullptr,
+        batch.pos + i,
+        batch.n_seq_id + i,
+        batch.seq_id + i,
+        batch.logits + i,
+        0,
+        0,
+        0,  // unused
+    };
+
+    const int ret = llama_decode(ctx, batch_view);
+    if (ret != 0) {
+      if (n_batch == 1 || ret < 0) {
+        // if you get here, it means the KV cache is full - try increasing it via the context size
+        LOG_ERROR << "Failed to decode the batch: KV cache is full - try "
+                     "increasing it via the context size: "
+                  << "i = " << i << ", n_batch = " << n_batch
+                  << ", ret = " << ret;
+        for (auto& slot : slots) {
+          slot.state = SlotState::kProcessing;
+          slot.command = SlotCommand::kNone;
+          slot.Release();
+          // SendError(slot,
+          //            "Input prompt is too big compared to KV size. Please "
+          //            "try increasing KV size.");
+        }
+        break;  // break loop of n_batch
+      }
+
+      LOG_WARN << "Failed to find free space in the KV cache, retrying with "
+                  "smaller n_batch = "
+               << n_batch / 2;
+
+      // retry with half the batch size to try to find a free slot in the KV
+      // cache
+      n_batch /= 2;
+      i -= n_batch;
+      continue;
+    }
+
+    for (auto& slot : slots) {
+      if (slot.i_batch < (int)i || slot.i_batch >= (int)(i + n_tokens)) {
+        continue;
+      }
+
+      // prompt evaluated for embedding
+      if (slot.embedding) {
+        SendEmbedding(slot);
+        slot.Release();
+        slot.i_batch = -1;
+        return true;
+      }
+
+      CompletionTokenOutput result;
+      const llama_token id =
+          llama_sampling_sample(slot.ctx_sampling, ctx, NULL, slot.i_batch - i);
+
+      llama_sampling_accept(slot.ctx_sampling, ctx, id, true);
+
+      if (slot.n_decoded == 1) {
+        slot.t_start_genereration = ggml_time_us();
+        slot.t_prompt_processing =
+            (slot.t_start_genereration - slot.t_start_process_prompt) / 1e3;
+      }
+
+      llama_token_data_array cur_p = {slot.ctx_sampling->cur.data(),
+                                      slot.ctx_sampling->cur.size(), false};
+      result.tok = id;
+
+      const int32_t n_probs = slot.sparams.n_probs;
+      if (slot.sparams.temp <= 0 && n_probs > 0) {
+        // for llama_sample_token_greedy we need to sort candidates
+        llama_sample_softmax(ctx, &cur_p);
+      }
+
+      for (size_t i = 0; i < std::min(cur_p.size, (size_t)n_probs); ++i) {
+        result.probs.push_back({cur_p.data[i].id, cur_p.data[i].p});
+      }
+
+      if (!ProcessToken(result, slot)) {
+        slot.Release();
+        slot.PrintTimings();
+        SendFinalResponse(slot);
+      }
+
+      slot.i_batch = -1;
+    }
+  }
+  return true;
 }

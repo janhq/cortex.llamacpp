@@ -62,7 +62,7 @@ enum class StopType : uint8_t {
   kStopPartial,
 };
 
-enum class ModelType: uint8_t { kLlm = 0, kEmbedding };
+enum class ModelType : uint8_t { kLlm = 0, kEmbedding };
 
 // TODO: reuse llama_detokenize
 template <class Iter>
@@ -142,6 +142,7 @@ struct LlamaServerContext {
   std::condition_variable condition_tasks;
   std::mutex mutex_results;
   std::condition_variable condition_results;
+  std::thread bgr_thread;
   ModelType model_type = ModelType::kLlm;
 
   ~LlamaServerContext();
@@ -152,11 +153,11 @@ struct LlamaServerContext {
   void KvCacheClear();
   json GetModelProps();
   int RequestCompletion(json data, bool infill, bool embedding,
-                         int multitask_id);
+                        int multitask_id);
   TaskResult NextResult(int task_id);
   void RequestCancel(int task_id);
 
-  bool UpdateSlots();
+  void ReleaseResources();
 
  private:
   std::vector<llama_token> Tokenize(const json& json_prompt,
@@ -173,8 +174,8 @@ struct LlamaServerContext {
   void ProcessSystemPromptData(const json& sys_props);
 
   size_t FindStoppingStrings(const std::string& text,
-                               const size_t last_token_size,
-                               const StopType type, LlamaClientSlot& slot);
+                             const size_t last_token_size, const StopType type,
+                             LlamaClientSlot& slot);
 
   bool ProcessToken(CompletionTokenOutput& result, LlamaClientSlot& slot);
 
@@ -201,4 +202,7 @@ struct LlamaServerContext {
 
   void ProcessTasks();
 
+  void DoBackgroundTasks();
+
+  bool UpdateSlots();
 };
