@@ -709,9 +709,9 @@ bool LlamaEngine::CheckModelLoaded(
     const std::string& model_id) {
   if (auto si = server_map_.find(model_id);
       si == server_map_.end() || !si->second.ctx.model_loaded_external) {
-    LOG_ERROR << "Error: model_id: " << model_id
+    LOG_WARN << "Error: model_id: " << model_id
               << ", existed: " << (si != server_map_.end())
-              << ", loaded: " << (si == server_map_.end());
+              << ", loaded: " << false;
     Json::Value jsonResp;
     jsonResp["message"] =
         "Model has not been loaded, please load model into nitro";
