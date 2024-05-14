@@ -1,6 +1,8 @@
 # cortex.llamacpp
 cortex.llamacpp is a high-efficiency C++ inference engine for edge computing.
 
+It is a dynamic library that can be loaded by any server at runtime.
+
 # Repo Structure
 ```
 .
@@ -36,7 +38,7 @@ If you don't have git, you can download the source code as a file archive from [
 - **On Linux, and Windows:**
 
   ```bash
-  make build-example-server
+  make build-example-server CMAKE_EXTRA_FLAGS=""
   ```
   
 - **On MacOS with Apple Silicon:**
@@ -60,6 +62,7 @@ If you don't have git, you can download the source code as a file archive from [
 ## Start process
 
 Finally, let's start Server.
+
 - **On MacOS and Linux:**
 
   ```bash
