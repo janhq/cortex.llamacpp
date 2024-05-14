@@ -59,10 +59,15 @@ If you don't have git, you can download the source code as a file archive from [
   make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_CUDA=ON"
   ```
 
-## Start process
+# Quickstart
+**Step 1: Downloading a Model**
 
-Finally, let's start Server.
+```bash
+mkdir model && cd model
+wget -O llama-2-7b-model.gguf https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf?download=true
+```
 
+**Step 2: Start server**
 - **On MacOS and Linux:**
 
   ```bash
@@ -87,15 +92,6 @@ Finally, let's start Server.
   copy ..\..\..\build\Release\engine.dll engines\cortex.llamacpp\
   server.exe
   ```
-# Quickstart
-**Step 1: Downloading a Model**
-
-```bash
-mkdir model && cd model
-wget -O llama-2-7b-model.gguf https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q5_K_M.gguf?download=true
-```
-
-**Step 2: Start server**
 
 **Step 3: Load model**
 ```bash title="Load model"
