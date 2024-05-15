@@ -58,6 +58,8 @@ add_library(${TARGET} SHARED
     src/llama_client_slot.cc
     src/cpuid/cpu_info.cc
     src/cpuid/cpu_validation.cc
+    src/cpuid/vulkan_util_init.cc
+    src/cpuid/vulkan_util.cc
 )
 
 find_library(JSONCPP
