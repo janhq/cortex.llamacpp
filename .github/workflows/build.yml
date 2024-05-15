@@ -63,7 +63,7 @@ jobs:
           - os: "linux"
             name: "amd64-avx2"
             runs-on: "ubuntu-18-04"
-            cmake-flags: "-DLLAMA_NATIVE=OFF"
+            cmake-flags: "-DLLAMA_AVX2=ON -DLLAMA_NATIVE=OFF"
             run-e2e: true
             vulkan: false
           - os: "linux"
@@ -111,7 +111,7 @@ jobs:
           - os: "windows"
             name: "amd64-avx2"
             runs-on: "windows-latest"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            cmake-flags: "-DLLAMA_AVX2=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
             run-e2e: true
             vulkan: false
           - os: "windows"
@@ -135,7 +135,7 @@ jobs:
           - os: "windows"
             name: "amd64-avx2-cuda-12-0"
             runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
+            cmake-flags: "-DLLAMA_AVX2=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
             run-e2e: false
             vulkan: false
           - os: "windows"

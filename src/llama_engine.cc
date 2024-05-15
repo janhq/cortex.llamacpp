@@ -1,6 +1,7 @@
 #include "llama_engine.h"
 
 #include "cpuid/cpu_info.h"
+#include "cpuid/cpu_validation.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
@@ -142,12 +143,16 @@ void LlamaEngine::LoadModel(
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   cpuid::CpuInfo cpu_info;
   LOG_DEBUG << "CPU info: " << cpu_info.to_string();
+  if (!cpuid::llamacpp::IsValidInstructions()) {
+    LOG_WARN << "Invalid instruction set";
+  }
+
   if (!llama_utils::isAVX2Supported() && ggml_cpu_has_avx2()) {
     LOG_ERROR << "AVX2 is not supported by your processor";
     Json::Value jsonResp;
     jsonResp["message"] =
-        "AVX2 is not supported by your processor, please download and replace "
-        "the correct Nitro asset version";
+        "AVX2 is not supported by your processor, please download and "
+        "replace the correct cortex.llamacpp asset version ";
     Json::Value status;
     status["is_done"] = false;
     status["has_error"] = true;
