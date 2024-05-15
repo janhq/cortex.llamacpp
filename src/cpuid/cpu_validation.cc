@@ -1,5 +1,6 @@
 #include "cpu_validation.h"
 #include "cpu_info.h"
+#include "vulkan_util_init.h"
 namespace cpuid::llamacpp {
 
 bool IsSupportedVulka() {
