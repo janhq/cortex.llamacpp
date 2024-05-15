@@ -143,8 +143,8 @@ void LlamaEngine::LoadModel(
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   cpuid::CpuInfo cpu_info;
   LOG_DEBUG << "CPU info: " << cpu_info.to_string();
-  if (!cpuid::llamacpp::IsValidInstructions()) {
-    LOG_WARN << "Invalid instruction set";
+  if (auto [res, er] = cpuid::llamacpp::IsValidInstructions(); !res) {
+    LOG_WARN << "Invalid instruction set: " << er;
   }
 
   if (!llama_utils::isAVX2Supported() && ggml_cpu_has_avx2()) {

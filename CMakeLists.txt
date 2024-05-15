@@ -33,6 +33,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
+if(LLAMA_CUDA)
+  add_compile_definitions(CORTEX_CUDA)
+endif()
+
+if(LLAMA_AVX512)
+  add_compile_definitions(CORTEX_AVX512)
+endif()
+
+if(LLAMA_AVX2)
+  add_compile_definitions(CORTEX_AVX2)
+endif()
+
+if(LLAMA_VULKAN)
+  add_compile_definitions(CORTEX_VULKAN)
+endif()
+
 add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
 

@@ -1,5 +1,7 @@
 #pragma once
+#include <string>
+#include <utility>
 
 namespace cpuid::llamacpp {
-bool IsValidInstructions();
+std::pair<bool, std::string> IsValidInstructions();
 }  // namespace cpuid
