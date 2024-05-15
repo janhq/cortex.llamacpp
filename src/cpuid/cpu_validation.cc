@@ -22,16 +22,16 @@ std::pair<bool, std::string> IsValidInstructions() {
              ? std::make_pair(true, "")
              : std::make_pair(false, "System does not support AVX2");
 #elif defined(CORTEX_VULKAN)
-  return true;
+  return std::make_pair(true, "");
 #else
   return info.has_avx() ? std::make_pair(true, "")
                         : std::make_pair(false, "System does not support AVX");
 #endif
 #elif defined(__APPLE__)
-  return true;
+  return std::make_pair(true, "");
 #else
 #if defined(CORTEX_CUDA)
-  return true;
+  return std::make_pair(true, "");
 #elif defined(CORTEX_AVX512)
   auto res = info.has_avx512_f() || info.has_avx512_dq() ||
              info.has_avx512_ifma() || info.has_avx512_pf() ||
@@ -48,7 +48,7 @@ std::pair<bool, std::string> IsValidInstructions() {
              ? std::make_pair(true, "")
              : std::make_pair(false, "System does not support AVX2");
 #elif defined(CORTEX_VULKAN)
-  return true;
+  return std::make_pair(true, "");
 #else
   return info.has_avx() ? std::make_pair(true, "")
                         : std::make_pair(false, "System does not support AVX");
