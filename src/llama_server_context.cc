@@ -796,14 +796,26 @@ bool LlamaServerContext::ProcessImages(LlamaClientSlot& slot) const {
   return slot.images.size() > 0;
 }
 void LlamaServerContext::SendError(TaskServer& task, std::string error) {
-  std::unique_lock<std::mutex> lock(mutex_results);
+  SendError(task.id, task.multitask_id, error);
+}
+
+void LlamaServerContext::SendError(LlamaClientSlot& slot,
+                                   const std::string& error) {
+  SendError(slot.task_id, slot.multitask_id, error);
+}
+
+void LlamaServerContext::SendError(int id_task, int id_multi,
+                                   const std::string& error) {
   TaskResult res;
-  res.id = task.id;
-  res.multitask_id = task.multitask_id;
+  res.id = id_task;
+  res.multitask_id = id_multi;
   res.stop = false;
   res.error = true;
   res.result_json = {{"content", error}};
-  queue_results.push_back(res);
+  {
+    std::lock_guard<std::mutex> lock(mutex_results);
+    queue_results.push_back(res);
+  }
   condition_results.notify_all();
 }
 
@@ -1520,6 +1532,10 @@ bool LlamaServerContext::UpdateSlots() {
 
         if (has_images && !IngestImages(slot, n_batch)) {
           LOG_WARN << "failed processing images";
+          slot.state = SlotState::kProcessing;
+          slot.command = SlotCommand::kNone;
+          slot.Release();
+          SendError(slot, "Failed processing images");
           return false;
         }
 
@@ -1581,9 +1597,9 @@ bool LlamaServerContext::UpdateSlots() {
           slot.state = SlotState::kProcessing;
           slot.command = SlotCommand::kNone;
           slot.Release();
-          // SendError(slot,
-          //            "Input prompt is too big compared to KV size. Please "
-          //            "try increasing KV size.");
+          SendError(slot,
+                    "Input prompt is too big compared to KV size. Please "
+                    "try increasing KV size.");
         }
         break;  // break loop of n_batch
       }

@@ -182,6 +182,8 @@ struct LlamaServerContext {
   bool ProcessImages(LlamaClientSlot& slot) const;
 
   void SendError(TaskServer& task, std::string error);
+  void SendError(LlamaClientSlot& slot, const std::string& error);
+  void SendError(int id_task, int id_multi, const std::string& error);
 
   void AddMultiTask(int id, std::vector<int>& sub_ids);
 
