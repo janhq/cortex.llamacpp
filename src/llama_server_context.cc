@@ -1524,14 +1524,16 @@ bool LlamaServerContext::UpdateSlots() {
         }
 
         // entire prompt has been processed - start decoding new tokens
-        if (slot.n_past == slot.num_prompt_tokens) {
+        if (has_images || slot.n_past == slot.num_prompt_tokens) {
           slot.state = SlotState::kProcessing;
           slot.command = SlotCommand::kNone;
 
           GGML_ASSERT(batch.n_tokens > 0);
 
           // extract the logits only for the last token
-          batch.logits[batch.n_tokens - 1] = true;
+          if (batch.n_tokens > 0) {
+            batch.logits[batch.n_tokens - 1] = true;
+          }
 
           slot.n_decoded = 0;
           slot.i_batch = batch.n_tokens - 1;
