@@ -24,6 +24,9 @@ class LlamaEngine : public EngineI {
   void GetModelStatus(
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
+  void GetModels(
+      std::shared_ptr<Json::Value> jsonBody,
+      std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);

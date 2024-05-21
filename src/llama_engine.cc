@@ -250,6 +250,32 @@ void LlamaEngine::GetModelStatus(
   }
 }
 
+void LlamaEngine::GetModels(
+    std::shared_ptr<Json::Value> jsonBody,
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+  Json::Value json_resp;
+  Json::Value model_array(Json::arrayValue);
+  for (const auto& [m, s] : server_map_) {
+    if (s.ctx.model_loaded_external) {
+      Json::Value val;
+      val["id"] = m;
+      val["object"] = "model";
+      model_array.append(val);
+    }
+  }
+
+  json_resp["object"] = "list";
+  json_resp["data"] = model_array;
+
+  Json::Value status;
+  status["is_done"] = true;
+  status["has_error"] = false;
+  status["is_stream"] = false;
+  status["status_code"] = k200OK;
+  callback(std::move(status), std::move(json_resp));
+  LOG_INFO << "Running models responded";
+}
+
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
   gpt_params params;
   std::string model_type;

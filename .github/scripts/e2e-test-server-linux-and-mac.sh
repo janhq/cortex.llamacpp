@@ -9,7 +9,7 @@ if [[ $# -ne 3 ]]; then
     exit 1
 fi
 
-rm /tmp/load-llm-model-res.log /tmp/completion-res.log /tmp/unload-model-res.log /tmp/load-embedding-model-res.log /tmp/embedding-res.log /tmp/server.log
+rm /tmp/load-llm-model-res.log /tmp/completion-res.log /tmp/unload-model-res.log /tmp/load-embedding-model-res.log /tmp/running-models-res.log /tmp/embedding-res.log /tmp/server.log
 
 BINARY_PATH=$1
 DOWNLOAD_LLM_URL=$2
@@ -101,8 +101,13 @@ response4=$(curl --connect-timeout 60 -o /tmp/load-embedding-model-res.log -s -w
     "model_type": "embedding"
 }')
 
+# get running model
+response5=$(curl --connect-timeout 60 -o /tmp/running-models-res.log --request GET -s -w "%{http_code}" --location "http://127.0.0.1:$PORT/models" \
+    --header 'Content-Type: application/json' \
+    --data '{}')
+
 # request embedding
-response5=$(
+response6=$(
     curl --connect-timeout 60 -o /tmp/embedding-res.log -s -w "%{http_code}" --location "http://127.0.0.1:$PORT/v1/embeddings" \
         --header 'Content-Type: application/json' \
         --header 'Accept: text/event-stream' \
@@ -140,7 +145,13 @@ if [[ "$response4" -ne 200 ]]; then
 fi
 
 if [[ "$response5" -ne 200 ]]; then
-    echo "The embedding curl command failed with status code: $response5"
+    echo "The models curl command failed with status code: $response3"
+    cat /tmp/running-models-res.log
+    error_occurred=1
+fi
+
+if [[ "$response6" -ne 200 ]]; then
+    echo "The embedding curl command failed with status code: $response6"
     cat /tmp/embedding-res.log
     error_occurred=1
 fi
@@ -168,6 +179,10 @@ cat /tmp/unload-model-res.log
 echo "----------------------"
 echo "Log run test:"
 cat /tmp/load-embedding-model-res.log
+
+echo "----------------------"
+echo "Log run test:"
+cat /tmp/running-models-res.log
 
 echo "----------------------"
 echo "Log run test:"
