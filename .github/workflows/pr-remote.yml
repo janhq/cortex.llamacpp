@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      actions: write
 
     steps:
     - name: Checkout repository
@@ -43,3 +44,31 @@ jobs:
         pr_body="This PR updates the llama.cpp submodule to the latest release: $release_name."
         
         gh pr create --title "$pr_title" --body "$pr_body" --head $branch_name --base main --reviewer vansangpfiev
+
+        echo "BRANCH_NAME=${branch_name}" >> $GITHUB_ENV
+
+    - name: Run workflow for branch
+      uses: actions/github-script@v4
+      env:
+        BRANCH_NAME: ${{ env.BRANCH_NAME }}
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const { data } = await github.actions.listRepoWorkflows({
+            owner: context.repo.owner,
+            repo: context.repo.repo
+          });
+
+          const workflows = data.workflows;
+          const workflow = workflows.find(w => w.path === '.github/workflows/quality-gate.yml');
+          
+          if (workflow) {
+            await github.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflow.id,
+              ref: process.env.BRANCH_NAME
+            });
+          } else {
+            core.setFailed('Workflow not found');
+          }
