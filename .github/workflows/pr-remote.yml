@@ -1,0 +1,50 @@
+name: Update Submodule and Create PR
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # run on sunday every week
+  workflow_dispatch:
+  push:
+    branches:
+      - feat/auto-sync-remote
+
+jobs:
+  update-submodule:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Update submodule to latest release
+      run: |
+        cd llama.cpp
+        git fetch --tags
+        latest_tag=$(git describe --tags `git rev-list --tags --max-count=1`)
+        git checkout $latest_tag
+        cd -
+        git add llama.cpp
+        git commit -m "Update submodule to latest release $latest_tag"
+
+    - name: Push changes and create PR
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        branch_name="update-submodule-$(date +'%Y%m%d')"
+        git checkout -b $branch_name
+        git push origin $branch_name
+
+        pr_title="Update llama.cpp submodule to latest release $latest_tag"
+        pr_body="This PR updates the llama.cpp submodule to the latest release: $latest_tag."
+        
+        gh pr create --title "$pr_title" --body "$pr_body" --head $branch_name --base main
