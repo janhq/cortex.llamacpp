@@ -308,6 +308,10 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
         jsonBody->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
+    params.flash_attn = jsonBody->get("flash-attn", false).asBool();
+    if(params.flash_attn) {
+      LOG_DEBUG << "Enabled Flash Attention";
+    }
     server_map_[model_id].caching_enabled =
         jsonBody->get("caching_enabled", false).asBool();
     server_map_[model_id].user_prompt =
