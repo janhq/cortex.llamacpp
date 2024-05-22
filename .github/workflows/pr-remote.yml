@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 0 * * 0' # run on sunday every week
   workflow_dispatch:
+  push:
+    branches:
+      - chore/fix-auto-sync
 
 jobs:
   update-submodule:
@@ -43,3 +46,6 @@ jobs:
         pr_body="This PR updates the llama.cpp submodule to the latest release: $release_name."
         
         gh pr create --title "$pr_title" --body "$pr_body" --head $branch_name --base main --reviewer vansangpfiev
+
+        # Run CI quality gate
+        gh pr check-run create --name "CI Quality Gate" --head-sha $branch_name --status queued
