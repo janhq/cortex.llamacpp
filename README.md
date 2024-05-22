@@ -145,4 +145,4 @@ Table of parameters
 |`model_type` | String | Model type we want to use: llm or embedding, default value is llm|
 |`model_alias`| String | Used as model_id if specified in request, mandatory in loadmodel|
 |`model`      | String | Used as model_id if specified in request, mandatory in chat/embedding request|
-|`flash-attn` | Boolean| To enable Flash Attention|
+|`flash-attn` | Boolean| To enable Flash Attention, default is false|
