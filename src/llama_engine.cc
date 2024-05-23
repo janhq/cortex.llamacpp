@@ -302,6 +302,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
       std::ifstream file(grammar_file);
       if (!file) {
         LOG_ERROR << "Grammar file not found";
+        return false;
       } else {
         std::stringstream grammarBuf;
         grammarBuf << file.rdbuf();
@@ -312,7 +313,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     Json::Value model_path = jsonBody->operator[]("llama_model_path");
     if (model_path.isNull()) {
       LOG_ERROR << "Missing model path in request";
-      //TODO return?
+      return false;
     } else {
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
@@ -335,7 +336,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
     params.flash_attn = jsonBody->get("flash-attn", false).asBool();
-    if(params.flash_attn) {
+    if (params.flash_attn) {
       LOG_DEBUG << "Enabled Flash Attention";
     }
     server_map_[model_id].caching_enabled =
