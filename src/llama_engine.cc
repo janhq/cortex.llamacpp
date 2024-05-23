@@ -302,6 +302,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
       std::ifstream file(grammar_file);
       if (!file) {
         LOG_ERROR << "Grammar file not found";
+        return false;
       } else {
         std::stringstream grammarBuf;
         grammarBuf << file.rdbuf();
@@ -312,7 +313,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     Json::Value model_path = jsonBody->operator[]("llama_model_path");
     if (model_path.isNull()) {
       LOG_ERROR << "Missing model path in request";
-      //TODO return?
+      return false;
     } else {
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
@@ -334,6 +335,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
         jsonBody->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
+
     // Check for backward compatible
     auto fa0 = jsonBody->get("flash-attn", false).asBool();
     auto fa1 = jsonBody->get("flash_attn", false).asBool();
