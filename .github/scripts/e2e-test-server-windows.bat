@@ -23,6 +23,7 @@ del %TEMP%\response2.log 2>nul
 del %TEMP%\response3.log 2>nul
 del %TEMP%\response4.log 2>nul
 del %TEMP%\response5.log 2>nul
+del %TEMP%\response6.log 2>nul
 del %TEMP%\server.log 2>nul
 
 set /a min=9999
@@ -66,7 +67,8 @@ set "curl_data1={\"llama_model_path\":\"%MODEL_LLM_PATH_STRING%\"}"
 set "curl_data2={\"messages\":[{\"content\":\"Hello there\",\"role\":\"assistant\"},{\"content\":\"Write a long and sad story for me\",\"role\":\"user\"}],\"stream\":false,\"model\":\"testllm\",\"max_tokens\":50,\"stop\":[\"hello\"],\"frequency_penalty\":0,\"presence_penalty\":0,\"temperature\":0.1}"
 set "curl_data3={\"llama_model_path\":\"%MODEL_LLM_PATH_STRING%\"}"
 set "curl_data4={\"llama_model_path\":\"%MODEL_EMBEDDING_PATH_STRING%\", \"embedding\": true, \"model_type\": \"embedding\"}"
-set "curl_data5={\"input\": \"Hello\", \"model\": \"test-embedding\", \"encoding_format\": \"float\"}"
+set "curl_data5={}"
+set "curl_data6={\"input\": \"Hello\", \"model\": \"test-embedding\", \"encoding_format\": \"float\"}"
 
 rem Print the values of curl_data for debugging
 echo curl_data1=%curl_data1%
@@ -74,6 +76,7 @@ echo curl_data2=%curl_data2%
 echo curl_data3=%curl_data3%
 echo curl_data4=%curl_data4%
 echo curl_data5=%curl_data5%
+echo curl_data6=%curl_data6%
 
 rem Run the curl commands and capture the status code
 curl.exe --connect-timeout 60 -o "%TEMP%\response1.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/loadmodel" --header "Content-Type: application/json" --data "%curl_data1%" > %TEMP%\response1.log 2>&1
@@ -86,9 +89,11 @@ curl.exe --connect-timeout 60 -o "%TEMP%\response3.log" -s -w "%%{http_code}" --
 
 curl.exe --connect-timeout 60 -o "%TEMP%\response4.log" --request POST -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/loadmodel" --header "Content-Type: application/json" --data "%curl_data4%" > %TEMP%\response4.log 2>&1
 
-curl.exe --connect-timeout 60 -o "%TEMP%\response5.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/v1/embeddings" ^
+curl.exe --connect-timeout 60 -o "%TEMP%\response5.log" --request GET -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/models" --header "Content-Type: application/json" --data "%curl_data5%" > %TEMP%\response5.log 2>&1
+
+curl.exe --connect-timeout 60 -o "%TEMP%\response6.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/v1/embeddings" ^
 --header "Content-Type: application/json" ^
---data "%curl_data5%" > %TEMP%\response5.log 2>&1
+--data "%curl_data6%" > %TEMP%\response6.log 2>&1
 
 set "error_occurred=0"
 
@@ -98,6 +103,7 @@ for /f %%a in (%TEMP%\response2.log) do set "response2=%%a"
 for /f %%a in (%TEMP%\response3.log) do set "response3=%%a"
 for /f %%a in (%TEMP%\response4.log) do set "response4=%%a"
 for /f %%a in (%TEMP%\response5.log) do set "response5=%%a"
+for /f %%a in (%TEMP%\response6.log) do set "response6=%%a"
 
 if "%response1%" neq "200" (
     echo The first curl command failed with status code: %response1%
@@ -129,6 +135,12 @@ if "%response5%" neq "200" (
     set "error_occurred=1"
 )
 
+if "%response6%" neq "200" (
+    echo The sixth curl command failed with status code: %response6%
+    type %TEMP%\response6.log
+    set "error_occurred=1"
+)
+
 if "%error_occurred%"=="1" (
     echo Server test run failed!!!!!!!!!!!!!!!!!!!!!!
     echo Server Error Logs:
@@ -152,11 +164,16 @@ type %TEMP%\response3.log
 
 echo ----------------------
 echo Log load embedding model:
-type %TEMP%\response3.log
+type %TEMP%\response4.log
+
+echo ----------------------
+echo Log running models:
+type %TEMP%\response6.log
+
 
 echo ----------------------
 echo Log run embedding test:
-type %TEMP%\response5.log
+type %TEMP%\response6.log
 
 echo Server test run successfully!
 

@@ -199,12 +199,27 @@ int main(int argc, char** argv) {
         });
   };
 
+  const auto handle_get_running_models = [&](const httplib::Request& req,
+                                           httplib::Response& resp) {
+    resp.set_header("Access-Control-Allow-Origin",
+                    req.get_header_value("Origin"));
+    auto req_body = std::make_shared<Json::Value>();
+    r.parse(req.body, *req_body);
+    server.engine_->GetModels(
+        req_body, [&server, &resp](Json::Value status, Json::Value res) {
+          resp.set_content(res.toStyledString().c_str(),
+                           "application/json; charset=utf-8");
+          resp.status = status["status_code"].asInt();
+        });
+  };
+
   svr->Post("/loadmodel", handle_load_model);
   // Use POST since httplib does not read request body for GET method
   svr->Post("/unloadmodel", handle_unload_model);
   svr->Post("/v1/chat/completions", handle_completions);
   svr->Post("/v1/embeddings", handle_embeddings);
   svr->Post("/modelstatus", handle_get_model_status);
+  svr->Get("/models", handle_get_running_models);
 
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {
