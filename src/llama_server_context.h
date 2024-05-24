@@ -117,7 +117,7 @@ struct LlamaServerContext {
   bool all_slots_are_idle = false;
   bool add_bos_token = true;
 
-  int32_t id_gen;
+  std::atomic<int32_t> id_gen;
   int32_t n_ctx;  // total context for all clients / slots
 
   // Internal
@@ -138,7 +138,7 @@ struct LlamaServerContext {
   std::vector<TaskServer> queue_tasks;
   std::vector<TaskResult> queue_results;
   std::vector<TaskMulti> queue_multitasks;
-  std::mutex mutex_tasks;  // also guards id_gen, and queue_multitasks
+  std::mutex mutex_tasks;  // also guards queue_multitasks
   std::condition_variable condition_tasks;
   std::mutex mutex_results;
   std::condition_variable condition_results;
