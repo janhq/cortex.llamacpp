@@ -1239,9 +1239,10 @@ bool LlamaServerContext::UpdateSlots() {
 
   for (LlamaClientSlot& slot : slots) {
     if (slot.IsProcessing() &&
-        (int)system_tokens.size() + slot.n_past >= slot.n_ctx) {
+        (int)system_tokens.size() + slot.n_past >= slot.n_ctx - 1) {
       // Shift context
-      const int n_left = slot.n_past - slot.params.n_keep - 1;
+      const int n_keep = slot.params.n_keep + add_bos_token;
+      const int n_left = (int)system_tokens.size() + slot.n_past - n_keep;
       const int n_discard = n_left / 2;
 
       LOG_DEBUG << "slot " << slot.id
@@ -1251,13 +1252,12 @@ bool LlamaServerContext::UpdateSlots() {
                 << ", n_system_tokens = " << system_tokens.size()
                 << ", n_cache_tokens = " << slot.cache_tokens.size();
 
-      llama_kv_cache_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
-                            slot.params.n_keep + n_discard + 1);
-      llama_kv_cache_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
-                             slot.n_past, -n_discard);
+      llama_kv_cache_seq_rm(ctx, slot.id, n_keep, n_keep + n_discard);
+      llama_kv_cache_seq_add(ctx, slot.id, n_keep + n_discard,
+                             system_tokens.size() + slot.n_past, -n_discard);
 
       if (slot.params.cache_prompt) {
-        for (size_t i = slot.params.n_keep + 1 + n_discard;
+        for (size_t i = slot.params.n_keep + n_discard;
              i < slot.cache_tokens.size(); i++) {
           slot.cache_tokens[i - n_discard] = slot.cache_tokens[i];
         }
