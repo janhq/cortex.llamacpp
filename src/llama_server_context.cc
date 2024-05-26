@@ -162,7 +162,11 @@ bool LlamaServerContext::LoadModel(const gpt_params& params_) {
     }
   }
 
+  // dedicate one sequence to the system prompt
+  params.n_parallel += 1;
+
   std::tie(model, ctx) = llama_init_from_gpt_params(params);
+  params.n_parallel -= 1;  // but be sneaky about it
   if (model == nullptr) {
     LOG_ERROR_LLAMA("llama.cpp unable to load model",
                     {{"model", params.model}});
@@ -997,7 +1001,7 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
   std::vector<float> embd_res(n_embd, 0.0f);
 
   for (int i = 0; i < batch.n_tokens; ++i) {
-    if (!batch.logits[i] || batch.seq_id[i][0] != slot.id) {
+    if (!batch.logits[i] || batch.seq_id[i][0] != slot.id + 1) {
       continue;
     }
 
@@ -1092,7 +1096,8 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
     std::vector<llama_token> append_tokens =
         Tokenize(json_prompt, false);  // has next image
     for (int i = 0; i < (int)append_tokens.size(); ++i) {
-      llama_batch_add(batch, append_tokens[i], slot.n_past, {slot.id}, true);
+      llama_batch_add(batch, append_tokens[i], slot.n_past, {slot.id + 1},
+                      true);
       slot.n_past += 1;
     }
   }
@@ -1252,8 +1257,8 @@ bool LlamaServerContext::UpdateSlots() {
                 << ", n_system_tokens = " << system_tokens.size()
                 << ", n_cache_tokens = " << slot.cache_tokens.size();
 
-      llama_kv_cache_seq_rm(ctx, slot.id, n_keep, n_keep + n_discard);
-      llama_kv_cache_seq_add(ctx, slot.id, n_keep + n_discard,
+      llama_kv_cache_seq_rm(ctx, slot.id + 1, n_keep, n_keep + n_discard);
+      llama_kv_cache_seq_add(ctx, slot.id + 1, n_keep + n_discard,
                              system_tokens.size() + slot.n_past, -n_discard);
 
       if (slot.params.cache_prompt) {
@@ -1296,7 +1301,7 @@ bool LlamaServerContext::UpdateSlots() {
     slot.i_batch = batch.n_tokens;
 
     llama_batch_add(batch, slot.sampled, system_tokens.size() + slot.n_past,
-                    {slot.id}, true);
+                    {slot.id + 1}, true);
 
     slot.n_decoded += 1;
     slot.n_past += 1;
@@ -1501,14 +1506,14 @@ bool LlamaServerContext::UpdateSlots() {
 
         // keep only the common part
         int p0 = (int)system_tokens.size() + slot.n_past;
-        if (!llama_kv_cache_seq_rm(ctx, slot.id, p0, -1)) {
+        if (!llama_kv_cache_seq_rm(ctx, slot.id + 1, p0, -1)) {
           // could not partially delete (likely using a non-Transformer model)
-          llama_kv_cache_seq_rm(ctx, slot.id, -1, -1);
+          llama_kv_cache_seq_rm(ctx, slot.id + 1, -1, -1);
 
           p0 = (int)system_tokens.size();
           if (p0 != 0) {
             // copy over the system prompt when there is one
-            llama_kv_cache_seq_cp(ctx, 0, slot.id, -1, -1);
+            llama_kv_cache_seq_cp(ctx, 0, slot.id + 1, -1, -1);
           }
 
           // there is no common part left (except for the system prompt)
@@ -1530,7 +1535,8 @@ bool LlamaServerContext::UpdateSlots() {
                        : prompt_tokens;
         for (; slot.n_past < (int)prefix_tokens.size(); ++slot.n_past) {
           llama_batch_add(batch, prefix_tokens[slot.n_past],
-                          system_tokens.size() + slot.n_past, {slot.id}, false);
+                          system_tokens.size() + slot.n_past, {slot.id + 1},
+                          false);
           if (slot.params.cache_prompt) {
             slot.cache_tokens.push_back(prompt_tokens[slot.n_past]);
           }
