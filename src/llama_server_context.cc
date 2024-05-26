@@ -215,6 +215,7 @@ void LlamaServerContext::Initialize() {
 
     slot.id = i;
     slot.n_ctx = n_ctx_slot;
+    slot.n_predict = params.n_predict;
     slot.Reset();
 
     LOG_DEBUG << " -> Slot " << slot.id << " - max context: " << n_ctx_slot;
@@ -762,10 +763,27 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     slot.has_next_token = false;
   }
 
-  if (result.tok == llama_token_eos(model)) {
+  if (llama_token_is_eog(model, result.tok)) {
     slot.stopped_eos = true;
     slot.has_next_token = false;
     LOG_VERBOSE("eos token found", {});
+  }
+
+  auto n_ctx_train = llama_n_ctx_train(model);
+  if (slot.params.n_predict < 1 && slot.n_predict < 1 &&
+      slot.num_prompt_tokens + slot.n_decoded >= n_ctx_train) {
+    LOG_WARN << "n_predict is not set and self-context extend is disabled. "
+                "Limiting generated tokens to n_ctx_train to avoid EOS-less "
+                "generation infinite loop - "
+             << "id_slot " << slot.id << ", params.n_predict "
+             << slot.params.n_predict << ", slot.n_prompt_tokens "
+             << slot.num_prompt_tokens << ", slot.n_decoded " << slot.n_decoded
+             << ", slot.n_predict " << slot.n_predict << ", n_slots "
+             << params.n_parallel << ", slot.n_ctx " << slot.n_ctx << ", n_ctx "
+             << n_ctx << ", n_ctx_train " << n_ctx_train;
+    slot.truncated = true;
+    slot.stopped_limit = true;
+    slot.has_next_token = false;  // stop prediction
   }
 
   LOG_VERBOSE(

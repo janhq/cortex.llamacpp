@@ -105,6 +105,7 @@ struct LlamaClientSlot {
   int32_t n_decoded = 0;
   int32_t n_remaining = -1;
   int32_t i_batch = -1;
+  int32_t n_predict   = -1; // TODO: disambiguate from params.n_predict
 
   int32_t num_prompt_tokens = 0;
   int32_t num_prompt_tokens_processed = 0;
