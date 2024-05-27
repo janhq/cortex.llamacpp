@@ -11,16 +11,26 @@
 
 class Server {
  public:
-  Server() {
-    dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
-    auto func = dylib_->get_function<EngineI*()>("get_engine");
-    engine_ = func();
-  }
+  Server() {}
 
   ~Server() {
     if (engine_) {
       delete engine_;
     }
+  }
+
+  void LoadEngine() {
+    try {
+      dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
+    } catch (const dylib::load_error& e) {
+      LOG_ERROR << "Could not load engine: " << e.what();
+      dylib_.reset();
+      engine_ = nullptr;
+      return;
+    }
+    auto func = dylib_->get_function<EngineI*()>("get_engine");
+    engine_ = func();
+    LOG_INFO << "Loaded engine";
   }
 
  public:
@@ -78,6 +88,7 @@ int main(int argc, char** argv) {
   }
 
   Server server;
+  server.LoadEngine();
   Json::Reader r;
   auto svr = std::make_unique<httplib::Server>();
 
@@ -200,7 +211,7 @@ int main(int argc, char** argv) {
   };
 
   const auto handle_get_running_models = [&](const httplib::Request& req,
-                                           httplib::Response& resp) {
+                                             httplib::Response& resp) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
