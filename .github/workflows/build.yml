@@ -69,13 +69,13 @@ jobs:
             name: "amd64-avx"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
-            run-e2e: false
+            run-e2e: true
             vulkan: false
           - os: "linux"
             name: "amd64-avx512"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
-            run-e2e: false
+            run-e2e: true
             vulkan: false
           - os: "linux"
             name: "amd64-vulkan"
@@ -117,7 +117,7 @@ jobs:
             name: "amd64-avx"
             runs-on: "windows-latest"
             cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
-            run-e2e: false
+            run-e2e: true
             vulkan: false
           - os: "windows"
             name: "amd64-avx512"
@@ -183,6 +183,24 @@ jobs:
           vulkan-components: Vulkan-Headers, Vulkan-Loader
           vulkan-use-cache: true
 
+      - name: Get Cer for code signing
+        if: runner.os == 'macOS'
+        run: base64 -d <<< "$CODE_SIGN_P12_BASE64" > /tmp/codesign.p12
+        shell: bash
+        env:
+          CODE_SIGN_P12_BASE64: ${{ secrets.CODE_SIGN_P12_BASE64 }}
+  
+      - uses: apple-actions/import-codesign-certs@v2
+        if: runner.os == 'macOS'
+        with:
+          p12-file-base64: ${{ secrets.CODE_SIGN_P12_BASE64 }}
+          p12-password: ${{ secrets.CODE_SIGN_P12_PASSWORD }}
+
+      - uses: actions/setup-dotnet@v3
+        if: runner.os == 'Windows'
+        with:
+          dotnet-version: "8.0.x"
+        
       - name: Install choco on Windows
         if: runner.os == 'Windows'
         run: |
