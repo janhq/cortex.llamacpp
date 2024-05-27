@@ -133,6 +133,12 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install Python
+        if: ${{matrix.run-e2e}}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' 
+
       - name: Prepare Vulkan SDK
         if: ${{ matrix.vulkan }}
         uses: humbletim/setup-vulkan-sdk@v1.2.0
