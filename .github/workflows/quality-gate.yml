@@ -61,7 +61,7 @@ jobs:
             vulkan: false
           - os: "mac"
             name: "arm64"
-            runs-on: "mac-silicon"
+            runs-on: "macos-latest"
             cmake-flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
             run-e2e: true
             vulkan: false
