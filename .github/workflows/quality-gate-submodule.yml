@@ -150,6 +150,10 @@ jobs:
       - name: Build
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+      
+      - name: Pre Package
+        run: |
+          make pre-package
 
       - name: Package
         run: |
