@@ -5,6 +5,7 @@ import os
 import logging
 import sys
 import random
+import platform
 
 n = len(sys.argv)
 print("Total arguments passed:", n)
@@ -13,6 +14,8 @@ if n < 4:
     exit(1)
 
 BINARY_PATH = sys.argv[1]
+if platform.system == 'Windows':
+    BINARY_PATH += '.exe'
 DOWNLOAD_LLM_URL = sys.argv[2]
 DOWNLOAD_EMBEDDING_URL = sys.argv[3]
 LLM_MODEL = 'chat_model'
@@ -20,21 +23,23 @@ EMBED_MODEL = 'embedding_model'
 LLM_FILE_TO_SAVE = './' + LLM_MODEL + '.gguf'
 EMBED_FILE_TO_SAVE = './' + EMBED_MODEL + '.gguf'
 
-try:
-    resp = requests.get(DOWNLOAD_LLM_URL)
-    resp.raise_for_status()
-    with open(LLM_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
-        f.write(resp.content)
-except requests.exceptions.HTTPError as error:
-    print(error)        
+if not os.path.isfile(LLM_FILE_TO_SAVE):
+    try:
+        resp = requests.get(DOWNLOAD_LLM_URL)
+        resp.raise_for_status()
+        with open(LLM_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
+            f.write(resp.content)
+    except requests.exceptions.HTTPError as error:
+        print(error)        
 
-try:    
-    resp = requests.get(DOWNLOAD_EMBEDDING_URL)
-    resp.raise_for_status()
-    with open(EMBED_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
-        f.write(resp.content)
-except requests.exceptions.HTTPError as error:
-    print(error)
+if not os.path.isfile(EMBED_FILE_TO_SAVE):
+    try:    
+        resp = requests.get(DOWNLOAD_EMBEDDING_URL)
+        resp.raise_for_status()
+        with open(EMBED_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
+            f.write(resp.content)
+    except requests.exceptions.HTTPError as error:
+        print(error)
 
 CONST_CTX_SIZE = 2048
 CONST_USER_ROLE = "user"
@@ -45,8 +50,8 @@ port = random.randint(10000, 11000)
 cwd = os.getcwd()
 upload_folder = cwd + '/uploads'
 server_log = cwd + '/' + "server.log"
-subprocess.Popen('C:\\Users\\vansa\\jan\\extensions\\@janhq\\inference-cortex-extension\\dist\\bin\\win-cpu\\cortex-cpp.exe 1 127.0.0.1 ' + str(port))
-
+subprocess.Popen(BINARY_PATH + ' 1 127.0.0.1 ' + str(port))
+#'C:\\Users\\vansa\\jan\\extensions\\@janhq\\inference-cortex-extension\\dist\\bin\\win-cpu\\cortex-cpp
 logging.basicConfig(filename='./test.log',
                     filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
@@ -69,13 +74,15 @@ def RequestPost(req_data, url, is_stream = False):
                     data = json.loads(line[5:])
                     content = data['choices'][0]['delta']['content']
                     res += content
+            logging.info(len(res))
             logging.info('{\'assistant\': \''  + res + '\'}')
             chat_data.append({
                 "role": CONST_ASSISTANT_ROLE,
                 "content": res
             })
-            # Can be an error when model generates gabarge data
+            # Can be an error when model generates gabarge data            
             if len(data) >= CONST_CTX_SIZE - 100:
+                logging.warn("Maybe generated gabarge data")
                 return False
         else:
             res_json = r.json()
@@ -116,16 +123,11 @@ def StopServer():
 def TestLoadChatModel():
     new_data = {
         "ctx_len": CONST_CTX_SIZE,
-        "embedding": True,
-        "prompt_template": "{system_message}\n### Instruction: {prompt}\n### Response:",
+        "prompt_template": "<|system|>\n{system_message}<|user|>\n{prompt}<|assistant|>",
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
-        "system_prompt": "",
-        "user_prompt": "\n### Instruction: ",
-        "ai_prompt": "\n### Response:",
-        "cpu_threads": 5,
-        "ngl": 100,
-        "caching_enabled": True
+        "ngl": 32,
+        # "caching_enabled": True
     }
 
     url_post = "http://127.0.0.1:"+ str(port) + "/inferences/server/loadmodel"
@@ -150,9 +152,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": [
-            "</s>"
-        ],
+        "stop": [],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
@@ -183,9 +183,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": [
-            "</s>"
-        ],
+        "stop": [],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
