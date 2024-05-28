@@ -100,11 +100,11 @@ else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
-	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && python  ../../../.github/scripts/e2e-test-server.py ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
+	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
 	python -m pip install requests;
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
-	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && python  ../../../.github/scripts/e2e-test-server.py ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
+	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 endif
