@@ -56,9 +56,10 @@ def RequestPost(req_data, url, is_stream = False):
                 "role": CONST_ASSISTANT_ROLE,
                 "content": res
             })
-            # Can be an error when model generates gabarge data            
-            if len(res) >= CONST_CTX_SIZE - 100:
-                logging.warning("Maybe generated gabarge data: " + str(len(res)))
+            # Can be an error when model generates gabarge data  
+            res_len = len(res.split())          
+            if res_len >= CONST_CTX_SIZE - 50:
+                logging.warning("Maybe generated gabarge data: " + str(res_len))
                 # return False
         else:
             res_json = r.json()
