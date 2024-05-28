@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
   };
 
   const auto handle_get_running_models = [&](const httplib::Request& req,
-                                           httplib::Response& resp) {
+                                             httplib::Response& resp) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
@@ -220,6 +220,12 @@ int main(int argc, char** argv) {
   svr->Post("/v1/embeddings", handle_embeddings);
   svr->Post("/modelstatus", handle_get_model_status);
   svr->Get("/models", handle_get_running_models);
+  std::atomic<bool> running = true;
+  svr->Delete("/destroy",
+            [&](const httplib::Request& req, httplib::Response& resp) {
+              LOG_INFO << "Received Stop command";
+              running = false;
+            });
 
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {
@@ -233,7 +239,6 @@ int main(int argc, char** argv) {
 
     return 0;
   });
-  std::atomic<bool> running = true;
 
   shutdown_handler = [&](int) {
     running = false;
