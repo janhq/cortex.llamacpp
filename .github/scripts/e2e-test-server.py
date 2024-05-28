@@ -83,7 +83,7 @@ def RequestPost(req_data, url, is_stream = False):
             # Can be an error when model generates gabarge data            
             if len(res) >= CONST_CTX_SIZE - 100:
                 logging.warning("Maybe generated gabarge data: " + str(len(res)))
-                return False
+                # return False
         else:
             res_json = r.json()
             logging.info(res_json)
@@ -125,6 +125,8 @@ def CleanUp():
     p.communicate()
     os.remove(LLM_FILE_TO_SAVE)
     os.remove(EMBED_FILE_TO_SAVE)
+    with open('./test.log', 'r') as f:
+        print(f.read())
     
 
 def TestLoadChatModel():
@@ -249,5 +251,4 @@ TestEmbeddings()
 TestUnloadModel(EMBED_MODEL)
 CleanUp()
 
-with open('./test.log', 'r') as f:
-    print(f.read())
+
