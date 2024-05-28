@@ -189,12 +189,6 @@ jobs:
       - name: Package
         run: |
           make package
-      
-      - name: Install Python
-        if: ${{matrix.run-e2e}}
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10' 
 
       - name: Run e2e testing
         if: ${{ matrix.run-e2e }}

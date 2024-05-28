@@ -29,13 +29,13 @@ jobs:
             name: "amd64-avx"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
           - os: "linux"
             name: "amd64-avx512"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
           - os: "linux"
             name: "amd64-vulkan"
@@ -155,11 +155,17 @@ jobs:
       - name: Package
         run: |
           make package
+      
+      - name: Install Python
+        if: ${{matrix.run-e2e}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
 
-      - name: Run e2e testing
+      - name: Run e2e submodule testing
         if: ${{ matrix.run-e2e }}
         run: |
-          make run-e2e-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
+          make run-e2e-submodule-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
