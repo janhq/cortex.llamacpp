@@ -30,8 +30,10 @@ if not os.path.isfile(LLM_FILE_TO_SAVE):
         resp.raise_for_status()
         with open(LLM_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
             f.write(resp.content)
+        print("Downloaded llm model")
     except requests.exceptions.HTTPError as error:
-        print(error)        
+        print("Had error: " + error)        
+        exit(1)
 
 if not os.path.isfile(EMBED_FILE_TO_SAVE):
     print("Download embedding model")
@@ -40,8 +42,10 @@ if not os.path.isfile(EMBED_FILE_TO_SAVE):
         resp.raise_for_status()
         with open(EMBED_FILE_TO_SAVE, "wb") as f: # opening a file handler to create new file 
             f.write(resp.content)
+        print("Downloaded embedding model")
     except requests.exceptions.HTTPError as error:
-        print(error)
+        print("Had error: " + error)  
+        exit(1)
 
 CONST_CTX_SIZE = 1024
 CONST_USER_ROLE = "user"
