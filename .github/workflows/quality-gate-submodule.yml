@@ -3,16 +3,15 @@ name: CI Quality Gate Submodule
 on:
   pull_request:
     types: [opened, synchronize, reopened]
-    branches:
-      - 'update-submodule-**'
   workflow_dispatch:
 
 env:
-  LLM_MODEL_URL: https://delta.jan.ai/tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+  LLM_MODEL_URL: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
   EMBEDDING_MODEL_URL: https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf
 
 jobs:
   build-and-test:
+    if: startsWith(github.head_ref, 'update-submodule')
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 60
     strategy:
@@ -151,6 +150,10 @@ jobs:
       - name: Build
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+      
+      - name: Pre Package
+        run: |
+          make pre-package
 
       - name: Package
         run: |

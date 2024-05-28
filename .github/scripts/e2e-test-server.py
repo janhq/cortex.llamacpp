@@ -56,9 +56,10 @@ def RequestPost(req_data, url, is_stream = False):
                 "role": CONST_ASSISTANT_ROLE,
                 "content": res
             })
-            # Can be an error when model generates gabarge data            
-            if len(res) >= CONST_CTX_SIZE - 100:
-                logging.warning("Maybe generated gabarge data: " + str(len(res)))
+            # Can be an error when model generates gabarge data  
+            res_len = len(res.split())          
+            if res_len >= CONST_CTX_SIZE - 50:
+                logging.warning("Maybe generated gabarge data: " + str(res_len))
                 # return False
         else:
             res_json = r.json()
@@ -108,7 +109,7 @@ def CleanUp():
 def TestLoadChatModel():
     new_data = {
         "ctx_len": CONST_CTX_SIZE,
-        "prompt_template": "<|system|>\n{system_message}<|user|>\n{prompt}<|assistant|>",
+        "prompt_template": "[INST] {prompt} [/INST]",
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
         "ngl": 32,
@@ -137,7 +138,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": ["</s>"],
+        "stop": ["[/INST]", "</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
@@ -165,7 +166,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": ["</s>"],
+        "stop": ["[/INST]", "</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
