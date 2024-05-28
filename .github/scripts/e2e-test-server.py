@@ -51,7 +51,7 @@ port = random.randint(10000, 11000)
 
 cwd = os.getcwd()
 print(cwd)
-p = subprocess.Popen(cwd + '/' + BINARY_PATH + ' 127.0.0.1 ' + str(port))
+p = subprocess.Popen([cwd + '/' + BINARY_PATH, '127.0.0.1', str(port)])
 print("Server started!")
 
 logging.basicConfig(filename='./test.log',
