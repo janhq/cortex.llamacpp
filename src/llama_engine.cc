@@ -327,9 +327,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     params.n_ctx = jsonBody->get("ctx_len", 2048).asInt();
     params.embedding = jsonBody->get("embedding", true).asBool();
     model_type = jsonBody->get("model_type", "llm").asString();
-    // Check if n_parallel exists in jsonBody, if not, set to drogon_thread
-    params.n_batch = jsonBody->get("n_batch", 512).asInt();
+    params.n_batch = jsonBody->get("n_batch", 2048).asInt();
     params.n_ubatch = jsonBody->get("n_ubatch", params.n_batch).asInt();
+    // Check if n_parallel exists in jsonBody, if not, set to drogon_thread
     params.n_parallel = jsonBody->get("n_parallel", 1).asInt();
     params.n_threads =
         jsonBody->get("cpu_threads", std::thread::hardware_concurrency())
