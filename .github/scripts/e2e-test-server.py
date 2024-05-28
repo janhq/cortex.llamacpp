@@ -108,7 +108,7 @@ def CleanUp():
 def TestLoadChatModel():
     new_data = {
         "ctx_len": CONST_CTX_SIZE,
-        "prompt_template": "<|system|>\n{system_message}<|user|>\n{prompt}<|assistant|>",
+        "prompt_template": "[INST] {prompt} [/INST]",
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
         "ngl": 32,
@@ -137,7 +137,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": ["</s>"],
+        "stop": ["[/INST]", "</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
@@ -165,7 +165,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": ["</s>"],
+        "stop": ["[/INST]", "</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
