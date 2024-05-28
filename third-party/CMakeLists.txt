@@ -26,7 +26,7 @@ ExternalProject_Add(
 ExternalProject_Add(
     trantor
     GIT_REPOSITORY https://github.com/an-tao/trantor
-    GIT_TAG v1.5.17
+    GIT_TAG v1.5.18
     CMAKE_ARGS 
     	-DBUILD_SHARED_LIBS=OFF
       -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
