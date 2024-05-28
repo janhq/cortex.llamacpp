@@ -93,7 +93,7 @@ ifeq ($(RUN_TESTS),false)
 	@exit 0
 endif
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p examples\server\build\Release\engines\cortex.llamacpp; cd examples\server\build\Release; cp ..\..\..\..\build\Release\engine.dll engines\cortex.llamacpp; ..\..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\Release\engines\cortex.llamacpp; cd examples\server\build\Release; cp ..\..\..\..\build\Release\engine.dll engines\cortex.llamacpp; python ..\..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \

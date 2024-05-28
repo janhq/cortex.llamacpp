@@ -24,6 +24,7 @@ LLM_FILE_TO_SAVE = './' + LLM_MODEL + '.gguf'
 EMBED_FILE_TO_SAVE = './' + EMBED_MODEL + '.gguf'
 
 if not os.path.isfile(LLM_FILE_TO_SAVE):
+    print("Download llm model")
     try:
         resp = requests.get(DOWNLOAD_LLM_URL)
         resp.raise_for_status()
@@ -33,6 +34,7 @@ if not os.path.isfile(LLM_FILE_TO_SAVE):
         print(error)        
 
 if not os.path.isfile(EMBED_FILE_TO_SAVE):
+    print("Download embedding model")
     try:    
         resp = requests.get(DOWNLOAD_EMBEDDING_URL)
         resp.raise_for_status()
@@ -41,17 +43,16 @@ if not os.path.isfile(EMBED_FILE_TO_SAVE):
     except requests.exceptions.HTTPError as error:
         print(error)
 
-CONST_CTX_SIZE = 2048
+CONST_CTX_SIZE = 1024
 CONST_USER_ROLE = "user"
 CONST_ASSISTANT_ROLE = "assistant"
 
 port = random.randint(10000, 11000)
 
 cwd = os.getcwd()
-upload_folder = cwd + '/uploads'
-server_log = cwd + '/' + "server.log"
-subprocess.Popen(BINARY_PATH + ' 1 127.0.0.1 ' + str(port))
-#'C:\\Users\\vansa\\jan\\extensions\\@janhq\\inference-cortex-extension\\dist\\bin\\win-cpu\\cortex-cpp
+p = subprocess.Popen(BINARY_PATH + ' 127.0.0.1 ' + str(port))
+print("Server started!")
+
 logging.basicConfig(filename='./test.log',
                     filemode='w',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
@@ -74,15 +75,14 @@ def RequestPost(req_data, url, is_stream = False):
                     data = json.loads(line[5:])
                     content = data['choices'][0]['delta']['content']
                     res += content
-            logging.info(len(res))
             logging.info('{\'assistant\': \''  + res + '\'}')
             chat_data.append({
                 "role": CONST_ASSISTANT_ROLE,
                 "content": res
             })
             # Can be an error when model generates gabarge data            
-            if len(data) >= CONST_CTX_SIZE - 100:
-                logging.warn("Maybe generated gabarge data")
+            if len(res) >= CONST_CTX_SIZE - 100:
+                logging.warning("Maybe generated gabarge data: " + str(len(res)))
                 return False
         else:
             res_json = r.json()
@@ -91,7 +91,7 @@ def RequestPost(req_data, url, is_stream = False):
         if r.status_code == 200:
             return True
         else:
-            logging.warn('{\'status_code\': '  + str(r.status_code) + '}') 
+            logging.warning('{\'status_code\': '  + str(r.status_code) + '}') 
             return False
     except requests.exceptions.HTTPError as error:
         logging.error(error)
@@ -101,24 +101,31 @@ def RequestGet(url):
     try:
         r = requests.get(url)
         r.raise_for_status()       
-        res_json = r.json()
-        logging.info('{\'status_code\': '  + str(r.status_code) + '}') 
+        res_json = r.json()        
         logging.info(res_json)        
         if r.status_code == 200:
             return True
         else:
+            logging.warning('{\'status_code\': '  + str(r.status_code) + '}') 
             return False
     except requests.exceptions.HTTPError as error:
         logging.error(error)
         return False
 
 def StopServer():
-    url = "http://127.0.0.1:"+ str(port) + "/processManager/destroy"
+    url = "http://127.0.0.1:"+ str(port) + "/destroy"
     try:
         r = requests.delete(url)
         logging.info(r.status_code)
     except requests.ConnectionError as error:
         logging.error(error)
+        
+def CleanUp():
+    StopServer()
+    p.communicate()
+    os.remove(LLM_FILE_TO_SAVE)
+    os.remove(EMBED_FILE_TO_SAVE)
+    
 
 def TestLoadChatModel():
     new_data = {
@@ -127,14 +134,14 @@ def TestLoadChatModel():
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
         "ngl": 32,
-        # "caching_enabled": True
+        "caching_enabled": True
     }
 
-    url_post = "http://127.0.0.1:"+ str(port) + "/inferences/server/loadmodel"
+    url_post = "http://127.0.0.1:"+ str(port) + "/loadmodel"
 
     res = RequestPost(new_data, url_post)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
 
 def TestChatCompletion():
@@ -152,17 +159,17 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": [],
+        "stop": ["</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
     }
-
+    
     url_post = "http://127.0.0.1:"+ str(port) + "/v1/chat/completions"
 
     res = RequestPost(new_data, url_post, True)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
     
     content = "Tell me a short story"
@@ -172,10 +179,7 @@ def TestChatCompletion():
     }
     logging.info('{\'user\': \''  + content + '\'}')
     
-    chat_data.append({
-        "role": CONST_USER_ROLE,
-        "content": content
-    })
+    chat_data.append(user_msg)
 
     new_data = {
         "frequency_penalty": 0,
@@ -183,7 +187,7 @@ def TestChatCompletion():
         "messages": chat_data,
         "model": LLM_MODEL,
         "presence_penalty": 0,
-        "stop": [],
+        "stop": ["</s>"],
         "stream": True,
         "temperature": 0.7,
         "top_p": 0.95
@@ -191,7 +195,7 @@ def TestChatCompletion():
 
     res = RequestPost(new_data, url_post, True)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
 
 def TestUnloadModel(model):
@@ -199,11 +203,11 @@ def TestUnloadModel(model):
         "model": model,
     }
 
-    url_post = "http://127.0.0.1:"+ str(port) + "/inferences/server/unloadmodel"
+    url_post = "http://127.0.0.1:"+ str(port) + "/unloadmodel"
 
     res = RequestPost(new_data, url_post)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
 
 def TestLoadEmbeddingModel():
@@ -218,11 +222,11 @@ def TestLoadEmbeddingModel():
         "caching_enabled": False
     } 
 
-    url_post = "http://127.0.0.1:"+ str(port) + "/inferences/server/loadmodel"
+    url_post = "http://127.0.0.1:"+ str(port) + "/loadmodel"
 
     res = RequestPost(new_data, url_post)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
 
 def TestEmbeddings():
@@ -234,7 +238,7 @@ def TestEmbeddings():
     url_post = "http://127.0.0.1:"+ str(port) + "/v1/embeddings"
     res = RequestPost(new_data, url_post)
     if not res:
-        StopServer()
+        CleanUp()
         exit(1)
 
 TestLoadChatModel()
@@ -243,8 +247,7 @@ TestUnloadModel(LLM_MODEL)
 TestLoadEmbeddingModel()
 TestEmbeddings()
 TestUnloadModel(EMBED_MODEL)
-StopServer()
+CleanUp()
 
 with open('./test.log', 'r') as f:
     print(f.read())
-    
