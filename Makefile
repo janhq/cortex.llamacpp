@@ -96,13 +96,13 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "python -m pip install requests;"
 	@powershell -Command "mkdir -p examples\server\build\Release\engines\cortex.llamacpp; cd examples\server\build\Release; cp ..\..\..\..\build\Release\engine.dll engines\cortex.llamacpp; python ..\..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
-	python -n pip install requests;
+	python -m pip install requests;
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
 	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && python  ../../../.github/scripts/e2e-test-server.py ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
-	python -n pip install requests;
+	python -m pip install requests;
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
