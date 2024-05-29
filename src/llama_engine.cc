@@ -1,5 +1,6 @@
 #include "llama_engine.h"
 
+#include <chrono>
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
@@ -259,6 +260,10 @@ void LlamaEngine::GetModels(
     if (s.ctx.model_loaded_external) {
       Json::Value val;
       val["id"] = m;
+      val["engine"] = "cortex.llamacpp";
+      val["start_time"] = s.start_time;
+      val["vram"] = "-";
+      val["ram"] = "-";
       val["object"] = "model";
       model_array.append(val);
     }
@@ -397,6 +402,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
 
   server_map_[model_id].q = std::make_unique<trantor::ConcurrentTaskQueue>(
       params.n_parallel, model_id);
+  server_map_[model_id].start_time =
+      std::chrono::system_clock::now().time_since_epoch() /
+      std::chrono::milliseconds(1);
 
   // For model like nomic-embed-text-v1.5.f16.gguf, etc, we don't need to warm up model.
   // So we use this variable to differentiate with other models

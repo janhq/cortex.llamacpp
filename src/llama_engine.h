@@ -53,6 +53,9 @@ class LlamaEngine : public EngineI {
     int repeat_last_n;
     bool caching_enabled;
     std::string grammar_file_content;
+    uint64_t start_time;
+    uint32_t vram;
+    uint32_t dram;
   };
 
   // key: model_id, value: ServerInfo
