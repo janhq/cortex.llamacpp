@@ -1,6 +1,7 @@
 #include "llama_engine.h"
 
 #include <chrono>
+#include <fstream>
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
@@ -170,8 +171,8 @@ void LlamaEngine::LoadModel(
     return;
   }
 
-  if (auto si = server_map_.find(model_id);
-      si != server_map_.end() && si->second.ctx.model_loaded_external) {
+  auto si = server_map_.find(model_id);
+  if (si != server_map_.end() && si->second.ctx.model_loaded_external) {
     LOG_INFO << "Model already loaded";
     Json::Value jsonResp;
     jsonResp["message"] = "Model already loaded";
@@ -235,7 +236,8 @@ void LlamaEngine::GetModelStatus(
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
 
   auto model_id = llama_utils::GetModelId(*jsonBody);
-  if (auto is_loaded = CheckModelLoaded(callback, model_id); is_loaded) {
+  auto is_loaded = CheckModelLoaded(callback, model_id);
+  if (is_loaded) {
     // CheckModelLoaded gurantees that model_id exists in server_ctx_map;
     auto si = server_map_.find(model_id);
     Json::Value jsonResp;
@@ -255,13 +257,13 @@ void LlamaEngine::GetModels(
     std::shared_ptr<Json::Value> jsonBody,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   Json::Value json_resp;
-  Json::Value model_array(Json::arrayValue);
-  for (const auto& [m, s] : server_map_) {
-    if (s.ctx.model_loaded_external) {
+  Json::Value model_array = Json::arrayValue;
+  for (const auto& s : server_map_) {
+    if (s.second.ctx.model_loaded_external) {
       Json::Value val;
-      val["id"] = m;
+      val["id"] = s.first;
       val["engine"] = "cortex.llamacpp";
-      val["start_time"] = s.start_time;
+      val["start_time"] = s.second.start_time;
       val["vram"] = "-";
       val["ram"] = "-";
       val["object"] = "model";
@@ -320,8 +322,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
       LOG_ERROR << "Missing model path in request";
       return false;
     } else {
-      if (std::filesystem::exists(
-              std::filesystem::path(model_path.asString()))) {
+      auto exists = [](const std::string& name) {
+        std::ifstream f(name.c_str());
+        return f.good();
+      };
+      if (exists(model_path.asString())) {
         params.model = model_path.asString();
       } else {
         LOG_ERROR << "Could not find model in path " << model_path.asString();
@@ -556,7 +561,7 @@ void LlamaEngine::HandleInferenceImpl(
     LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
-  data["prompt"] = formatted_output; 
+  data["prompt"] = formatted_output;
   for (const auto& sw : stop_words_json) {
     stopWords.push_back(sw.asString());
   }
@@ -755,8 +760,8 @@ void LlamaEngine::HandleEmbeddingImpl(
 bool LlamaEngine::CheckModelLoaded(
     std::function<void(Json::Value&&, Json::Value&&)>& callback,
     const std::string& model_id) {
-  if (auto si = server_map_.find(model_id);
-      si == server_map_.end() || !si->second.ctx.model_loaded_external) {
+  auto si = server_map_.find(model_id);
+  if (si == server_map_.end() || !si->second.ctx.model_loaded_external) {
     LOG_WARN << "Error: model_id: " << model_id
              << ", existed: " << (si != server_map_.end())
              << ", loaded: " << false;
@@ -775,7 +780,8 @@ bool LlamaEngine::CheckModelLoaded(
 }
 
 void LlamaEngine::WarmUpModel(const std::string& model_id) {
-  if (auto si = server_map_.find(model_id); si != server_map_.end()) {
+  auto si = server_map_.find(model_id);
+  if (si != server_map_.end()) {
     json pseudo;
 
     LOG_INFO << "Warm-up model: " << model_id;
@@ -796,8 +802,8 @@ void LlamaEngine::WarmUpModel(const std::string& model_id) {
 
 bool LlamaEngine::ShouldInitBackend() const {
   // May have race condition here, need to check
-  for (auto& [_, l] : server_map_) {
-    if (l.ctx.model_loaded_external)
+  for (auto& s : server_map_) {
+    if (s.second.ctx.model_loaded_external)
       return false;
   }
   return true;

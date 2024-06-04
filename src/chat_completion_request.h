@@ -1,7 +1,8 @@
 #pragma once
 #include "json/value.h"
 
-namespace llama::inferences {
+namespace llama {
+namespace inferences {
 struct ChatCompletionRequest {
   bool stream = false;
   int max_tokens = 500;
@@ -31,4 +32,5 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
   }
   return completion;
 }
-}  // namespace llama::inferences
+}  // namespace inferences
+}  // namespace llama
