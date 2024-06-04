@@ -121,7 +121,7 @@ struct LlamaServerContext {
   int32_t n_ctx;  // total context for all clients / slots
 
   // Internal
-  std::atomic<bool> model_loaded_external = false;
+  std::atomic<bool> model_loaded_external{false};
 
   // system prompt
   bool system_need_update = false;
