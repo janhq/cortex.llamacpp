@@ -360,6 +360,8 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
         jsonBody->get("pre_prompt", "").asString();
     server_map_[model_id].repeat_last_n =
         jsonBody->get("repeat_last_n", 32).asInt();
+    server_map_[model_id].stop_words = (*jsonBody)["stop"];
+    LOG_DEBUG << "stop: " << server_map_[model_id].stop_words.toStyledString();
 
     if (!jsonBody->operator[]("llama_log_folder").isNull()) {
       log_enable();
@@ -448,8 +450,10 @@ void LlamaEngine::HandleInferenceImpl(
 
   // Passing load value
   data["repeat_last_n"] = si.repeat_last_n;
+  auto stop_words_json =
+      !si.stop_words.empty() ? si.stop_words : completion.stop;
   LOG_INFO << "Request " << request_id << ": "
-           << "Stop words:" << completion.stop.toStyledString();
+           << "Stop words:" << stop_words_json.toStyledString();
 
   data["stream"] = completion.stream;
   data["n_predict"] = completion.max_tokens;
@@ -552,9 +556,9 @@ void LlamaEngine::HandleInferenceImpl(
     LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
-  data["prompt"] = formatted_output;
-  for (const auto& stop_word : completion.stop) {
-    stopWords.push_back(stop_word.asString());
+  data["prompt"] = formatted_output; 
+  for (const auto& sw : stop_words_json) {
+    stopWords.push_back(sw.asString());
   }
   // specify default stop words
   // Ensure success case for chatML
@@ -758,7 +762,7 @@ bool LlamaEngine::CheckModelLoaded(
              << ", loaded: " << false;
     Json::Value jsonResp;
     jsonResp["message"] =
-        "Model has not been loaded, please load model into nitro";
+        "Model has not been loaded, please load model into cortex.llamacpp";
     Json::Value status;
     status["is_done"] = false;
     status["has_error"] = true;
