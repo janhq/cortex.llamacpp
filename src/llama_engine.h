@@ -56,6 +56,7 @@ class LlamaEngine : public EngineI {
     uint64_t start_time;
     uint32_t vram;
     uint32_t dram;
+    Json::Value stop_words;
   };
 
   // key: model_id, value: ServerInfo
