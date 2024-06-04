@@ -1,6 +1,7 @@
 # Makefile for Cortex llamacpp engine - Build, Lint, Test, and Clean
 
 CMAKE_EXTRA_FLAGS ?= ""
+CXX_VERSION ?= "-DCMAKE_CXX_STANDARD=14"
 RUN_TESTS ?= false
 LLM_MODEL_URL ?= "https://delta.jan.ai/tinyllama-1.1b-chat-v0.3.Q2_K.gguf"
 EMBEDDING_MODEL_URL ?= "https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf"
@@ -21,29 +22,29 @@ build-lib:
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "cmake -S ./third-party -B ./build_deps/third-party;"
 	@powershell -Command "cmake --build ./build_deps/third-party --config Release -j4;"
-	@powershell -Command "mkdir -p build; cd build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
+	@powershell -Command "mkdir -p build; cd build; cmake .. $(CXX_VERSION) $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)
 	@cmake -S ./third-party -B ./build_deps/third-party;
 	@make -C ./build_deps/third-party -j4;
 	@rm -rf ./build_deps/third-party;
 	@mkdir build && cd build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CXX_VERSION) $(CMAKE_EXTRA_FLAGS); \
 	make -j4;
 else
 	@cmake -S ./third-party -B ./build_deps/third-party
 	@make -C ./build_deps/third-party -j4
 	@rm -rf ./build_deps/third-party
 	@mkdir build && cd build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CXX_VERSION) $(CMAKE_EXTRA_FLAGS); \
 	make -j4;
 endif
 
 build-example-server: build-lib
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
+	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake .. $(CXX_VERSION) $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build && cd examples/server/build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CXX_VERSION) $(CMAKE_EXTRA_FLAGS); \
 	cmake --build . --config Release;
 else
 	@mkdir -p examples/server/build && cd examples/server/build; \

@@ -15,18 +15,9 @@ endif()
 
 include(CheckIncludeFileCXX)
 # CPP version
-# check_include_file_cxx(any HAS_ANY)
-# check_include_file_cxx(string_view HAS_STRING_VIEW)
-# check_include_file_cxx(coroutine HAS_COROUTINE)
-# if(HAS_ANY
-#   AND HAS_STRING_VIEW
-#   AND HAS_COROUTINE)
-#   set(CMAKE_CXX_STANDARD 20)
-# elseif(HAS_ANY AND HAS_STRING_VIEW)
-#   set(CMAKE_CXX_STANDARD 17)
-# else()
-set(CMAKE_CXX_STANDARD 14)
-# endif()
+check_include_file_cxx(any HAS_ANY)
+check_include_file_cxx(string_view HAS_STRING_VIEW)
+check_include_file_cxx(coroutine HAS_COROUTINE)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -58,3 +49,13 @@ target_include_directories(${TARGET} PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/base
             ${CMAKE_CURRENT_SOURCE_DIR}/llama.cpp 
             ${THIRD_PARTY_PATH}/include)
+
+if(HAS_ANY
+AND HAS_STRING_VIEW
+AND HAS_COROUTINE)
+  target_compile_features(${TARGET} PUBLIC cxx_std_20)
+elseif(HAS_ANY AND HAS_STRING_VIEW)
+  target_compile_features(${TARGET} PUBLIC cxx_std_17)
+else()
+  target_compile_features(${TARGET} PUBLIC cxx_std_14)
+endif()
