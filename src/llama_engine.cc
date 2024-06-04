@@ -451,7 +451,7 @@ void LlamaEngine::HandleInferenceImpl(
   // Passing load value
   data["repeat_last_n"] = si.repeat_last_n;
   auto stop_words_json =
-      !si.stop_words.empty() ? si.stop_words : completion.stop;
+      !completion.stop.empty() ? completion.stop : si.stop_words;
   LOG_INFO << "Request " << request_id << ": "
            << "Stop words:" << stop_words_json.toStyledString();
 
