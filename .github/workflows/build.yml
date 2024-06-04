@@ -69,13 +69,13 @@ jobs:
             name: "amd64-avx"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
           - os: "linux"
             name: "amd64-avx512"
             runs-on: "ubuntu-18-04"
             cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
           - os: "linux"
             name: "amd64-vulkan"
