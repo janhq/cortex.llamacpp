@@ -342,7 +342,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
 
     params.cache_type_k = jsonBody->get("cache_type_k", "f16").asString();
-    params.cache_type_v = jsonBody->get("cache_type_k", "f16").asString();
+    params.cache_type_v = jsonBody->get("cache_type_v", "f16").asString();
     LOG_DEBUG << "cache_type_k: " << params.cache_type_k
               << ", cache_type_v: " << params.cache_type_v;
 
