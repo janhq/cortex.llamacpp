@@ -341,6 +341,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
             .asInt();
     params.cont_batching = jsonBody->get("cont_batching", false).asBool();
 
+    params.cache_type_k = jsonBody->get("cache_type_k", "f16").asString();
+    params.cache_type_v = jsonBody->get("cache_type_k", "f16").asString();
+    LOG_DEBUG << "cache_type_k: " << params.cache_type_k
+              << ", cache_type_v: " << params.cache_type_v;
+
     // Check for backward compatible
     auto fa0 = jsonBody->get("flash-attn", false).asBool();
     auto fa1 = jsonBody->get("flash_attn", false).asBool();
@@ -348,6 +353,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     if (params.flash_attn) {
       LOG_DEBUG << "Enabled Flash Attention";
     }
+
     server_map_[model_id].caching_enabled =
         jsonBody->get("caching_enabled", false).asBool();
     server_map_[model_id].user_prompt =
@@ -556,7 +562,7 @@ void LlamaEngine::HandleInferenceImpl(
     LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
-  data["prompt"] = formatted_output; 
+  data["prompt"] = formatted_output;
   for (const auto& sw : stop_words_json) {
     stopWords.push_back(sw.asString());
   }
