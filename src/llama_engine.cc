@@ -374,7 +374,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> jsonBody) {
     }
 
     server_map_[model_id].caching_enabled =
-        jsonBody->get("caching_enabled", false).asBool();
+        jsonBody->get("caching_enabled", true).asBool();
     server_map_[model_id].user_prompt =
         jsonBody->get("user_prompt", "USER: ").asString();
     server_map_[model_id].ai_prompt =
