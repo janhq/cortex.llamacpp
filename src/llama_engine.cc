@@ -151,22 +151,7 @@ void LlamaEngine::HandleEmbedding(
 
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> jsonBody,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  if (!llama_utils::isAVX2Supported() && ggml_cpu_has_avx2()) {
-    LOG_ERROR << "AVX2 is not supported by your processor";
-    Json::Value jsonResp;
-    jsonResp["message"] =
-        "AVX2 is not supported by your processor, please download and replace "
-        "the correct Nitro asset version";
-    Json::Value status;
-    status["is_done"] = false;
-    status["has_error"] = true;
-    status["is_stream"] = false;
-    status["status_code"] = k500InternalServerError;
-    callback(std::move(status), std::move(jsonResp));
-    return;
-  }
-
+    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {           
   auto model_id = llama_utils::GetModelId(*jsonBody);
   if (model_id.empty()) {
     LOG_INFO << "Model id is empty in request";

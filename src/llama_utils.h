@@ -132,35 +132,6 @@ inline std::string generate_random_string(std::size_t length) {
   return random_string;
 }
 
-#if (defined(__GNUC__) || defined(__clang__)) && \
-    (defined(__x86_64__) || defined(__i386__))
-#include <cpuid.h>
-inline bool isAVX2Supported() {
-  unsigned eax, ebx, ecx, edx;
-  if (__get_cpuid_max(0, nullptr) < 7)
-    return false;
-
-  __get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx);
-  return (ebx & (1 << 5)) != 0;
-}
-#elif defined(_MSC_VER) && defined(_M_X64) || defined(_M_IX86)
-#include <intrin.h>
-inline bool isAVX2Supported() {
-  int cpuInfo[4];
-  __cpuid(cpuInfo, 0);
-  int nIds = cpuInfo[0];
-  if (nIds >= 7) {
-    __cpuidex(cpuInfo, 7, 0);
-    return (cpuInfo[1] & (1 << 5)) != 0;
-  }
-  return false;
-}
-#else
-inline bool isAVX2Supported() {
-  return false;
-}
-#endif
-
 inline void ltrim(std::string& s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
             return !std::isspace(ch);
