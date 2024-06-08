@@ -62,6 +62,6 @@ class LlamaEngine : public EngineI {
   // key: model_id, value: ServerInfo
   std::unordered_map<std::string, ServerInfo> server_map_;
 
-  std::atomic<int> no_of_requests_ = 0;
-  std::atomic<int> no_of_chats_ = 0;
+  std::atomic<int> no_of_requests_{0};
+  std::atomic<int> no_of_chats_{0};
 };

@@ -220,7 +220,7 @@ int main(int argc, char** argv) {
   svr->Post("/v1/embeddings", handle_embeddings);
   svr->Post("/modelstatus", handle_get_model_status);
   svr->Get("/models", handle_get_running_models);
-  std::atomic<bool> running = true;
+  std::atomic<bool> running{true};
   svr->Delete("/destroy",
             [&](const httplib::Request& req, httplib::Response& resp) {
               LOG_INFO << "Received Stop command";

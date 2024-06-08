@@ -11,8 +11,6 @@
 
 namespace llama_utils {
 
-inline std::string models_folder = "./models";
-
 inline std::string extractBase64(const std::string& input) {
   std::regex pattern("base64,(.*)");
   std::smatch match;
@@ -176,7 +174,8 @@ inline std::string GetModelId(const Json::Value& jsonBody) {
   }
 
   // We check llama_model_path for loadmodel request
-  if (auto input = jsonBody["llama_model_path"]; !input.isNull()) {
+  auto input = jsonBody["llama_model_path"];
+  if (!input.isNull()) {
     auto s = input.asString();
     std::replace(s.begin(), s.end(), '\\', '/');
     auto const pos = s.find_last_of('/');
