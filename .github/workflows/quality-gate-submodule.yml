@@ -68,13 +68,13 @@ jobs:
             vulkan: false
           - os: "windows"
             name: "amd64-avx2"
-            runs-on: "windows-latest"
+            runs-on: "windows-2019"
             cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
             run-e2e: true
             vulkan: false
           - os: "windows"
             name: "amd64-avx"
-            runs-on: "windows-latest"
+            runs-on: "windows-2019"
             cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
             run-e2e: true
             vulkan: false
@@ -86,7 +86,7 @@ jobs:
             vulkan: false
           - os: "windows"
             name: "amd64-vulkan"
-            runs-on: "windows-latest"
+            runs-on: "windows-2019"
             cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE"
             run-e2e: false
             vulkan: true
