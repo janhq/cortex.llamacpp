@@ -356,6 +356,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       LOG_DEBUG << "Enabled Flash Attention";
     }
 
+    params.use_mmap = json_body->get("use_mmap", true).asBool();
+    if (!params.use_mmap) {
+      LOG_DEBUG << "Disabled mmap";
+    }
+
     server_map_[model_id].caching_enabled =
         json_body->get("caching_enabled", true).asBool();
     server_map_[model_id].user_prompt =
