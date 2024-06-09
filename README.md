@@ -145,6 +145,6 @@ Table of parameters
 |`model_type` | String | Model type we want to use: llm or embedding, default value is llm|
 |`model_alias`| String | Used as model_id if specified in request, mandatory in loadmodel|
 |`model`      | String | Used as model_id if specified in request, mandatory in chat/embedding request|
-|`flash_attn` | Boolean| To enable Flash Attention, default is false|
+|`flash_attn` | Boolean| To enable Flash Attention, default is true|
 |`cache_type` | String| KV cache type: f16, q8_0, q4_0, default is f16|
 |`use_mmap` | Boolean| To enable mmap, default is true|
