@@ -147,3 +147,4 @@ Table of parameters
 |`model`      | String | Used as model_id if specified in request, mandatory in chat/embedding request|
 |`flash_attn` | Boolean| To enable Flash Attention, default is false|
 |`cache_type` | String| KV cache type: f16, q8_0, q4_0, default is f16|
+|`use_mmap` | Boolean| To enable mmap, default is true|
