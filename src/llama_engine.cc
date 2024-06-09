@@ -346,14 +346,12 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     params.cache_type_v = params.cache_type_k;
     LOG_DEBUG << "cache_type: " << params.cache_type_k;
 
-    // Check for backward compatible
-    auto fa0 = json_body->get("flash-attn", false).asBool();
-    auto fa1 = json_body->get("flash_attn", false).asBool();
+    auto fa = json_body->get("flash_attn", true).asBool();
     auto force_enable_fa = params.cache_type_k != kTypeF16;
     if (force_enable_fa) {
       LOG_DEBUG << "Using KV cache quantization, force enable Flash Attention";
     }
-    params.flash_attn = fa0 || fa1 || force_enable_fa;
+    params.flash_attn = fa || force_enable_fa;
     if (params.flash_attn) {
       LOG_DEBUG << "Enabled Flash Attention";
     }
