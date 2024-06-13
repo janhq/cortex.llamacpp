@@ -210,7 +210,7 @@ jobs:
       - name: Install choco on Windows
         if: runner.os == 'Windows'
         run: |
-          choco install make sccache -y
+          choco install make sccache ninja -y
 
       - name: start scache server
         if: ${{ matrix.sccache }}
