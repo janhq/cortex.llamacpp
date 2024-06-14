@@ -19,7 +19,7 @@ all:
 # Build the Cortex engine
 build-lib:
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "cmake -S ./third-party -B ./build_deps/third-party -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja;"
+	@powershell -Command "cmake -S ./third-party -B ./build_deps/third-party -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -GNinja;"
 	@powershell -Command "cmake --build ./build_deps/third-party --config Release -j4;"
 	@powershell -Command "mkdir -p build; cd build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)

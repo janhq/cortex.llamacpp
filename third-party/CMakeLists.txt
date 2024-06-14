@@ -21,6 +21,7 @@ ExternalProject_Add(
 	    -DCARES_STATIC=ON
       -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     	-DCMAKE_INSTALL_PREFIX=${THIRD_PARTY_INSTALL_PATH}
+      -DCMAKE_BUILD_TYPE=Release
 )
 
 ExternalProject_Add(
@@ -32,6 +33,7 @@ ExternalProject_Add(
       -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
       -DCMAKE_PREFIX_PATH=${THIRD_PARTY_INSTALL_PATH}
     	-DCMAKE_INSTALL_PREFIX=${THIRD_PARTY_INSTALL_PATH}
+      -DCMAKE_BUILD_TYPE=Release
 )
 
 ExternalProject_Add(
@@ -42,6 +44,7 @@ ExternalProject_Add(
     	-DBUILD_SHARED_LIBS=OFF
       -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
     	-DCMAKE_INSTALL_PREFIX=${THIRD_PARTY_INSTALL_PATH}
+      -DCMAKE_BUILD_TYPE=Release
 )
 
 add_dependencies(trantor c-ares)
