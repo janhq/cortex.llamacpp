@@ -48,4 +48,6 @@ RUN Copy-Item -Path 'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.0\ex
 
 
 ADD runner.ps1 C:/runner.ps1
-CMD ["pwsh", "-ExecutionPolicy", "Unrestricted", "-File", ".\\runner.ps1"]
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+ENTRYPOINT ["C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\Tools\\VsDevCmd.bat", "-arch=amd64", "&&", "powershell.exe", "-NoLogo", "-ExecutionPolicy", "Bypass"]
+CMD ["powershell.exe", "-ExecutionPolicy", "Unrestricted", "-File", ".\\runner.ps1"]
