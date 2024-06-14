@@ -3,6 +3,8 @@ name: CI Quality Gate
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    branches-ignore:
+      - update-submodule-*
   workflow_dispatch:
 
 env:
@@ -11,7 +13,6 @@ env:
 
 jobs:
   build-and-test:
-    if: ${{ ! startsWith(github.head_ref, 'update-submodule') }}
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 60
     strategy:
@@ -195,7 +196,7 @@ jobs:
 
       - name: Add msbuild to PATH
         if: runner.os == 'Windows'
-        uses: microsoft/setup-msbuild@v2
+        uses: ilammy/msvc-dev-cmd@v1.13.0
 
       - name: start scache server
         if: ${{ matrix.sccache }}
