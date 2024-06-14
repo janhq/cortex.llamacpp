@@ -93,7 +93,7 @@ ifeq ($(RUN_TESTS),false)
 	@exit 0
 endif
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\..\build\engine.dll engines\cortex.llamacpp; ..\..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; ..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
@@ -114,7 +114,7 @@ endif
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "python -m pip install --upgrade pip"
 	@powershell -Command "python -m pip install requests;"
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\..\build\engine.dll engines\cortex.llamacpp; python ..\..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; python ..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	python -m pip install --upgrade pip;
 	python -m pip install requests;
