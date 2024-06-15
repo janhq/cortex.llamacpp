@@ -22,6 +22,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: recursive
+        ref: main
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
@@ -85,19 +86,20 @@ jobs:
       run: |
         pr_number=${{ needs.update-submodule.outputs.pr_number }}
         while true; do
-          ci_status=$(gh pr checks $pr_number --json status --jq '.[0].status')
-          if [[ "$ci_status" == "completed" ]]; then
-            ci_conclusion=$(gh pr checks $pr_number --json conclusion --jq '.[0].conclusion')
-            if [[ "$ci_conclusion" == "success" ]]; then
-              echo "CI passed, merging PR..."
-              break
-            else
-              echo "CI failed, exiting..."
-              exit 1
-            fi
-          else
+          ci_completed=$(gh pr checks $pr_number --json completedAt --jq '.[].completedAt')
+          if echo "$ci_completed" | grep -q "0001-01-01T00:00:00Z"; then
             echo "CI is still running, waiting..."
             sleep 60
+          else
+            echo "CI has completed, checking states..."
+            ci_states=$(gh pr checks $pr_number --json state --jq '.[].state')
+            if echo "$ci_states" | grep -vqE "SUCCESS|SKIPPED"; then
+              echo "CI failed, exiting..."
+              exit 1
+            else
+              echo "CI passed, merging PR..."
+              break
+            fi
           fi
         done
 
@@ -106,7 +108,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_SERVICE_ACCOUNT }}
       run: |
         pr_number=${{ needs.update-submodule.outputs.pr_number }}
-        gh pr merge $pr_number --merge
+        gh pr merge $pr_number --merge --admin
 
   create-tag:
     needs: [update-submodule, check-and-merge-pr]
@@ -117,6 +119,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         submodules: recursive
+        ref: main
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
