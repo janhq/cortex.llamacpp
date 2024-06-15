@@ -1,0 +1,260 @@
+name: CI Quality Gate Submodule
+
+on:
+  workflow_call:
+    secrets:
+      MINIO_BUCKET_NAME:
+        required: false
+      MINIO_REGION:
+        required: false
+      MINIO_ENDPOINT:
+        required: false
+      MINIO_ACCESS_KEY_ID:
+        required: false
+      MINIO_SECRET_ACCESS_KEY:
+        required: false
+
+env:
+  LLM_MODEL_URL: https://huggingface.co/TheBloke/Mistral-7B-Instruct-v0.2-GGUF/resolve/main/mistral-7b-instruct-v0.2.Q4_K_M.gguf
+  EMBEDDING_MODEL_URL: https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.runs-on }}
+    if: startsWith(github.head_ref, 'update-submodule')
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: "linux"
+            name: "amd64-avx2"
+            runs-on: "ubuntu-18-04"
+            cmake-flags: "-DLLAMA_NATIVE=OFF"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
+            name: "amd64-avx"
+            runs-on: "ubuntu-18-04"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
+            name: "amd64-avx512"
+            runs-on: "ubuntu-18-04"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
+            name: "amd64-vulkan"
+            runs-on: "ubuntu-18-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF"
+            run-e2e: false
+            vulkan: true
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
+            name: "amd64-cuda-11-7"
+            runs-on: "ubuntu-18-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
+            name: "amd64-cuda-12-0"
+            runs-on: "ubuntu-18-04-cuda-12-0"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "mac"
+            name: "amd64"
+            runs-on: "macos-13"
+            cmake-flags: "-DLLAMA_METAL=OFF"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "mac"
+            name: "arm64"
+            runs-on: "macos-silicon"
+            cmake-flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-avx2"
+            runs-on: "windows-2019"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-avx"
+            runs-on: "windows-2019"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-avx512"
+            runs-on: "windows-2019"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-vulkan"
+            runs-on: "windows-2019"
+            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            run-e2e: false
+            vulkan: true
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-avx2-cuda-12-0"
+            runs-on: "windows-cuda-12-0"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx-cuda-12-0"
+            runs-on: "windows-cuda-12-0"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx512-cuda-12-0"
+            runs-on: "windows-cuda-12-0"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx2-cuda-11-7"
+            runs-on: "windows-cuda-11-7"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx-cuda-11-7"
+            runs-on: "windows-cuda-11-7"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx512-cuda-11-7"
+            runs-on: "windows-cuda-11-7"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: 'C:\sccache.conf'
+
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Prepare Vulkan SDK
+        if: ${{ matrix.vulkan }}
+        uses: humbletim/setup-vulkan-sdk@v1.2.0
+        with:
+          vulkan-query-version: 1.3.275.0
+          vulkan-components: Vulkan-Headers, Vulkan-Loader
+          vulkan-use-cache: true
+      - name: create sccache.conf
+        if: ${{ matrix.sccache }}
+        run: |
+          echo "[cache.s3]" > ${{ matrix.sccache-conf-path }}
+          echo 'bucket = "${{ secrets.MINIO_BUCKET_NAME }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'endpoint = "${{ secrets.MINIO_ENDPOINT }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'key_prefix = "${{ matrix.os }}-${{ matrix.name }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'use_ssl = false' >> ${{ matrix.sccache-conf-path }}
+          echo 'server_side_encryption = false' >> ${{ matrix.sccache-conf-path }}
+          echo 'no_credentials = false' >> ${{ matrix.sccache-conf-path }}
+
+      - name: Install choco on Windows
+        if: runner.os == 'Windows'
+        run: |
+          choco install make sccache ninja -y
+
+      - name: Add msbuild to PATH
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+
+      - name: start scache server
+        if: ${{ matrix.sccache }}
+        run: |
+          sccache --start-server
+        env:
+          SCCACHE_BUCKET: "${{ secrets.MINIO_BUCKET_NAME }}"
+          SCCACHE_REGION: "${{ secrets.MINIO_REGION }}"
+          SCCACHE_ENDPOINT: "${{ secrets.MINIO_ENDPOINT }}"
+          SCCACHE_S3_USE_SSL: "false"
+          SCCACHE_S3_SERVER_SIDE_ENCRYPTION: "false"
+          SCCACHE_S3_KEY_PREFIX: "${{ matrix.os }}-${{ matrix.name }}"
+          SCCACHE_LOG: "debug"
+          SCCACHE_CONF: '${{ matrix.sccache-conf-path }}'
+          AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
+          AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
+          SCCACHE_IDLE_TIMEOUT: "0"
+
+      - name: Build
+        run: |
+          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+      
+      - name: Pre Package
+        run: |
+          make pre-package
+
+      - name: Package
+        run: |
+          make package
+      
+      - name: Install Python
+        if: ${{matrix.run-e2e}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10' 
+
+      - name: Run e2e submodule testing
+        if: ${{ matrix.run-e2e }}
+        run: |
+          make run-e2e-submodule-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: cortex.llamacpp-${{ matrix.os }}-${{ matrix.name }}
+          path: ./cortex.llamacpp
+
+      - name: Clean
+        if: always()
+        continue-on-error: true
+        run: |
+          sccache --stop-server
+          rm ${{ matrix.sccache-conf-path }}

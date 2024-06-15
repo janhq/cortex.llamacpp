@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         fetch-depth: 0
@@ -73,11 +73,15 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
+        submodules: recursive
+        fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
     - name: Wait for CI to pass
+      env:
+          GITHUB_TOKEN: ${{ secrets.PAT_SERVICE_ACCOUNT }}
       run: |
         pr_number=${{ needs.update-submodule.outputs.pr_number }}
         while true; do
@@ -98,6 +102,8 @@ jobs:
         done
 
     - name: Merge the PR
+      env:
+          GITHUB_TOKEN: ${{ secrets.PAT_SERVICE_ACCOUNT }}
       run: |
         pr_number=${{ needs.update-submodule.outputs.pr_number }}
         gh pr merge $pr_number --merge
@@ -108,9 +114,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
+        submodules: recursive
+        fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
+
+    - name: Configure Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
     - name: Create and push a new tag
       run: |
