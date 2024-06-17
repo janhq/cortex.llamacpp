@@ -146,8 +146,11 @@ inline std::string GetModelId(const Json::Value& jsonBody) {
     return jsonBody["model_alias"].asString();
   }
 
-  // We check llama_model_path for loadmodel request
-  if (auto input = jsonBody["llama_model_path"]; !input.isNull()) {
+  // We check llama_model_path and model_path for loadmodel request
+  auto input_v0 = jsonBody["llama_model_path"];
+  auto input_v1 = jsonBody["model_path"];
+  auto input = input_v0.isNull() ? input_v1 : input_v0;
+  if (!input.isNull()) {
     auto s = input.asString();
     std::replace(s.begin(), s.end(), '\\', '/');
     auto const pos = s.find_last_of('/');
