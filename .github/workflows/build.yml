@@ -354,6 +354,13 @@ jobs:
           asset_path: ./cortex.llamacpp.tar.gz
           asset_name: cortex.llamacpp-${{ needs.create-draft-release.outputs.version }}-${{ matrix.os }}-${{ matrix.name }}.tar.gz
           asset_content_type: application/gzip
+
+      - name: Clean
+        if: always()
+        continue-on-error: true
+        run: |
+          sccache --stop-server
+          rm ${{ matrix.sccache-conf-path }}
   update_release_draft:
     needs: [build-and-test]
     permissions:
