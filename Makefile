@@ -28,7 +28,7 @@ else ifeq ($(shell uname -s),Linux)
 	@rm -rf ./build_deps/third-party;
 	@mkdir build && cd build; \
 	cmake .. $(CMAKE_EXTRA_FLAGS); \
-	make -j4;
+	cmake --build . --config Release --parallel 4;
 else
 	@cmake -S ./third-party -B ./build_deps/third-party
 	@make -C ./build_deps/third-party -j4

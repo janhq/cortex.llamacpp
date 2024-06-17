@@ -62,52 +62,84 @@ jobs:
         include:
           - os: "linux"
             name: "amd64-avx2"
-            runs-on: "ubuntu-18-04"
-            cmake-flags: "-DLLAMA_NATIVE=OFF"
+            runs-on: "ubuntu-20-04"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: true
             vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
             name: "amd64-avx"
-            runs-on: "ubuntu-18-04"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF"
+            runs-on: "ubuntu-20-04"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
             name: "amd64-avx512"
-            runs-on: "ubuntu-18-04"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF"
+            runs-on: "ubuntu-20-04"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
             name: "amd64-vulkan"
-            runs-on: "ubuntu-18-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF"
+            runs-on: "ubuntu-20-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: true
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
-            name: "amd64-cuda-11-7"
-            runs-on: "ubuntu-18-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+            name: "amd64-avx2-cuda-11-7"
+            runs-on: "ubuntu-20-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
-            name: "amd64-cuda-12-0"
-            runs-on: "ubuntu-18-04-cuda-12-0"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
+            name: "amd64-avx-cuda-11-7"
+            runs-on: "ubuntu-20-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
+            name: "amd64-avx512-cuda-11-7"
+            runs-on: "ubuntu-20-04-cuda-11-7"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
+            name: "amd64-avx2-cuda-12-0"
+            runs-on: "ubuntu-20-04-cuda-12-0"
+            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
+            name: "amd64-avx-cuda-12-0"
+            runs-on: "ubuntu-20-04-cuda-12-0"
+            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
+            name: "amd64-avx512-cuda-12-0"
+            runs-on: "ubuntu-20-04-cuda-12-0"
+            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: false
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           - os: "mac"
             name: "amd64"
             runs-on: "macos-13"
@@ -252,6 +284,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           choco install make sccache ninja -y
+
+      - name: Install ninja build on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ninja-build -y
 
       - name: Add msbuild to PATH
         if: runner.os == 'Windows'
