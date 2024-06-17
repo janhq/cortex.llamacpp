@@ -92,6 +92,14 @@ jobs:
             sccache: false
             sccache-conf-path: ""
           - os: "linux"
+            name: "amd64-intel-mkl"
+            runs-on: "ubuntu-22-04-oneapi-2024-1"
+            cmake-flags: "-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=Intel10_64lp -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_NATIVE=ON"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "linux"
             name: "amd64-cuda-11-7"
             runs-on: "ubuntu-18-04-cuda-11-7"
             cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON"
