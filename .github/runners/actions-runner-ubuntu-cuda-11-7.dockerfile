@@ -1,7 +1,6 @@
 # Use NVIDIA CUDA 12.0.0 development image with Ubuntu 18.04 as the base
-FROM nvidia/cuda:11.7.1-devel-ubuntu18.04
+FROM nvidia/cuda:11.7.1-devel-ubuntu20.04
 
-ARG RUNNER_VERSION=2.311.0
 # Docker and Docker Compose arguments
 
 # Use 1001 and 121 for compatibility with GitHub-hosted runners
@@ -43,12 +42,20 @@ RUN apt-get update -y \
     wget \
     lsb-release \
     openssl \
+    libssl-dev \
     manpages-dev \
     zip \
     zstd \
+    pkg-config \
+    ccache \
+    cargo \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip \
     && rm -rf /var/lib/apt/lists/*
+
+RUN cargo install sccache --locked
+
+RUN chmod +x /root/.cargo/bin/sccache && cp /root/.cargo/bin/sccache /usr/local/bin/sccache
 
 # Add Kitware's APT repository for CMake
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
@@ -84,6 +91,8 @@ RUN adduser --disabled-password --gecos "" --uid $RUNNER_UID runner \
 
 ENV HOME=/home/runner
 
+ARG RUNNER_VERSION=2.317.0
+
 # cd into the user directory, download and unzip the github actions runner
 RUN cd /home/runner && mkdir actions-runner && cd actions-runner \
     && curl -O -L https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz \
@@ -91,13 +100,13 @@ RUN cd /home/runner && mkdir actions-runner && cd actions-runner \
 
 RUN chown -R runner:runner /home/runner && /home/runner/actions-runner/bin/installdependencies.sh
 
-ADD start.sh start.sh
+ADD ./start.sh /home/runner/start.sh
 
-RUN chmod +x start.sh
+RUN chmod +x /home/runner/start.sh
 
 # Add /usr/local/cuda-11.7/compat to LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/local/cuda-11.7/compat${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
 
-USER runner
+ENTRYPOINT ["/bin/bash", "/home/runner/start.sh"]
 
-ENTRYPOINT ["./start.sh"]
+USER runner

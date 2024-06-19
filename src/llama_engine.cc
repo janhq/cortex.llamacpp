@@ -311,7 +311,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       }
     };
 
-    Json::Value model_path = json_body->operator[]("llama_model_path");
+    Json::Value model_path_v0 = json_body->operator[]("llama_model_path");
+    Json::Value model_path_v1 = json_body->operator[]("model_path");
+    auto model_path = model_path_v0.isNull() ? model_path_v1 : model_path_v0;
     if (model_path.isNull()) {
       LOG_ERROR << "Missing model path in request";
       return false;
