@@ -75,15 +75,7 @@ wget -O llama-2-7b-model.gguf https://huggingface.co/TheBloke/Llama-2-7B-Chat-GG
   cp ../../build/libengine.dylib engines/cortex.llamacpp/
   ./server
   ```
-
-- **On MacOS and Linux:**
-
-  ```bash
-  mkdir engines\cortex.llamacpp\
-  cp ../../build/libengine.so engines/cortex.llamacpp/
-  ./server
-  ```
-
+  
 - **On Windows:**
 
   ```bash
