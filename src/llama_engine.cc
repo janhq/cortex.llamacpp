@@ -533,7 +533,7 @@ void LlamaEngine::HandleInferenceImpl(
               LOG_INFO << "Request " << request_id << ": "
                        << "Base64 image detected";
               base64_image_data = llama_utils::extractBase64(image_url);
-              LOG_INFO << "Request " << request_id << ": " << base64_image_data;
+              // LOG_INFO << "Request " << request_id << ": " << base64_image_data;
             } else {
               LOG_INFO << "Request " << request_id << ": "
                        << "Local image detected";
