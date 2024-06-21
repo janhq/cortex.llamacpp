@@ -533,7 +533,7 @@ void LlamaEngine::HandleInferenceImpl(
               LOG_INFO << "Request " << request_id << ": "
                        << "Base64 image detected";
               base64_image_data = llama_utils::extractBase64(image_url);
-              LOG_INFO << "Request " << request_id << ": " << base64_image_data;
+              // LOG_INFO << "Request " << request_id << ": " << base64_image_data;
             } else {
               LOG_INFO << "Request " << request_id << ": "
                        << "Local image detected";
@@ -541,7 +541,7 @@ void LlamaEngine::HandleInferenceImpl(
                   image_url, [&](const std::string& base64Image) {
                     base64_image_data = base64Image;
                   });
-              LOG_INFO << "Request " << request_id << ": " << base64_image_data;
+              // LOG_INFO << "Request " << request_id << ": " << base64_image_data;
             }
             content_piece_image_data["data"] = base64_image_data;
 
@@ -568,7 +568,7 @@ void LlamaEngine::HandleInferenceImpl(
       }
     }
     formatted_output += si.ai_prompt;
-    LOG_INFO << "Request " << request_id << ": " << formatted_output;
+    // LOG_INFO << "Request " << request_id << ": " << formatted_output;
   }
 
   data["prompt"] = formatted_output;

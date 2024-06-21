@@ -132,6 +132,13 @@ inline json probs_vector_to_json(
   return out;
 }
 
+bool IsLlava_1_6(const std::string& model) {
+  if (model.find("llava-v1.6") != std::string::npos) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 LlamaServerContext::~LlamaServerContext() {
@@ -156,9 +163,15 @@ bool LlamaServerContext::LoadModel(const gpt_params& params_) {
       return false;
     }
 
-    if (params.n_ctx <
-        2048) {  // request larger context for the image embedding
+    // https://github.com/ggerganov/llama.cpp/blob/master/examples/llava/README.md
+    // note llava-1.6 needs more context than llava-1.5, at least 3000 is needed (just run it at -c 4096)
+    if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {      
+      params.n_ctx = 4096;
+      LOG_DEBUG << "Request " << params.n_ctx << " for context length for llava-1.6";
+    } else if (params.n_ctx <
+               2048) {  // request larger context for the image embedding
       params.n_ctx = 2048;
+      LOG_DEBUG << "Request " << params.n_ctx << " for context length for the image embedding";
     }
   }
 
