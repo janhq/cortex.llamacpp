@@ -349,6 +349,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     LOG_DEBUG << "cache_type: " << params.cache_type_k;
 
     auto fa = json_body->get("flash_attn", true).asBool();
+#if defined(LLAMA_VULKAN)
+    fa = false;
+#endif
     auto force_enable_fa = params.cache_type_k != kTypeF16;
     if (force_enable_fa) {
       LOG_DEBUG << "Using KV cache quantization, force enable Flash Attention";
