@@ -165,13 +165,15 @@ bool LlamaServerContext::LoadModel(const gpt_params& params_) {
 
     // https://github.com/ggerganov/llama.cpp/blob/master/examples/llava/README.md
     // note llava-1.6 needs more context than llava-1.5, at least 3000 is needed (just run it at -c 4096)
-    if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {      
+    if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {
       params.n_ctx = 4096;
-      LOG_DEBUG << "Request " << params.n_ctx << " for context length for llava-1.6";
+      LOG_DEBUG << "Request " << params.n_ctx
+                << " for context length for llava-1.6";
     } else if (params.n_ctx <
                2048) {  // request larger context for the image embedding
       params.n_ctx = 2048;
-      LOG_DEBUG << "Request " << params.n_ctx << " for context length for the image embedding";
+      LOG_DEBUG << "Request " << params.n_ctx
+                << " for context length for the image embedding";
     }
   }
 
@@ -263,6 +265,10 @@ json LlamaServerContext::GetModelProps() {
 
 int LlamaServerContext::RequestCompletion(json data, bool infill,
                                           bool embedding, int multitask_id) {
+  // From this commit: 'llama : allow pooled embeddings on any model (#7477)'
+  // we need to explicitly set embedding flad for each request
+  llama_set_embeddings(ctx, embedding);
+  
   TaskServer task;
   task.id = id_gen++;
   task.target_id = 0;

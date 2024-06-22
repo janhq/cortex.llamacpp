@@ -112,7 +112,7 @@ def TestLoadChatModel():
         "prompt_template": "[INST] {prompt} [/INST]",
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
-        "ngl": 32,
+        "ngl": 33,
         "caching_enabled": True
     }
 
