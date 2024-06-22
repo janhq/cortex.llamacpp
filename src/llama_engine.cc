@@ -328,7 +328,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 
     params.n_gpu_layers = json_body->get("ngl", 100).asInt();
     params.n_ctx = json_body->get("ctx_len", 2048).asInt();
-    params.embedding = json_body->get("embedding", true).asBool();
+    params.embedding = json_body->get("embedding", false).asBool();
     model_type = json_body->get("model_type", "llm").asString();
     params.n_batch = json_body->get("n_batch", 2048).asInt();
     params.n_ubatch = json_body->get("n_ubatch", params.n_batch).asInt();

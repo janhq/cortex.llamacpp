@@ -112,7 +112,7 @@ def TestLoadChatModel():
         "prompt_template": "[INST] {prompt} [/INST]",
         "llama_model_path": cwd + "/" + LLM_MODEL + '.gguf',
         "model_alias": LLM_MODEL,
-        "ngl": 32,
+        "ngl": 33,
         "caching_enabled": True
     }
 
@@ -173,6 +173,18 @@ def TestChatCompletion():
     }
 
     res = RequestPost(new_data, url_post, True)
+    if not res:
+        CleanUp()
+        exit(1)
+
+def TestLlmEmbeddings():
+    new_data = {
+        "input": "This PDFs was created using Microsoft Word using the print to PDF function. True PDFs consist of both text and images. We should think about these PDFs having two layers – one layer  is the image and a second layer is the text. The image layer shows what the document will look  like if it is printed to paper. The text layer is searchable text that is carried over from the original Word file into the new PDF file (the technical term for this layer is “extracted text”). There is no need to make it searchable and the new PDF will have the same text as the original Word file. An example of True PDFs that federal defenders and CJA panel attorneys will be familiar with are the pleadings filed in CM/ECF. The pleading is originally created in Word, but then the attorney either saves it as PDF or prints to PDF and they file that PDF document with the court. Using either process, there is now a PDF file created with an image layer plus text layer. In terms of usability, this is the best type of PDF to receive in discovery as it will have the closest to text searchability of the original file",
+        "model": LLM_MODEL,
+        "encoding_format": "float"
+    }
+    url_post = "http://127.0.0.1:"+ str(port) + "/v1/embeddings"
+    res = RequestPost(new_data, url_post)
     if not res:
         CleanUp()
         exit(1)
@@ -255,6 +267,7 @@ if not os.path.isfile(EMBED_FILE_TO_SAVE):
 
 TestLoadChatModel()
 TestChatCompletion()
+TestLlmEmbeddings()
 TestUnloadModel(LLM_MODEL)
 TestLoadEmbeddingModel()
 TestEmbeddings()
