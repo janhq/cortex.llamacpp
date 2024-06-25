@@ -264,11 +264,7 @@ json LlamaServerContext::GetModelProps() {
 }
 
 int LlamaServerContext::RequestCompletion(json data, bool infill,
-                                          bool embedding, int multitask_id) {
-  // From this commit: 'llama : allow pooled embeddings on any model (#7477)'
-  // we need to explicitly set embedding flad for each request
-  llama_set_embeddings(ctx, embedding);
-  
+                                          bool embedding, int multitask_id) { 
   TaskServer task;
   task.id = id_gen++;
   task.target_id = 0;
