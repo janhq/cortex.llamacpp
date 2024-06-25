@@ -68,7 +68,7 @@ wget -O llama-2-7b-model.gguf https://huggingface.co/TheBloke/Llama-2-7B-Chat-GG
 ```
 
 **Step 2: Start server**
-- **On MacOS and Linux:**
+- **On MacOS:**
 
   ```bash
   mkdir engines\cortex.llamacpp\
@@ -76,7 +76,7 @@ wget -O llama-2-7b-model.gguf https://huggingface.co/TheBloke/Llama-2-7B-Chat-GG
   ./server
   ```
 
-- **On MacOS and Linux:**
+- **On Linux:**
 
   ```bash
   mkdir engines\cortex.llamacpp\
