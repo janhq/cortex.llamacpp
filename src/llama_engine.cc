@@ -452,7 +452,7 @@ void LlamaEngine::HandleInferenceImpl(
   int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ", " << "model "
            << completion.model_id << ": "
-           << "Generating reponse for inference request";
+           << "Generating response for inference request";
 
   json data;
   json stopWords;
@@ -715,12 +715,12 @@ void LlamaEngine::HandleEmbeddingImpl(
   assert(server_map_.find(model_id) != server_map_.end());
   int request_id = ++no_of_requests_;
   LOG_INFO << "Request " << request_id << ", " << "model " << model_id << ": "
-           << "Generating reponse for embedding request";
+           << "Generating response for embedding request";
   // Queue embedding task
   auto state = CreateInferenceState(server_map_[model_id].ctx);
 
   server_map_[model_id].q->runTaskInQueue([this, state, json_body, callback,
-                                           request_id]() {
+                                           request_id, mid = std::move(model_id)]() {
     Json::Value responseData(Json::arrayValue);
 
     if (json_body->isMember("input")) {
@@ -750,7 +750,7 @@ void LlamaEngine::HandleEmbeddingImpl(
 
     Json::Value root;
     root["data"] = responseData;
-    root["model"] = "_";
+    root["model"] = mid;
     root["object"] = "list";
     Json::Value usage;
     usage["prompt_tokens"] = 0;
