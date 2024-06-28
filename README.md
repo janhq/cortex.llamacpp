@@ -56,7 +56,7 @@ If you don't have git, you can download the source code as a file archive from [
 - **On Linux with CUDA:**
 
   ```bash
-  make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_CUDA=ON"
+  make build-example-server CMAKE_EXTRA_FLAGS="-DGGML_CUDA=ON"
   ```
 
 # Quickstart
