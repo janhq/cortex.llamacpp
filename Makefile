@@ -40,10 +40,10 @@ endif
 
 build-example-server: build-lib
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake ..; cmake --build . --config Release;"
+	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build && cd examples/server/build; \
-	cmake ..; \
+	cmake .. $(CMAKE_EXTRA_FLAGS); \
 	cmake --build . --config Release;
 else
 	@mkdir -p examples/server/build && cd examples/server/build; \
