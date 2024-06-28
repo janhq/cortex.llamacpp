@@ -206,7 +206,7 @@ jobs:
           - os: "windows"
             name: "amd64-avx2-rocm"
             runs-on: "windows-2019" # windows-amd
-            cmake-flags: '-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DCMAKE_C_COMPILER="${env:HIP_PATH}\bin\clang.exe" -DCMAKE_CXX_COMPILER="${env:HIP_PATH}\bin\clang++.exe"'
+            cmake-flags: -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DCMAKE_C_COMPILER="${env:HIP_PATH}\bin\clang.exe" -DCMAKE_CXX_COMPILER="${env:HIP_PATH}\bin\clang++.exe"
             run-e2e: false
             vulkan: false
             rocm: true
@@ -316,7 +316,7 @@ jobs:
         run: |
           $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
           $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
-          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+          make build-example-server CMAKE_EXTRA_FLAGS='${{ matrix.cmake-flags }}'
 
       - name: Build
         if: ${{ !matrix.rocm }}
