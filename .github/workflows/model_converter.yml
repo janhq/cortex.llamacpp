@@ -1,0 +1,113 @@
+name: llama.cpp GGUF
+
+on:
+  workflow_dispatch:
+    inputs:
+      hf_original_model_id:
+        description: "HuggingFace original model ID"
+        required: true
+        type: string
+      model_size:
+        description: "The model size"
+        required: true
+        type: string
+      hf_target_model_id:
+        description: "HuggingFace target model ID"
+        required: true
+        type: string
+
+  push:
+    branches:
+    - feat/model_converter_ci
+
+env:
+  USER_NAME: cortexhub
+  MODEL_ID: meta-llama/Meta-Llama-3-8B-Instruct # ${{ inputs.hf_model_id }}
+  MODEL_SIZE: 8B #${{ inputs.model_size }}
+  TARGET_MODEL_ID: llama3_test #${{ inputs.hf_target_model_id }}
+  QUANTIZATION_METHOD: "Q4_K_M"
+  HF_CACHE_DIR_LINUX: 
+
+jobs:
+  converter:
+    runs-on: linux-cpu
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install python dependencies
+        shell: bash
+        run: |
+          pip install huggingface_hub hf-transfer fire
+
+      - name: Misc. env vars
+        shell: bash
+        run: |
+          echo "Model ID: ${{ env.MODEL_ID }}"
+          echo "Quantization: ${{ env.QUANTIZATION_METHOD }}"
+
+          MODEL_ID=${{ env.MODEL_ID }}
+          IFS='/' read -ra ADDR <<< "$MODEL_ID"
+          ADDR_LENGTH=${#ADDR[@]}
+
+          MODEL_NAME="${ADDR[$ADDR_LENGTH-1]}"
+          if [[ "$MODEL_NAME" != "${MODEL_NAME,,}" ]]; then
+            lowercase_model_name=$(echo "$MODEL_NAME" | tr '[:upper:]' '[:lower:]')
+          else
+            lowercase_model_name="$MODEL_NAME"
+          fi
+          echo "MODEL_NAME=$lowercase_model_name" >> $GITHUB_ENV
+
+          bf16="${lowercase_model_name}.bf16.bin"
+          echo "bf16=$bf16" >> $GITHUB_ENV
+
+      - name: Install llama.cpp dependencies
+        shell: bash
+        run: |
+          cd llama.cpp/ 
+          make clean
+          make
+          pip install -r requirements.txt
+
+      - name: Download HF model
+        shell: bash
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
+          HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download --repo-type model --local-dir ./models ${{ env.MODEL_ID }}
+          huggingface-cli logout
+
+      - name: Convert to bf16
+        shell: bash
+        run: |
+          mkdir "${{ env.MODEL_NAME }}"
+          python llama.cpp/convert-hf-to-gguf.py models --outtype bf16 --outfile "${{ env.MODEL_NAME }}/${{ env.bf16 }}"
+
+      - name: GGUF quantization and push
+        shell: bash
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
+          ./llama.cpp/quantize "${{ env.MODEL_NAME }}/${{ env.bf16 }}" "${{ env.MODEL_NAME }}/model.gguf" "${{ env.QUANTIZATION_METHOD }}"
+          rm "${{ env.MODEL_NAME }}/${{ env.bf16 }}"
+          huggingface-cli upload ${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }} ${{ env.MODEL_NAME }}/model.gguf model.gguf --revision "${{ env.MODEL_SIZE }}-gguf"
+          huggingface-cli logout
+
+      # - name: Generate Model metadata
+      #   shell: bash
+      #   run: |
+      #     cp ./models/README.md ./${{ env.MODEL_NAME }}/
+      #     python modelCardGen.py --modelId=${{ env.MODEL_ID }}
+
+      - name: Cleanup
+        if: always()
+        shell: bash
+        run: |
+          rm -rf ./models
+          rm -rf "${{ env.MODEL_NAME }}"
+          # rm -rf "/home/${USER}/.cache/huggingface/"
