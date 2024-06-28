@@ -135,7 +135,7 @@ jobs:
             name: "amd64-avx2"
             runs-on: "windows-2019"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
+            run-e2e: true
             vulkan: false
             sccache: false
             sccache-conf-path: ""
