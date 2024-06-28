@@ -27,190 +27,200 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: "linux"
-            name: "amd64-avx2"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: true
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-noavx"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DLLAMA_AVX=OFF -DLLAMA_AVX2=OFF -DLLAMA_FMA=OFF -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          # - os: "linux"
+          #   name: "amd64-avx2"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-vulkan"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: true
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx2-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx2-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "mac"
+          #   name: "amd64"
+          #   runs-on: "macos-13"
+          #   cmake-flags: "-DLLAMA_METAL=OFF"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "mac"
+          #   name: "arm64"
+          #   runs-on: "macos-silicon"
+          #   cmake-flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx2"
+          #   runs-on: "windows-2019"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx"
+          #   runs-on: "windows-2019"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx512"
+          #   runs-on: "windows-2019"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-vulkan"
+          #   runs-on: "windows-2019"
+          #   cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: false
+          #   vulkan: true
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx2-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx512-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx2-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx512-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          - os: "windows"
+            name: "amd64-avx2-rocm"
+            runs-on: "windows-2019" # windows-amd
+            cmake-flags: '-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON'
             run-e2e: false
             vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-vulkan"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: true
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx2-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx2-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "mac"
-            name: "amd64"
-            runs-on: "macos-13"
-            cmake-flags: "-DLLAMA_METAL=OFF"
-            run-e2e: true
-            vulkan: false
+            rocm: true
             sccache: false
-            sccache-conf-path: ""
-          - os: "mac"
-            name: "arm64"
-            runs-on: "macos-silicon"
-            cmake-flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx2"
-            runs-on: "windows-2019"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx"
-            runs-on: "windows-2019"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx512"
-            runs-on: "windows-2019"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-vulkan"
-            runs-on: "windows-2019"
-            cmake-flags: "-DLLAMA_VULKAN=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
-            vulkan: true
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx2-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx512-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx2-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx512-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DLLAMA_AVX512=ON -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
+            sccache-conf-path: ""   
+          # - os: "linux"
+          #   name: "amd64-avx2-rocm"
+          #   runs-on: "linux-amd-rocm-6"
+          #   cmake-flags: '-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=RELEASE -DCMAKE_HIP_COMPILER="$(hipconfig -l)/clang" -DGGML_HIPBLAS=ON'
+          #   run-e2e: false
+          #   vulkan: false
+          #   rocm: true
+          #   sccache: false
+          #   sccache-conf-path: ""
 
     steps:
       - name: Clone
@@ -236,6 +246,39 @@ jobs:
           echo 'use_ssl = false' >> ${{ matrix.sccache-conf-path }}
           echo 'server_side_encryption = false' >> ${{ matrix.sccache-conf-path }}
           echo 'no_credentials = false' >> ${{ matrix.sccache-conf-path }}
+
+      - name: Install HIP SDK and ROCM - Windows
+        if: ${{ matrix.rocm && matrix.os == 'Windows' }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          write-host "Downloading AMD HIP SDK Installer"
+          Invoke-WebRequest -Uri "https://download.amd.com/developer/eula/rocm-hub/AMD-Software-PRO-Edition-23.Q4-WinSvr2022-For-HIP.exe" -OutFile "${env:RUNNER_TEMP}\rocm-install.exe"
+          write-host "Installing AMD HIP SDK"
+          Start-Process "${env:RUNNER_TEMP}\rocm-install.exe" -ArgumentList '-install' -NoNewWindow -Wait
+          write-host "Completed AMD HIP SDK installation"
+
+          & 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' --version
+
+          $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
+          $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
+
+          echo "HIP_PATH=${env:HIP_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "CMAKE_PREFIX_PATH=${env:CMAKE_PREFIX_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Append
+          echo "GPU_TARGETS=gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1030 gfx1100 gfx1101 gfx1102" | Out-File -FilePath $env:GITHUB_ENV -Append
+  
+      - name: Install HIP SDK and ROCM - Linux
+        if: ${{ matrix.rocm && matrix.os == 'Linux' }}
+        run: |
+          echo "deb http://archive.ubuntu.com/ubuntu jammy main universe" | sudo tee /etc/apt/sources.list.d/jammy-copies.list
+          wget https://repo.radeon.com/amdgpu-install/6.1.2/ubuntu/focal/amdgpu-install_6.1.60102-1_all.deb
+          sudo apt install ./amdgpu-install_6.1.60102-1_all.deb -y
+          sudo apt update -y
+          sudo apt install amdgpu-dkms rocm build-essential rocblas-dev hipblas-dev -y
+
+          # Set nvcc architecture
+          echo "GPU_TARGETS=gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1030 gfx1100 gfx1101 gfx1102" >> $GITHUB_ENV
+          echo "CC=/opt/rocm/llvm/bin/clang" >> $GITHUB_ENV
+          echo "CXX=/opt/rocm/llvm/bin/clang++" >> $GITHUB_ENV
 
       - name: Install choco on Windows
         if: runner.os == 'Windows'
@@ -268,7 +311,15 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
           SCCACHE_IDLE_TIMEOUT: "0"
 
+      - name: Build - ROCM - Windows
+        if: ${{ matrix.rocm && matrix.os == 'Windows' }}
+        run: |
+          $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
+          $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
+          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}" -DCMAKE_C_COMPILER="${env:HIP_PATH}\bin\clang.exe" -DCMAKE_CXX_COMPILER="${env:HIP_PATH}\bin\clang++.exe"
+
       - name: Build
+        if: ${{ !matrix.rocm }}
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
 
