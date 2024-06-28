@@ -133,7 +133,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-avx2"
-            runs-on: "windows-2019"
+            runs-on: "amd64-avx512-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: true
             vulkan: false
@@ -143,7 +143,7 @@ jobs:
             name: "amd64-avx"
             runs-on: "windows-2019"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DLLAMA_AVX2=OFF -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
             sccache: false
             sccache-conf-path: ""
