@@ -21,7 +21,7 @@ on:
     - feat/model_converter_ci
 
 env:
-  USER_NAME: cortexhub
+  USER_NAME: jan-hq
   MODEL_ID: meta-llama/Meta-Llama-3-8B-Instruct # ${{ inputs.hf_model_id }}
   MODEL_SIZE: 8B #${{ inputs.model_size }}
   TARGET_MODEL_ID: llama3_test #${{ inputs.hf_target_model_id }}
@@ -68,6 +68,9 @@ jobs:
           bf16="${lowercase_model_name}.bf16.bin"
           echo "bf16=$bf16" >> $GITHUB_ENV
 
+          lowercase_model_size=$(echo "${{ env.MODEL_SIZE }}" | tr '[:upper:]' '[:lower:]')
+          echo "lowercase_model_size=$lowercase_model_size" >> $GITHUB_ENV
+
       - name: Install llama.cpp dependencies
         shell: bash
         run: |
@@ -93,9 +96,9 @@ jobs:
         shell: bash
         run: |
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
-          ./llama.cpp/quantize "${{ env.MODEL_NAME }}/${{ env.bf16 }}" "${{ env.MODEL_NAME }}/model.gguf" "${{ env.QUANTIZATION_METHOD }}"
+          ./llama.cpp/llama-quantize "${{ env.MODEL_NAME }}/${{ env.bf16 }}" "${{ env.MODEL_NAME }}/model.gguf" "${{ env.QUANTIZATION_METHOD }}"
           rm "${{ env.MODEL_NAME }}/${{ env.bf16 }}"
-          huggingface-cli upload ${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }} ${{ env.MODEL_NAME }}/model.gguf model.gguf --revision "${{ env.MODEL_SIZE }}-gguf"
+          huggingface-cli upload ${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }} ${{ env.MODEL_NAME }}/model.gguf model.gguf --revision "${{ env.lowercase_model_size }}-gguf"
           huggingface-cli logout
 
       # - name: Generate Model metadata
