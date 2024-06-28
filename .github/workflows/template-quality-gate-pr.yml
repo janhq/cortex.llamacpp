@@ -310,7 +310,7 @@ jobs:
           $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
           $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
           $env:GPU_TARGETS="gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1030 gfx1100 gfx1101 gfx1102"
-          make build-example-server CMAKE_EXTRA_FLAGS='-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DCMAKE_C_COMPILER="C:\Program Files\AMD\ROCm\5.7\bin\clang.exe" -DCMAKE_CXX_COMPILER="C:\Program Files\AMD\ROCm\5.7\bin\clang++.exe"'
+          make build-example-server CMAKE_EXTRA_FLAGS='-G Ninja -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DLLAMA_BLAS=ON -DCMAKE_C_COMPILER="C:\Program Files\AMD\ROCm\5.7\bin\clang.exe" -DCMAKE_CXX_COMPILER="C:\Program Files\AMD\ROCm\5.7\bin\clang++.exe" -DAMDGPU_TARGETS="gfx803;gfx900;gfx906:xnack-;gfx908:xnack-;gfx90a:xnack+;gfx90a:xnack-;gfx940;gfx941;gfx942;gfx1010;gfx1012;gfx1030;gfx1100;gfx1101;gfx1102"'
 
       - name: Build
         if: ${{ !matrix.rocm }}
