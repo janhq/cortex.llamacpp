@@ -205,7 +205,7 @@ jobs:
           #   sccache-conf-path: 'C:\sccache.conf'
           - os: "windows"
             name: "amd64-avx2-rocm"
-            runs-on: "windows-2019" # windows-amd
+            runs-on: "windows-latest" # windows-amd
             cmake-flags: -DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DCMAKE_C_COMPILER="${env:HIP_PATH}\bin\clang.exe" -DCMAKE_CXX_COMPILER="${env:HIP_PATH}\bin\clang++.exe"
             run-e2e: false
             vulkan: false
@@ -262,8 +262,6 @@ jobs:
           $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
           $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
 
-          echo "HIP_PATH=${env:HIP_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Append
-          echo "CMAKE_PREFIX_PATH=${env:CMAKE_PREFIX_PATH}" | Out-File -FilePath $env:GITHUB_ENV -Append
           echo "GPU_TARGETS=gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1030 gfx1100 gfx1101 gfx1102" | Out-File -FilePath $env:GITHUB_ENV -Append
   
       - name: Install HIP SDK and ROCM - Linux
@@ -316,7 +314,8 @@ jobs:
         run: |
           $env:HIP_PATH=$(Resolve-Path 'C:\Program Files\AMD\ROCm\*\bin\clang.exe' | split-path | split-path)
           $env:CMAKE_PREFIX_PATH="${env:HIP_PATH}"
-          make build-example-server CMAKE_EXTRA_FLAGS='${{ matrix.cmake-flags }}'
+          $env:GPU_TARGETS="gfx803 gfx900 gfx906 gfx908 gfx90a gfx1010 gfx1030 gfx1100 gfx1101 gfx1102"
+          make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DGGML_HIPBLAS=ON -DCMAKE_C_COMPILER=${env:HIP_PATH}\bin\clang.exe -DCMAKE_CXX_COMPILER=${env:HIP_PATH}\bin\clang++.exe"
 
       - name: Build
         if: ${{ !matrix.rocm }}
