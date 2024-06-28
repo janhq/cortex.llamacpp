@@ -152,6 +152,13 @@ void LlamaEngine::HandleEmbedding(
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> json_body,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+  if (std::exchange(print_version_, false)) {
+#if defined(CORTEXLLAMA_VERSION)
+    LOG_INFO << "cortex.llamacpp version: " << CORTEXLLAMA_VERSION;
+#else
+    LOG_INFO << "cortex.llamacpp version: default_version";
+#endif
+  }
   auto model_id = llama_utils::GetModelId(*json_body);
   if (model_id.empty()) {
     LOG_INFO << "Model id is empty in request";
@@ -720,7 +727,8 @@ void LlamaEngine::HandleEmbeddingImpl(
   auto state = CreateInferenceState(server_map_[model_id].ctx);
 
   server_map_[model_id].q->runTaskInQueue([this, state, json_body, callback,
-                                           request_id, mid = std::move(model_id)]() {
+                                           request_id,
+                                           mid = std::move(model_id)]() {
     Json::Value responseData(Json::arrayValue);
 
     if (json_body->isMember("input")) {

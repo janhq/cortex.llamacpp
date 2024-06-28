@@ -64,4 +64,6 @@ class LlamaEngine : public EngineI {
 
   std::atomic<int> no_of_requests_ = 0;
   std::atomic<int> no_of_chats_ = 0;
+
+  bool print_version_ = true;
 };
