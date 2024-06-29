@@ -62,7 +62,7 @@ jobs:
           - os: "linux"
             name: "amd64-vulkan"
             runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DLLAMA_VULKAN=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: true
             sccache: true
@@ -118,7 +118,7 @@ jobs:
           - os: "mac"
             name: "amd64"
             runs-on: "macos-13"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_NO_METAL=1"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=OFF"
             run-e2e: true
             vulkan: false
             sccache: false
