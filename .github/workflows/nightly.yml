@@ -2,7 +2,7 @@ name: Nightly Update Submodule
 
 on:
   schedule:
-    - cron: '0 17 * * 1-5' # At 00:00 on every day-of-week from Monday through Friday UTC +7
+    - cron: '0 17 * * 0-5' # At 00:00 on every day-of-week from Monday through Saturday UTC +7
   workflow_dispatch:
 
 jobs:
