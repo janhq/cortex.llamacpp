@@ -54,6 +54,9 @@ endif
 pre-package:
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "mkdir -p cortex.llamacpp; cp build\engine.dll cortex.llamacpp\;"
+	@powershell -Command "cp .\.github\patches\windows\msvcp140.dll cortex.llamacpp\;"
+	@powershell -Command "cp .\.github\patches\windows\vcruntime140_1.dll cortex.llamacpp\;"
+	@powershell -Command "cp .\.github\patches\windows\vcruntime140.dll cortex.llamacpp\;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p cortex.llamacpp; \
 	cp build/libengine.so cortex.llamacpp/;
