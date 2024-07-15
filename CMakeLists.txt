@@ -3,15 +3,12 @@ project(cortex.llamacpp)
 SET(TARGET engine)
 
 if(UNIX AND NOT APPLE)
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fPIC")
-  add_compile_options(-fPIC)
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fPIC -pthread")
+  add_compile_options(-fPIC -pthread)
+  find_package( Threads )
 endif()
 
 set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/build_deps/_install)
-
-if(UNIX AND NOT APPLE)
-  add_compile_options(-fPIC)
-endif()
 
 include(CheckIncludeFileCXX)
 # CPP version
