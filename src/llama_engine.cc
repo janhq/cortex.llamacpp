@@ -739,7 +739,8 @@ void LlamaEngine::HandleEmbeddingImpl(
         state->task_id = state->llama.RequestCompletion(
             {{"prompt", input.asString()}, {"n_predict", 0}}, false, true, -1);
         TaskResult result = state->llama.NextResult(state->task_id);
-        prompt_tokens += result.result_json["tokens_evaluated"];
+        prompt_tokens +=
+            static_cast<int>(result.result_json["tokens_evaluated"]);
         std::vector<float> embedding_result = result.result_json["embedding"];
         responseData.append(CreateEmbeddingPayload(embedding_result, 0));
       } else if (input.isArray()) {
@@ -754,7 +755,8 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-            responseData.append(CreateEmbeddingPayload(embedding_result, cur_pt));
+            responseData.append(
+                CreateEmbeddingPayload(embedding_result, cur_pt));
           }
         }
       }
