@@ -750,7 +750,7 @@ void LlamaEngine::HandleEmbeddingImpl(
                 {{"prompt", elem.asString()}, {"n_predict", 0}}, false, true,
                 -1);
             TaskResult result = state->llama.NextResult(task_id);
-            auto cur_pt = result.result_json["tokens_evaluated"];
+            int cur_pt = result.result_json["tokens_evaluated"];
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
