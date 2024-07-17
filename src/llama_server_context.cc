@@ -268,7 +268,7 @@ int LlamaServerContext::RequestCompletion(json data, bool infill,
   // From this commit: 'llama : allow pooled embeddings on any model (#7477)'
   // we need to explicitly set embedding flad for each request
   llama_set_embeddings(ctx, embedding);
-  
+
   TaskServer task;
   task.id = id_gen++;
   task.target_id = 0;
@@ -1039,6 +1039,7 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
     llama_embd_normalize(embd, embd_res.data(), n_embd);
   }
   res.result_json = json{
+      {"tokens_evaluated", slot.num_prompt_tokens},
       {"embedding", embd_res},
   };
 
