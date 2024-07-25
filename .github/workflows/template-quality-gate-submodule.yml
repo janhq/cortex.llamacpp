@@ -240,7 +240,7 @@ jobs:
         if: ${{ matrix.vulkan && (matrix.os == 'linux') }}
         shell: bash
         run: |
-          curl -o vulkan-sdk-config.json https://vulkan.lunarg.com/sdk/config/1.3.204.0/linux/config.json
+          curl -o vulkan-sdk-config.json https://vulkan.lunarg.com/sdk/config/1.3.280.0/linux/config.json
 
       - name: Configure Vulkan SDK using the downloaded spec Linux
         uses: humbletim/setup-vulkan-sdk@v1.2.0
