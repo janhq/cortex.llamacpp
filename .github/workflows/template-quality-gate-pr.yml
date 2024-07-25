@@ -62,7 +62,7 @@ jobs:
             sccache-conf-path: "/tmp/sccache.conf"
           - os: "linux"
             name: "amd64-vulkan"
-            runs-on: "ubuntu-20-04"
+            runs-on: "ubuntu-22-04"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             run-e2e: false
             vulkan: true
