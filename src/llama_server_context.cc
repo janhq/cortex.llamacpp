@@ -226,6 +226,7 @@ void LlamaServerContext::Initialize() {
 
     slot.id = i;
     slot.n_ctx = n_ctx_slot;
+    slot.n_predict = params.n_predict;
     slot.Reset();
 
     LOG_DEBUG << " -> Slot " << slot.id << " - max context: " << n_ctx_slot;
@@ -783,6 +784,23 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     LOG_VERBOSE("eos token found", {});
   }
 
+  auto n_ctx_train = llama_n_ctx_train(model);
+  if (slot.params.n_predict < 1 && slot.n_predict < 1 &&
+      slot.num_prompt_tokens + slot.n_decoded >= n_ctx_train) {
+    LOG_WARN << "n_predict is not set and self-context extend is disabled. "
+                "Limiting generated tokens to n_ctx_train to avoid EOS-less "
+                "generation infinite loop - "
+             << "id_slot " << slot.id << ", params.n_predict "
+             << slot.params.n_predict << ", slot.n_prompt_tokens "
+             << slot.num_prompt_tokens << ", slot.n_decoded " << slot.n_decoded
+             << ", slot.n_predict " << slot.n_predict << ", n_slots "
+             << params.n_parallel << ", slot.n_ctx " << slot.n_ctx << ", n_ctx "
+             << n_ctx << ", n_ctx_train " << n_ctx_train;
+    slot.truncated = true;
+    slot.stopped_limit = true;
+    slot.has_next_token = false;  // stop prediction
+  }
+
   LOG_VERBOSE(
       "next token",
       {
@@ -1259,9 +1277,10 @@ bool LlamaServerContext::UpdateSlots() {
 
   for (LlamaClientSlot& slot : slots) {
     if (slot.IsProcessing() &&
-        (int)system_tokens.size() + slot.n_past >= slot.n_ctx) {
+        (int)system_tokens.size() + slot.n_past >= slot.n_ctx - 1) {
       // Shift context
-      const int n_left = slot.n_past - slot.params.n_keep - 1;
+      const int n_keep = slot.params.n_keep + add_bos_token;
+      const int n_left = (int)system_tokens.size() + slot.n_past - n_keep;
       const int n_discard = n_left / 2;
 
       LOG_DEBUG << "slot " << slot.id
@@ -1271,13 +1290,12 @@ bool LlamaServerContext::UpdateSlots() {
                 << ", n_system_tokens = " << system_tokens.size()
                 << ", n_cache_tokens = " << slot.cache_tokens.size();
 
-      llama_kv_cache_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
-                            slot.params.n_keep + n_discard + 1);
-      llama_kv_cache_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
-                             slot.n_past, -n_discard);
+      llama_kv_cache_seq_rm(ctx, slot.id, n_keep, n_keep + n_discard);
+      llama_kv_cache_seq_add(ctx, slot.id, n_keep + n_discard,
+                             system_tokens.size() + slot.n_past, -n_discard);
 
       if (slot.params.cache_prompt) {
-        for (size_t i = slot.params.n_keep + 1 + n_discard;
+        for (size_t i = slot.params.n_keep + n_discard;
              i < slot.cache_tokens.size(); i++) {
           slot.cache_tokens[i - n_discard] = slot.cache_tokens[i];
         }
