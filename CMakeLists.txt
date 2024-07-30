@@ -24,6 +24,7 @@ SET(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 if(CORTEXLLAMA_VERSION)
   add_compile_definitions(CORTEXLLAMA_VERSION="${CORTEXLLAMA_VERSION}")
 endif()
+MESSAGE("CORTEXLLAMA_VERSION = " ${CORTEXLLAMA_VERSION})
 
 add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
