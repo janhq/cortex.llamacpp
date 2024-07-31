@@ -333,7 +333,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       }
     }
 
-    params.n_gpu_layers = json_body->get("ngl", 100).asInt();
+    params.n_gpu_layers = json_body->get("ngl", 300).asInt(); // change from 100 -> 300 since llama 3.1 has 292 gpu layers
     params.n_ctx = json_body->get("ctx_len", 2048).asInt();
     model_type = json_body->get("model_type", "llm").asString();
     // In case of embedding only model, we set default = true
@@ -343,10 +343,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     params.n_ubatch = json_body->get("n_ubatch", params.n_batch).asInt();
     // Check if n_parallel exists in json_body, if not, set to drogon_thread
     params.n_parallel = json_body->get("n_parallel", 1).asInt();
+    LOG_INFO<< "Number of parallel is set to "<< params.n_parallel;
     params.n_threads =
         json_body->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
-    params.cont_batching = json_body->get("cont_batching", false).asBool();
+    params.cont_batching = json_body->get("cont_batching", true).asBool(); // default true according to llama.cpp upstream
 
     params.cache_type_k = json_body->get("cache_type", kTypeF16).asString();
     if (!IsValidCacheType(params.cache_type_k)) {
