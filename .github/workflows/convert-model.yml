@@ -1,0 +1,92 @@
+name: Convert model to GGUF
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_model_id:
+        description: "Source HuggingFace model ID to pull. For ex: google/gemma-2-2b-it"
+        required: true
+      source_model_size:
+        description: "The model size. For ex: 2b"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to push. For ex: jan-hq/gemma-2-2b-it"
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  USER_NAME: jan-hq
+  SOURCE_MODEL_ID: ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }}
+  QUANTIZATION_METHOD: "Q4_K_M"
+
+jobs:
+  convert-gguf:
+    runs-on: linux-ada
+    steps:
+      - name: Checkout
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@39cd14951b08e74b54015e9e001cdefcf80e669f # v5.1.1
+        with:
+          python-version: '3.10.x'
+          architecture: 'x64'
+
+      - name: Cache Python packages
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/share/pip
+            .venv
+          key: ${{ runner.os }}-pip-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install huggingface_hub hf-transfer fire torch transformers
+          cd llama.cpp/ && make clean && make && pip install -r requirements.txt
+
+      - name: Process Model ID
+        id: process-model-id
+        run: |
+          # Extract and lowercase the model name
+          MODEL_NAME=$(basename "${{ env.SOURCE_MODEL_ID }}" | tr '[:upper:]' '[:lower:]')
+          echo "MODEL_NAME=${MODEL_NAME}" >> $GITHUB_ENV
+          echo "bf32=${MODEL_NAME}.bf32.bin" >> $GITHUB_ENV
+
+      - name: Download Hugging Face model
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
+          HF_HUB_ENABLE_HF_TRANSFER=1 huggingface-cli download --repo-type model --local-dir ./models ${{ env.SOURCE_MODEL_ID }}
+          huggingface-cli logout
+
+      - name: Convert to gguf bf32
+        run: |
+          mkdir -p "${{ env.MODEL_NAME }}"
+          python llama.cpp/convert-hf-to-gguf.py models --outtype bf32 --outfile "${{ env.MODEL_NAME }}/${{ env.bf32 }}"
+
+      - name: GGUF quantization and push
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
+          ./llama.cpp/quantize "${{ env.MODEL_NAME }}/${{ env.bf32 }}" "${{ env.MODEL_NAME }}/model.gguf" "${{ env.QUANTIZATION_METHOD }}"
+          rm "${{ env.MODEL_NAME }}/${{ env.bf32 }}"
+          huggingface-cli upload ${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }} ${{ env.MODEL_NAME }} . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf"
+          huggingface-cli logout
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf ./models
+          rm -rf "${{ env.MODEL_NAME }}"
