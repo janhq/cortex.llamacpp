@@ -49,6 +49,18 @@ class Server {
   };
 };
 
+struct SyncJsonReader {
+ public:
+  void Parse(const std::string& document, Json::Value& root) {
+    std::lock_guard<std::mutex> l(m);
+    r.parse(document, root);
+  }
+
+ private:
+  Json::Reader r;
+  std::mutex m;
+};
+
 std::function<void(int)> shutdown_handler;
 std::atomic_flag is_terminating = ATOMIC_FLAG_INIT;
 
@@ -78,7 +90,7 @@ int main(int argc, char** argv) {
   }
 
   Server server;
-  Json::Reader r;
+  SyncJsonReader r;
   auto svr = std::make_unique<httplib::Server>();
 
   if (!svr->bind_to_port(hostname, port)) {
@@ -127,7 +139,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     server.engine_->LoadModel(
         req_body, [&server, &resp](Json::Value status, Json::Value res) {
           resp.set_content(res.toStyledString().c_str(),
@@ -141,7 +153,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     server.engine_->UnloadModel(
         req_body, [&server, &resp](Json::Value status, Json::Value res) {
           resp.set_content(res.toStyledString().c_str(),
@@ -155,7 +167,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     bool is_stream = (*req_body).get("stream", false).asBool();
     // This is an async call, need to use queue
     auto q = std::make_shared<SyncQueue>();
@@ -175,7 +187,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     // This is an async call, need to use queue
     SyncQueue q;
     server.engine_->HandleEmbedding(
@@ -190,7 +202,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     server.engine_->GetModelStatus(
         req_body, [&server, &resp](Json::Value status, Json::Value res) {
           resp.set_content(res.toStyledString().c_str(),
@@ -204,7 +216,7 @@ int main(int argc, char** argv) {
     resp.set_header("Access-Control-Allow-Origin",
                     req.get_header_value("Origin"));
     auto req_body = std::make_shared<Json::Value>();
-    r.parse(req.body, *req_body);
+    r.Parse(req.body, *req_body);
     server.engine_->GetModels(
         req_body, [&server, &resp](Json::Value status, Json::Value res) {
           resp.set_content(res.toStyledString().c_str(),
@@ -222,10 +234,10 @@ int main(int argc, char** argv) {
   svr->Get("/models", handle_get_running_models);
   std::atomic<bool> running = true;
   svr->Delete("/destroy",
-            [&](const httplib::Request& req, httplib::Response& resp) {
-              LOG_INFO << "Received Stop command";
-              running = false;
-            });
+              [&](const httplib::Request& req, httplib::Response& resp) {
+                LOG_INFO << "Received Stop command";
+                running = false;
+              });
 
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {
