@@ -177,7 +177,7 @@ bool LlamaServerContext::LoadModel(const gpt_params& params_) {
     }
   }
 
-  std::tie(model, ctx) = llama_init_from_gpt_params(params);
+  auto [model, ctx] = llama_init_from_gpt_params(params);
   if (model == nullptr) {
     LOG_ERROR_LLAMA("llama.cpp unable to load model",
                     {{"model", params.model}});
