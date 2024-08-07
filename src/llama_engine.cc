@@ -125,7 +125,13 @@ LlamaEngine::LlamaEngine() {
   log_disable();
 }
 
-LlamaEngine::~LlamaEngine() {}
+LlamaEngine::~LlamaEngine() {
+  for(auto& [_, si]: server_map_) {
+    auto& l = si.ctx;
+    l.ReleaseResources();
+  }
+  server_map_.clear();
+}
 
 void LlamaEngine::HandleChatCompletion(
     std::shared_ptr<Json::Value> json_body,
