@@ -834,6 +834,7 @@ void LlamaServerContext::SendError(int id_task, int id_multi,
   res.stop = false;
   res.error = true;
   res.result_json = {{"content", error}};
+  LOG_ERROR << "Internel error catched " << error;
   {
     std::lock_guard<std::mutex> lock(mutex_results);
     queue_results.push_back(res);
@@ -1142,50 +1143,65 @@ int LlamaServerContext::SplitMultipromptTask(TaskServer& multiprompt_task) {
 }
 
 void LlamaServerContext::ProcessTasks() {
+  bool has_available_slot = false;
   while (true) {
     std::unique_lock<std::mutex> l(mutex_tasks);
     if (queue_tasks.empty()) {
       l.unlock();
       break;
     }
+
     TaskServer task = queue_tasks.front();
-    queue_tasks.erase(queue_tasks.begin());
-    l.unlock();
-    switch (task.type) {
-      case TaskType::kCompletionTask: {
-        LlamaClientSlot* slot = GetSlot(json_value(task.data, "slot_id", -1));
-        if (slot == nullptr) {
-          LOG_WARN << "slot unavailable";
-          // send error result
-          SendError(task, "slot unavailable");
-          return;
-        }
 
-        if (task.data.contains("system_prompt")) {
-          ProcessSystemPromptData(task.data["system_prompt"]);
-        }
+    if (task.type == TaskType::kCancelTask) {
+      queue_tasks.erase(queue_tasks.begin());
 
-        slot->Reset();
-
-        slot->infill = task.infill_mode;
-        slot->embedding = task.embedding_mode;
-        slot->task_id = task.id;
-        slot->multitask_id = task.multitask_id;
-
-        if (!LaunchSlotWithData(slot, task.data)) {
-          // send error result
-          SendError(task, "internal_error");
+      for (auto& slot : slots) {
+        if (slot.task_id == task.target_id) {
+          slot.Release();
           break;
         }
-      } break;
-      case TaskType::kCancelTask: {  // release slot linked with the task id
-        for (auto& slot : slots) {
-          if (slot.task_id == task.target_id) {
-            slot.Release();
-            break;
-          }
+      }
+      l.unlock();
+    } else if (task.type == TaskType::kCompletionTask) {
+      LlamaClientSlot* slot = nullptr;
+      int64_t t_last = ggml_time_us();
+      for (LlamaClientSlot& slot_ : slots) {
+        if (slot_.Available() && slot_.t_last_used < t_last) {
+          has_available_slot = true;
+          slot = GetSlot(json_value(task.data, "slot_id", -1));
+          break;
         }
-      } break;
+      }
+      if (!has_available_slot || slot == nullptr) {
+        l.unlock();
+        return;
+      }
+      queue_tasks.erase(queue_tasks.begin());
+      l.unlock();
+      if (slot == nullptr) {
+        LOG_WARN << "slot unavailable";
+        // send error result
+        SendError(task, "slot unavailable");
+        return;
+      }
+
+      if (task.data.contains("system_prompt")) {
+        ProcessSystemPromptData(task.data["system_prompt"]);
+      }
+
+      slot->Reset();
+
+      slot->infill = task.infill_mode;
+      slot->embedding = task.embedding_mode;
+      slot->task_id = task.id;
+      slot->multitask_id = task.multitask_id;
+      
+      if (!LaunchSlotWithData(slot, task.data)) {
+        // send error result
+        SendError(task, "internal_error");
+        return;
+      }
     }
   }
 

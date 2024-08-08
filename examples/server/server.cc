@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
 
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {
-    return new httplib::ThreadPool(5);
+    return new httplib::ThreadPool(64);
   };
   // run the HTTP server in a thread - see comment below
   std::thread t([&]() {
