@@ -1143,7 +1143,6 @@ int LlamaServerContext::SplitMultipromptTask(TaskServer& multiprompt_task) {
 }
 
 void LlamaServerContext::ProcessTasks() {
-  bool has_available_slot = false;
   while (true) {
     std::unique_lock<std::mutex> l(mutex_tasks);
     if (queue_tasks.empty()) {
@@ -1164,16 +1163,8 @@ void LlamaServerContext::ProcessTasks() {
       }
       l.unlock();
     } else if (task.type == TaskType::kCompletionTask) {
-      LlamaClientSlot* slot = nullptr;
-      int64_t t_last = ggml_time_us();
-      for (LlamaClientSlot& slot_ : slots) {
-        if (slot_.Available() && slot_.t_last_used < t_last) {
-          has_available_slot = true;
-          slot = GetSlot(json_value(task.data, "slot_id", -1));
-          break;
-        }
-      }
-      if (!has_available_slot || slot == nullptr) {
+      LlamaClientSlot* slot = GetSlot(json_value(task.data, "slot_id", -1));
+      if (slot == nullptr) {
         l.unlock();
         return;
       }
@@ -1196,7 +1187,7 @@ void LlamaServerContext::ProcessTasks() {
       slot->embedding = task.embedding_mode;
       slot->task_id = task.id;
       slot->multitask_id = task.multitask_id;
-      
+
       if (!LaunchSlotWithData(slot, task.data)) {
         // send error result
         SendError(task, "internal_error");
