@@ -57,7 +57,7 @@ jobs:
   build-and-test:
     runs-on: ${{ matrix.runs-on }}
     needs: [create-draft-release]
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       matrix:
         include:
@@ -192,7 +192,7 @@ jobs:
           - os: "windows"
             name: "amd64-noavx"
             runs-on: "windows-2019"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: false
             vulkan: false
             sccache: false
