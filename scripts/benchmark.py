@@ -4,7 +4,7 @@ import asyncio
 import time
 import os
 import random
-
+import json
 start_time = time.time()
 SERVER_ENDPOINT = "http://localhost:3928"
 TOTAL_USERS = 40
@@ -37,12 +37,25 @@ def load_model():
 
 async def send_request(session, prompt,sleep = 0):
     await asyncio.sleep(sleep)
+    stream = False
     headers = {"Content-Type": "application/json"}
-    data = {"model": "meta-llama3.1-8b-instruct", "max_tokens": MAX_TOKENS, "stop": ["<|eom_id|>", "<|end_of_text|>", "<|eot_id|>"],"engine": "cortex.llamacpp",
+    data = {"model": "meta-llama3.1-8b-instruct", "max_tokens": MAX_TOKENS, "stop": ["<|eom_id|>", "<|end_of_text|>", "<|eot_id|>"],"engine": "cortex.llamacpp","stream":stream,
             "messages": [{"role": "user", "content": prompt},]}
-    async with session.post(SERVER_ENDPOINT+"/v1/chat/completions", headers=headers, json=data) as resp:
-        result = await resp.json()
-        return result
+    
+    if stream:
+        total = 0
+        async with session.post(SERVER_ENDPOINT+"/v1/chat/completions", headers=headers, json=data) as resp:
+            async for line in resp.content:
+                line = line.decode("utf-8")
+                if "choice" in line:
+                    total+=1
+        return {"usage":{"total_tokens":total}}
+
+    else:
+        async with session.post(SERVER_ENDPOINT+"/v1/chat/completions", headers=headers, json=data) as resp:
+            result = await resp.read()
+            result = json.loads(result)
+            return result
 
 async def one_user(session, prompt):
     tasks = [send_request(session, prompt,random.random()*0.2+ i ) for i in range(NUM_ROUNDS)]
