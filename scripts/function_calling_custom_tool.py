@@ -1,3 +1,5 @@
+# This example base on tutorial in this link https://llama.meta.com/docs/model-cards-and-prompt-formats/llama3_1
+
 import requests
 import time
 import os
@@ -76,7 +78,6 @@ weatherTool = {
 toolPrompt = f"""
 
 Environment: ipython
-Tools: brave_search, wolfram_alpha
 
 Cutting Knowledge Date: December 2023
 Today Date: 23 Jul 2024
@@ -127,12 +128,12 @@ function_ = send_request(data)["choices"][0]["message"]["content"]
 
 print(function_)
 function_detect = function_detect_function(function_) #function_.split("ASSISTANT:")[0]
-print(function_detect.span())
+
 position_match = function_detect.span()
 function_detect = function_[position_match[0]: position_match[1]]
 
 parsed_response= parse_tool_response(function_)
-
+print(parsed_response)
 def get_current_weather(location: str) -> str:
     # This would be replaced by a weather API
     if location == "San Francisco, CA":
@@ -148,7 +149,7 @@ weather = function_to_call(parsed_response["parameters"]["location"])
 
 messages.append({
     "role":"assistant",
-    "content": function_detect
+    "content": function_detect 
 })
 messages.append({"role":"ipython","content":weather})
 
