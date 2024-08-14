@@ -1,9 +1,6 @@
 name: Convert model to gguf
 
 on:
-  push:
-    branches:
-      - feat-CI-for-convert-model
   workflow_dispatch:
     inputs:
       source_model_id:
@@ -56,7 +53,6 @@ jobs:
         run: |
           pip3 install -r llama.cpp/requirements.txt
           pip3 install hf-transfer
-          apt-get update && apt-get install -Y git && apt-get install -Y git-lfs
           git lfs install
 
       - name: Extract MODEL_NAME
