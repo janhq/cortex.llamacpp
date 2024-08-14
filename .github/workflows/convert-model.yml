@@ -109,7 +109,6 @@ jobs:
 
       - name: Upload to Hugging Face
         run: |
-          Get-ChildItem -Path "/mnt/models/${{ env.MODEL_NAME }}/gguf" -Force
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
           huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf"
           huggingface-cli logout
