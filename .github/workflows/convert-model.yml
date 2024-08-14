@@ -57,29 +57,30 @@ jobs:
           pip3 install -r llama.cpp/requirements.txt
 
       - name: Extract MODEL_NAME
-        id: vars
         run: |
           SOURCE_MODEL_ID="${{ env.SOURCE_MODEL_ID }}"
           MODEL_NAME="$(echo $SOURCE_MODEL_ID | rev | cut -d/ -f1 | rev)"
-          MODEL_NAME="$(echo "$MODEL_NAME" | tr '[:upper:]' '[:lower:]')"
-          echo "model-name=$MODEL_NAME" >> $env:GITHUB_OUTPUT
+          echo $MODEL_NAME
+          MODEL_NAME="$(echo $MODEL_NAME | tr '[:upper:]' '[:lower:]')"
+          echo $MODEL_NAME
+          echo "MODEL_NAME=$MODEL_NAME" >> $env:GITHUB_ENV
 
       - name: Print environment variables
         run: |
           echo "SOURCE_MODEL_ID: ${{ env.SOURCE_MODEL_ID }}"
           echo "PRECISION: ${{ env.PRECISION }}"
-          echo "MODEL_NAME: ${{ steps.vars.outputs.model-name }}"
+          echo "MODEL_NAME: ${{ env.MODEL_NAME }}"
       - name: Check file existence
         id: check_files
         uses: andstor/file-existence-action@v1
         with:
-          files: "/mnt/models/${{ steps.vars.outputs.model-name }}/hf"
+          files: "/mnt/models/${{ env.MODEL_NAME }}/hf"
 
 
       - name: Prepare folders
         if: steps.check_files.outputs.files_exists == 'false'
         run: |
-          mkdir -p /mnt/models/${{ steps.vars.outputs.model-name }}/hf
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/hf
           
       
       - name: Download Hugging Face model
@@ -87,7 +88,7 @@ jobs:
         if: steps.check_files.outputs.files_exists == 'false'
         run: |
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
-          huggingface-cli download --repo-type model --local-dir /mnt/models/${{ steps.vars.outputs.model-name }}/hf ${{ env.SOURCE_MODEL_ID }}
+          huggingface-cli download --repo-type model --local-dir /mnt/models/${{ env.MODEL_NAME }}/hf ${{ env.SOURCE_MODEL_ID }}
           huggingface-cli logout
 
       - name: Build lib for quantize
@@ -98,19 +99,19 @@ jobs:
 
       - name: Convert to GGUF
         run: |
-          mkdir -p /mnt/models/${{ steps.vars.outputs.model-name }}/gguf
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
-          python3 llama.cpp/convert_hf_to_gguf.py "/mnt/models/${{ steps.vars.outputs.model-name }}/hf" --outfile "/mnt/models/${{ steps.vars.outputs.model-name }}/gguf/model-origin.gguf"
+          python3 llama.cpp/convert_hf_to_gguf.py "/mnt/models/${{ env.MODEL_NAME }}/hf" --outfile "/mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf"
           huggingface-cli logout
       
       - name: Quantize model
         run: |
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ steps.vars.outputs.model-name }}/gguf/model-origin.gguf /mnt/models/${{ steps.vars.outputs.model-name }}/gguf/model.gguf ${{ env.PRECISION }}
-          rm -rf /mnt/models/${{ steps.vars.outputs.model-name }}/gguf/model-origin.gguf
+          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/model.gguf ${{ env.PRECISION }}
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf
 
       - name: Upload to Hugging Face
         run: |
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ steps.vars.outputs.model-name }}/gguf" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf"
+          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf"
           huggingface-cli logout
 
