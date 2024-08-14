@@ -63,7 +63,7 @@ jobs:
           echo $MODEL_NAME
           MODEL_NAME="$(echo $MODEL_NAME | tr '[:upper:]' '[:lower:]')"
           echo $MODEL_NAME
-          echo "MODEL_NAME=$MODEL_NAME" >> $env:GITHUB_ENV
+          echo "MODEL_NAME=$MODEL_NAME" >> $GITHUB_ENV
 
       - name: Print environment variables
         run: |
