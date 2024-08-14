@@ -61,7 +61,7 @@ jobs:
           SOURCE_MODEL_ID="${{ env.SOURCE_MODEL_ID }}"
           MODEL_NAME="$(echo $SOURCE_MODEL_ID | rev | cut -d/ -f1 | rev)"
           MODEL_NAME="$(echo "$MODEL_NAME" | tr '[:upper:]' '[:lower:]')"
-          echo "MODEL_NAME=$MODEL_NAME_LOWER" >> $env:GITHUB_ENV
+          echo "MODEL_NAME=$MODEL_NAME" >> $env:GITHUB_ENV
 
       - name: Print environment variables
         run: |
