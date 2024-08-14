@@ -55,6 +55,9 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install -r llama.cpp/requirements.txt
+          pip3 install hf-transfer
+          apt-get update && apt-get install -Y git && apt-get install -Y git-lfs
+          git lfs install
 
       - name: Extract MODEL_NAME
         run: |
@@ -114,4 +117,5 @@ jobs:
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
           huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf"
           huggingface-cli logout
+          rm -rf llama.cpp/build/
 
