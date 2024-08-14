@@ -59,16 +59,14 @@ jobs:
       - name: Extract MODEL_NAME
         run: |
           SOURCE_MODEL_ID="${{ env.SOURCE_MODEL_ID }}"
-          MODEL_NAME="$(echo $SOURCE_MODEL_ID | rev | cut -d: -f1 | rev)"
-          MODEL_NAME_LOWER="$(echo "$a" | tr '[:upper:]' '[:lower:]')"
+          MODEL_NAME="$(echo $SOURCE_MODEL_ID | rev | cut -d/ -f1 | rev)"
+          MODEL_NAME="$(echo "$MODEL_NAME" | tr '[:upper:]' '[:lower:]')"
           echo "MODEL_NAME=$MODEL_NAME_LOWER" >> $env:GITHUB_ENV
-          echo "MODEL_NAME_LOWER=$MODEL_NAME_LOWER" # For debugging
 
       - name: Print environment variables
         run: |
           echo "SOURCE_MODEL_ID: ${{ env.SOURCE_MODEL_ID }}"
           echo "PRECISION: ${{ env.PRECISION }}"
-          echo "EXECUTOR: ${{ env.EXECUTOR }}"
           echo "MODEL_NAME: ${{ env.MODEL_NAME }}"
       - name: Check file existence
         id: check_files
