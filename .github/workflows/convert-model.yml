@@ -18,9 +18,9 @@ on:
   
 env:
   USER_NAME: cortexso
-  SOURCE_MODEL_ID:  meta-llama/Meta-Llama-3-8B-Instruct #${{ inputs.source_model_id }}
-  SOURCE_MODEL_SIZE: 8b #${{ inputs.source_model_size }}
-  TARGET_MODEL_ID:  llama3 #${{ inputs.target_model_id }}
+  SOURCE_MODEL_ID:  ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID:  ${{ inputs.target_model_id }}
   PRECISION: Q4_K_M                   # Valid values: int4,fp16,fp3
 
 jobs:
