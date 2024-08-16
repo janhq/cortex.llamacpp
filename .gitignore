@@ -565,3 +565,5 @@ build_deps
 .DS_Store
 
 uploads/**
+
+**/vcpkg_installed
