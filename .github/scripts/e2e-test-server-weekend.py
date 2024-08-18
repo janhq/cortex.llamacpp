@@ -20,18 +20,61 @@ class ModelConfig:
 
 
 model_configs = []
-# llama3
+
+# cortexso/llama3
 model_configs.append(ModelConfig("llama3", ["<|end_of_text|>", "<|eot_id|>"],
                                  "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n",
-                     "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
+                                 "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
                                  "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
                                  "https://huggingface.co/cortexso/llama3/resolve/main/model.gguf"))
-# mistral
+# cortexso/llama3.1
+model_configs.append(ModelConfig("llama3.1", ["<|end_of_text|>", "<|eot_id|>", "<|eom_id|>"],
+                                 "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n",
+                                 "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
+                                 "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+                                 "https://huggingface.co/cortexso/llama3.1/resolve/main/model.gguf"))
+# cortexso/gemma
+model_configs.append(ModelConfig("gemma", ["<end_of_turn>", "<eos>"],
+                                 "",
+                                 "<start_of_turn>user\n",
+                                 "<end_of_turn>\n<start_of_turn>model",
+                                 "https://huggingface.co/cortexso/gemma/resolve/main/model.gguf"))
+# cortexso/gemma2
+model_configs.append(ModelConfig("gemma2", ["<end_of_turn>", "<eos>"],
+                                 "",
+                                 "<start_of_turn>user\n",
+                                 "<end_of_turn>\n<start_of_turn>model",
+                                 "https://huggingface.co/cortexso/gemma2/resolve/main/model.gguf"))
+# cortexso/phi3
+model_configs.append(ModelConfig("phi3", ["<|end|>"],
+                                 "",
+                                 "<|user|>\n",
+                                 "<|end|>\n<|assistant|>\n",
+                                 "https://huggingface.co/cortexso/phi3/resolve/main/model.gguf"))
+# cortexso/mistral
 model_configs.append(ModelConfig("mistral", ["</s>"],
                                  "<s>",
                                  " [INST] ",
                                  " [/INST]",
-                     "https://huggingface.co/cortexso/mistral/resolve/main/model.gguf?download=true"))
+                     "https://huggingface.co/cortexso/mistral/resolve/main/model.gguf"))
+# cortexso/openhermes-2.5
+model_configs.append(ModelConfig("openhermes-2.5", ["</s>"],
+                                 "<|im_start|>system\n",
+                                 "<|im_end|>\n<|im_start|>user\n",
+                                 "<|im_end|>\n<|im_start|>assistant\n",
+                     "https://huggingface.co/cortexso/openhermes-2.5/resolve/main/model.gguf"))
+# cortexso/tinyllama
+model_configs.append(ModelConfig("tinyllama", ["</s>"],
+                                 "<|system|>\n",
+                                 "<|user|>\n",
+                                 "<|assistant|>",
+                                 "https://huggingface.co/cortexso/tinyllama/resolve/main/model.gguf"))
+# cortexso/qwen2
+model_configs.append(ModelConfig("qwen2", [],
+                                 "<|im_start|>system\n",
+                                 "<|im_end|>\n<|im_start|>user\n",
+                                 "<|im_end|>\n<|im_start|>assistant",
+                                 "https://huggingface.co/cortexso/qwen2/resolve/main/model.gguf"))
 
 
 
