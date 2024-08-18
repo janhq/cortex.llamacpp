@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 @dataclass
 class ModelConfig:
+    name: str
     stop: list[str]
     system_prompt: str
     user_prompt: str
@@ -20,33 +21,29 @@ class ModelConfig:
 
 model_configs = []
 # llama3
-model_configs.append(ModelConfig(["<|end_of_text|>", "<|eot_id|>"],
+model_configs.append(ModelConfig("llama3", ["<|end_of_text|>", "<|eot_id|>"],
                                  "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n",
                      "<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
                                  "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
                                  "https://huggingface.co/cortexso/llama3/resolve/main/model.gguf"))
 # mistral
-model_configs.append(ModelConfig(["</s>"],
+model_configs.append(ModelConfig("mistral", ["</s>"],
                                  "<s>",
                                  " [INST] ",
                                  " [/INST]",
                      "https://huggingface.co/cortexso/mistral/resolve/main/model.gguf?download=true"))
 
-for mc in model_configs:
-    print(mc.system_prompt)
 
 
 n = len(sys.argv)
 print("Total arguments passed:", n)
-if n < 4:
-    print("The number of arguments should >= 4")
+if n != 2:
+    print("The number of arguments should == 2")
     exit(1)
 
 BINARY_PATH = sys.argv[1]
 if platform.system == 'Windows':
     BINARY_PATH += '.exe'
-DOWNLOAD_LLM_URL = sys.argv[2]
-DOWNLOAD_EMBEDDING_URL = sys.argv[3]
 LLM_MODEL = 'chat_model'
 EMBED_MODEL = 'embedding_model'
 LLM_FILE_TO_SAVE = './' + LLM_MODEL + '.gguf'
@@ -143,8 +140,10 @@ def clean_up(server_port, pp):
     """Clean up all resources"""
     stop_server(server_port)
     pp.communicate()
-    os.remove(LLM_FILE_TO_SAVE)
-    os.remove(EMBED_FILE_TO_SAVE)
+    if os.path.isfile(LLM_FILE_TO_SAVE):
+        os.remove(LLM_FILE_TO_SAVE)
+    if os.path.isfile(EMBED_FILE_TO_SAVE):
+        os.remove(EMBED_FILE_TO_SAVE)
     with open('./test.log', 'r', encoding='utf8') as f:
         print(f.read())
 
@@ -278,17 +277,20 @@ def load_embedding_model(path, server_port, pp):
 def download_file(download_url, file_to_save, server_port, pp):
     """Download file with url and save to a new file"""
     if not os.path.isfile(file_to_save):
-        print("Download llm model")
-    try:
-        resp = requests.get(download_url, timeout=3600)
-        resp.raise_for_status()
-        with open(file_to_save, "wb") as f:  # opening a file handler to create new file
-            f.write(resp.content)
-        print("Downloaded llm model")
-    except requests.exceptions.HTTPError as error:
-        print("Had error: " + error)
-        clean_up(server_port, pp)
-        exit(1)
+        print("Download llm model: ", download_url)
+        try:
+            with requests.get(download_url, stream=True) as r:
+                r.raise_for_status()
+                with open(file_to_save, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192): 
+                        f.write(chunk)
+            print("Downloaded llm model: ", download_url)
+        except requests.exceptions.HTTPError as error:
+            print("Had error: " + error)
+            clean_up(server_port, pp)
+            exit(1)
+    else:
+        print("Model has already existed")
 
 
 port = random.randint(10000, 11000)
@@ -299,20 +301,13 @@ p = subprocess.Popen([cwd + '/' + BINARY_PATH, '127.0.0.1', str(port)])
 print("Server started!")
 
 for mc in model_configs:
-    download_file(mc.url, LLM_FILE_TO_SAVE, port, p)
+    logging.info('{\'Model\': \'%s\'}', mc.name)
+    download_file(mc.hf_url, LLM_FILE_TO_SAVE, port, p)
     load_chat_model(mc, cwd, port, p)
     perform_chat_completion(mc, port, p)
-    unload_model(mc, port, p)
+    unload_model(LLM_MODEL, port, p)
     # Remove old data before starting with new model
     os.remove(LLM_FILE_TO_SAVE)
 
 clean_up(port, p)
 
-# TestLoadChatModel()
-# TestChatCompletion()
-# TestLlmEmbeddings()
-# TestUnloadModel(LLM_MODEL)
-# TestLoadEmbeddingModel()
-# TestEmbeddings()
-# TestUnloadModel(EMBED_MODEL)
-# CleanUp()
