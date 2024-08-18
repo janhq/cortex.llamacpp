@@ -1,8 +1,11 @@
 name: CI e2e weekend test
 
 on:
-  schedule:
-    - cron: '10 0 * * 0'
+  push:
+    branches:
+      - 'feat/e2e-weekend'
+  # schedule:
+  #   - cron: '10 0 * * 0'
     # - cron: '0 17 * * 6' # At 00:00 on every Sunday UTC +7
   workflow_call:
     secrets:
