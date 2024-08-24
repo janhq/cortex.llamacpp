@@ -4,6 +4,9 @@
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
+#include <trantor/utils/AsyncFileLogger.h>
+#include<string>
+#include <fstream>
 
 namespace {
 constexpr const int k200OK = 200;
@@ -122,6 +125,16 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }  // namespace
 
 LlamaEngine::LlamaEngine() {
+  std::filesystem::create_directories(log_folder);
+  asynce_file_logger_ = std::make_unique<trantor::AsyncFileLogger>();
+  asynce_file_logger_->setFileName(log_base_name);
+  asynce_file_logger_->startLogging();
+  trantor::Logger::setOutputFunction(
+      [&](const char* msg, const uint64_t len) {
+        asynce_file_logger_->output(msg, len);
+      },
+      [&]() { asynce_file_logger_->flush(); });
+  asynce_file_logger_->setFileSizeLimit(max_log_file_size);
   log_disable();
 }
 
@@ -290,6 +303,14 @@ void LlamaEngine::GetModels(
   LOG_INFO << "Running models responded";
 }
 
+void LlamaEngine::SetFileLogger(){
+  llama_log_set([](ggml_log_level level, const char * text, void * user_data){
+    (void) level;
+    (void) user_data;
+    LOG_INFO << text ;
+  }, nullptr);
+}
+
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   gpt_params params;
   std::string model_type;
@@ -410,12 +431,15 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 
     // LOG_INFO_LLAMA("build info",
     //                {{"build", BUILD_NUMBER}, {"commit", BUILD_COMMIT}});
-    LOG_INFO_LLAMA("system info",
-                   {
-                       {"n_threads", params.n_threads},
-                       {"total_threads", std::thread::hardware_concurrency()},
-                       {"system_info", llama_print_system_info()},
-                   });
+    
+    // The log below will output to terminal automatically, we need output to be configurable
+    // LOG_INFO_LLAMA("system info",
+    //                {
+    //                    {"n_threads", params.n_threads},
+    //                    {"total_threads", std::thread::hardware_concurrency()},
+    //                    {"system_info", llama_print_system_info()},
+    //                });
+    LOG_INFO << "system info: " << "{'n_thread': " <<params.n_threads <<", 'total_threads': "<<std::thread::hardware_concurrency()<<". 'system_info': '"<<llama_print_system_info()<<"'}";
   }
 
   // load the model

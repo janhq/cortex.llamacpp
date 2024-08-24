@@ -8,7 +8,7 @@
 #include <mutex>
 #include <queue>
 #include "trantor/utils/Logger.h"
-
+#include <trantor/utils/AsyncFileLogger.h>
 class Server {
  public:
   Server() {
@@ -78,6 +78,17 @@ inline void signal_handler(int signal) {
 using SyncQueue = Server::SyncQueue;
 
 int main(int argc, char** argv) {
+     std::filesystem::create_directories("./logs");
+  trantor::AsyncFileLogger asyncFileLogger;
+  asyncFileLogger.setFileName("logs/cortex");
+  asyncFileLogger.startLogging();
+  trantor::Logger::setOutputFunction(
+      [&](const char* msg, const uint64_t len) {
+        asyncFileLogger.output(msg, len);
+      },
+      [&]() { asyncFileLogger.flush(); });
+  asyncFileLogger.setFileSizeLimit(100000000);
+
   std::string hostname = "127.0.0.1";
   int port = 3928;
   if (argc > 1) {
@@ -90,6 +101,10 @@ int main(int argc, char** argv) {
   }
 
   Server server;
+  //set logger here
+  server.engine_->SetFileLogger();
+  
+
   SyncJsonReader r;
   auto svr = std::make_unique<httplib::Server>();
 
@@ -238,7 +253,6 @@ int main(int argc, char** argv) {
                 LOG_INFO << "Received Stop command";
                 running = false;
               });
-
   LOG_INFO << "HTTP server listening: " << hostname << ":" << port;
   svr->new_task_queue = [] {
     return new httplib::ThreadPool(64);
