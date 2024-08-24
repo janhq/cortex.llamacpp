@@ -1,0 +1,147 @@
+name: CI e2e weekend test
+
+on:
+  push:
+    branches:
+      - 'feat/e2e-weekend'
+  # schedule:
+    # - cron: '0 17 * * 6' # At 00:00 on every Sunday UTC +7
+  workflow_call:
+    secrets:
+      MINIO_BUCKET_NAME:
+        required: false
+      MINIO_REGION:
+        required: false
+      MINIO_ENDPOINT:
+        required: false
+      MINIO_ACCESS_KEY_ID:
+        required: false
+      MINIO_SECRET_ACCESS_KEY:
+        required: false
+
+env:
+  LLM_MODEL_URL: https://delta.jan.ai/tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+  EMBEDDING_MODEL_URL: https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf
+  VULKAN_VERSION: 1.3.261.1
+
+jobs:
+  build-and-test:
+    runs-on: ${{ matrix.runs-on }}
+    if: ${{ ! startsWith(github.head_ref, 'update-submodule') }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: "linux"
+            name: "amd64-avx2"
+            runs-on: "ubuntu-20-04"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+
+          - os: "linux"
+            name: "amd64-noavx-cuda-12-0"
+            runs-on: "ubuntu-20-04-cuda-12-0-gpu"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_FMA=OFF -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
+
+          - os: "mac"
+            name: "amd64"
+            runs-on: "macos-13"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=OFF"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "mac"
+            name: "arm64"
+            runs-on: "macos-silicon"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL_EMBED_LIBRARY=ON"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+          - os: "windows"
+            name: "amd64-avx2"
+            runs-on: "windows-2019"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: false
+            sccache-conf-path: ""
+
+    steps:
+      - name: Clone
+        id: checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5 # v5.1.1
+        with:
+          python-version: '3.12'
+
+      - name: create sccache.conf
+        if: ${{ matrix.sccache }}
+        run: |
+          echo "[cache.s3]" > ${{ matrix.sccache-conf-path }}
+          echo 'bucket = "${{ secrets.MINIO_BUCKET_NAME }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'endpoint = "${{ secrets.MINIO_ENDPOINT }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'key_prefix = "${{ matrix.os }}-${{ matrix.name }}"' >> ${{ matrix.sccache-conf-path }}
+          echo 'use_ssl = false' >> ${{ matrix.sccache-conf-path }}
+          echo 'server_side_encryption = false' >> ${{ matrix.sccache-conf-path }}
+          echo 'no_credentials = false' >> ${{ matrix.sccache-conf-path }}
+
+      - name: Install choco on Windows
+        if: runner.os == 'Windows'
+        run: |
+          choco install make sccache ninja -y
+
+      - name: Install ninja build on Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt install ninja-build -y
+
+      - name: Add msbuild to PATH
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+
+      - name: start scache server
+        if: ${{ matrix.sccache }}
+        run: |
+          sccache --start-server
+        env:
+          SCCACHE_BUCKET: "${{ secrets.MINIO_BUCKET_NAME }}"
+          SCCACHE_REGION: "${{ secrets.MINIO_REGION }}"
+          SCCACHE_ENDPOINT: "${{ secrets.MINIO_ENDPOINT }}"
+          SCCACHE_S3_USE_SSL: "false"
+          SCCACHE_S3_SERVER_SIDE_ENCRYPTION: "false"
+          SCCACHE_S3_KEY_PREFIX: "${{ matrix.os }}-${{ matrix.name }}"
+          SCCACHE_LOG: "debug"
+          SCCACHE_CONF: '${{ matrix.sccache-conf-path }}'
+          AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
+          AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
+          SCCACHE_IDLE_TIMEOUT: "0"
+
+      - name: Build
+        run: |
+          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+
+      - name: Run e2e testing
+        if: ${{ matrix.run-e2e }}
+        run: |
+          make run-e2e-weekend-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
+
+      - name: Clean
+        if: always()
+        continue-on-error: true
+        run: |
+          sccache --stop-server
+          rm ${{ matrix.sccache-conf-path }}
