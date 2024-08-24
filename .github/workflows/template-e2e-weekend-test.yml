@@ -1,11 +1,8 @@
 name: CI e2e weekend test
 
 on:
-  push:
-    branches:
-      - 'feat/e2e-weekend'
-  # schedule:
-    # - cron: '0 17 * * 6' # At 00:00 on every Sunday UTC +7
+  schedule:
+    - cron: '0 17 * * 6' # At 00:00 on every Sunday UTC +7
   workflow_call:
     secrets:
       MINIO_BUCKET_NAME:
