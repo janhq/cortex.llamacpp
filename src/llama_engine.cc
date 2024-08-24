@@ -141,6 +141,7 @@ LlamaEngine::~LlamaEngine() {
     l.ReleaseResources();
   }
   server_map_.clear();
+  asynce_file_logger_.reset();
 }
 
 void LlamaEngine::HandleChatCompletion(
