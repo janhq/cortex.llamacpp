@@ -4,9 +4,6 @@
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
-#include <trantor/utils/AsyncFileLogger.h>
-#include<string>
-#include <fstream>
 
 namespace {
 constexpr const int k200OK = 200;
