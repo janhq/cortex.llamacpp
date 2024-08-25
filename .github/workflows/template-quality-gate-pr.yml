@@ -180,7 +180,7 @@ jobs:
           #   vulkan: false
           #   sccache: false
           #   sccache-conf-path: ""
-          # - os: "windows"
+          - os: "windows"
             name: "amd64-vulkan"
             runs-on: "windows-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
