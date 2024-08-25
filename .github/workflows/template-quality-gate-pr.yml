@@ -271,7 +271,7 @@ jobs:
       - name: Prepare Vulkan SDK Windows
         if: ${{ matrix.vulkan && (matrix.os == 'windows') }}
         run: |
-          # if (Test-Path C:\VulkanSDK\${env:VULKAN_VERSION}) { Remove-Item C:\VulkanSDK\${env:VULKAN_VERSION} }
+          if (Test-Path C:/VulkanSDK/${env:VULKAN_VERSION}) { Remove-Item C:/VulkanSDK/${env:VULKAN_VERSION} }
           curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/${env:VULKAN_VERSION}/windows/VulkanSDK-${env:VULKAN_VERSION}-Installer.exe"
           & "$env:RUNNER_TEMP\VulkanSDK-Installer.exe" --accept-licenses --default-answer --confirm-command install
           Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\${env:VULKAN_VERSION}"
