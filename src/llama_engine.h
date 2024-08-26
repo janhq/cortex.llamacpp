@@ -12,7 +12,7 @@ constexpr size_t max_log_file_size = 20000000; // ~20mb
 
 class LlamaEngine : public EngineI {
  public:
-  LlamaEngine();
+  LlamaEngine(int log_option = 0);
   ~LlamaEngine() final;
   // #### Interface ####
   void HandleChatCompletion(
