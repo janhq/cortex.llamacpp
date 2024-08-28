@@ -23,19 +23,7 @@ bool IsValidCacheType(const std::string& c) {
   return true;
 }
 
-void SetLoggerOption(const Json::Value& json_body){
-  if (!json_body["log_option"].isNull()) {   
-    int log_option = json_body["log_option"].asInt();
-    if (log_option != kFileLoggerOption){
-      // Revert to default trantor logger output function
-      trantor::Logger::setOutputFunction(
-        [](const char* msg, const uint64_t len) {
-          fwrite(msg, 1, static_cast<size_t>(len), stdout);
-        },
-        []() { fflush(stdout); });
-    }
-   }
-}
+
 
 struct InferenceState {
   int task_id;
@@ -136,7 +124,46 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
+void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
+  if (!json_body["log_option"].isNull()) {
+    int log_option = json_body["log_option"].asInt();
+    if (log_option != kFileLoggerOption) {
+      // Revert to default trantor logger output function
+      trantor::Logger::setOutputFunction(
+          [](const char* msg, const uint64_t len) {
+            fwrite(msg, 1, static_cast<size_t>(len), stdout);
+          },
+          []() { fflush(stdout); });
+    } else {
+      trantor::Logger::setOutputFunction(
+          [&](const char* msg, const uint64_t len) {
+            asynce_file_logger_->output(msg, len);
+          },
+          [&]() { asynce_file_logger_->flush(); });
+      asynce_file_logger_->setFileSizeLimit(max_log_file_size);
+    }
+  }
+
+  if (!json_body["log_level"].isNull()) {
+    std::string log_level = json_body["log_level"].asString();
+    if (log_level == "trace") {
+      trantor::Logger::setLogLevel(trantor::Logger::kTrace);
+    } else if (log_level == "debug") {
+      trantor::Logger::setLogLevel(trantor::Logger::kDebug);
+    } else if (log_level == "info") {
+      trantor::Logger::setLogLevel(trantor::Logger::kInfo);
+    } else if (log_level == "warn") {
+      trantor::Logger::setLogLevel(trantor::Logger::kWarn);
+    } else if (log_level == "fatal") {
+      trantor::Logger::setLogLevel(trantor::Logger::kFatal);
+    } else {
+      trantor::Logger::setLogLevel(trantor::Logger::kError);
+    }
+  }
+}
+
 LlamaEngine::LlamaEngine(int log_option) {
+  trantor::Logger::setLogLevel(trantor::Logger::kError);
   if (log_option == kFileLoggerOption) {
     std::filesystem::create_directories(log_folder);
     asynce_file_logger_ = std::make_unique<trantor::AsyncFileLogger>();
@@ -325,19 +352,15 @@ void LlamaEngine::SetFileLogger() {
       [](ggml_log_level level, const char* text, void* user_data) {
         (void)level;
         (void)user_data;
-        if (level == GGML_LOG_LEVEL_ERROR){
+        if (level == GGML_LOG_LEVEL_ERROR) {
           LOG_ERROR << text;
-        }
-        else if(level == GGML_LOG_LEVEL_DEBUG){
+        } else if (level == GGML_LOG_LEVEL_DEBUG) {
           LOG_DEBUG << text;
-        }
-        else if(level == GGML_LOG_LEVEL_WARN){
+        } else if (level == GGML_LOG_LEVEL_WARN) {
           LOG_WARN << text;
-        }
-        else {
+        } else {
           LOG_INFO << text;
         }
-          
       },
       nullptr);
 }

@@ -79,15 +79,15 @@ using SyncQueue = Server::SyncQueue;
 
 int main(int argc, char** argv) {
      std::filesystem::create_directories("./logs");
-  trantor::AsyncFileLogger asyncFileLogger;
-  asyncFileLogger.setFileName("logs/cortex");
-  asyncFileLogger.startLogging();
-  trantor::Logger::setOutputFunction(
-      [&](const char* msg, const uint64_t len) {
-        asyncFileLogger.output(msg, len);
-      },
-      [&]() { asyncFileLogger.flush(); });
-  asyncFileLogger.setFileSizeLimit(100000000);
+  // trantor::AsyncFileLogger asyncFileLogger;
+  // asyncFileLogger.setFileName("logs/cortex");
+  // asyncFileLogger.startLogging();
+  // trantor::Logger::setOutputFunction(
+  //     [&](const char* msg, const uint64_t len) {
+  //       asyncFileLogger.output(msg, len);
+  //     },
+  //     [&]() { asyncFileLogger.flush(); });
+  // asyncFileLogger.setFileSizeLimit(100000000);
 
   std::string hostname = "127.0.0.1";
   int port = 3928;
