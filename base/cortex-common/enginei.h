@@ -26,7 +26,6 @@ class EngineI {
   virtual void GetModelStatus(
       std::shared_ptr<Json::Value> json_body,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) = 0;
-  virtual void SetFileLogger() = 0;
 
   // For backward compatible checking, add to list when we add more APIs
   virtual bool IsSupported(const std::string& f) {
@@ -37,6 +36,7 @@ class EngineI {
     }
     return false;
   }
+  virtual void SetFileLogger() = 0;
 
   // API to get running models.
   virtual void GetModels(
