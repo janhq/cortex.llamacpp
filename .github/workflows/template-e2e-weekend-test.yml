@@ -66,7 +66,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-avx2"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-11-7"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: true
             vulkan: false

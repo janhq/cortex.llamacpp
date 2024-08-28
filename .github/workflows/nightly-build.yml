@@ -183,7 +183,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-avx2"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-11-7"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: true
             vulkan: false
@@ -191,7 +191,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-noavx"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-11-7"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: false
             vulkan: false
@@ -199,7 +199,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-avx"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: true
             vulkan: false
@@ -207,7 +207,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-avx512"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: false
             vulkan: false
@@ -215,7 +215,7 @@ jobs:
             sccache-conf-path: ""
           - os: "windows"
             name: "amd64-vulkan"
-            runs-on: "windows-2019"
+            runs-on: "windows-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             run-e2e: false
             vulkan: true

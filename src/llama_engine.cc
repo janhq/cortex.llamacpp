@@ -178,6 +178,22 @@ LlamaEngine::LlamaEngine(int log_option) {
   }
 
   log_disable();
+
+  llama_log_set(
+      [](ggml_log_level level, const char* text, void* user_data) {
+        (void)level;
+        (void)user_data;
+        if (level == GGML_LOG_LEVEL_ERROR) {
+          LOG_ERROR << text;
+        } else if (level == GGML_LOG_LEVEL_DEBUG) {
+          LOG_DEBUG << text;
+        } else if (level == GGML_LOG_LEVEL_WARN) {
+          LOG_WARN << text;
+        } else {
+          LOG_INFO << text;
+        }
+      },
+      nullptr);
 }
 
 LlamaEngine::~LlamaEngine() {
@@ -346,7 +362,7 @@ void LlamaEngine::GetModels(
   callback(std::move(status), std::move(json_resp));
   LOG_INFO << "Running models responded";
 }
-
+// should decrepted this function because it no longer used in cortex cpp
 void LlamaEngine::SetFileLogger() {
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
