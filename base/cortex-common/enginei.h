@@ -36,6 +36,7 @@ class EngineI {
     }
     return false;
   }
+  virtual void SetFileLogger() = 0;
 
   // API to get running models.
   virtual void GetModels(

@@ -10,6 +10,7 @@ constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
 constexpr const int k500InternalServerError = 500;
+constexpr const int kFileLoggerOption = 0;
 
 constexpr const auto kTypeF16 = "f16";
 constexpr const auto kType_Q8_0 = "q8_0";
@@ -21,6 +22,8 @@ bool IsValidCacheType(const std::string& c) {
   }
   return true;
 }
+
+
 
 struct InferenceState {
   int task_id;
@@ -121,16 +124,85 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
-LlamaEngine::LlamaEngine() {
+void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
+  if (!json_body["log_option"].isNull()) {
+    int log_option = json_body["log_option"].asInt();
+    if (log_option != kFileLoggerOption) {
+      // Revert to default trantor logger output function
+      trantor::Logger::setOutputFunction(
+          [](const char* msg, const uint64_t len) {
+            fwrite(msg, 1, static_cast<size_t>(len), stdout);
+          },
+          []() { fflush(stdout); });
+    } else {
+      trantor::Logger::setOutputFunction(
+          [&](const char* msg, const uint64_t len) {
+            asynce_file_logger_->output(msg, len);
+          },
+          [&]() { asynce_file_logger_->flush(); });
+      asynce_file_logger_->setFileSizeLimit(max_log_file_size);
+    }
+  }
+
+  if (!json_body["log_level"].isNull()) {
+    std::string log_level = json_body["log_level"].asString();
+    if (log_level == "trace") {
+      trantor::Logger::setLogLevel(trantor::Logger::kTrace);
+    } else if (log_level == "debug") {
+      trantor::Logger::setLogLevel(trantor::Logger::kDebug);
+    } else if (log_level == "info") {
+      trantor::Logger::setLogLevel(trantor::Logger::kInfo);
+    } else if (log_level == "warn") {
+      trantor::Logger::setLogLevel(trantor::Logger::kWarn);
+    } else if (log_level == "fatal") {
+      trantor::Logger::setLogLevel(trantor::Logger::kFatal);
+    } else {
+      trantor::Logger::setLogLevel(trantor::Logger::kError);
+    }
+  }
+}
+
+LlamaEngine::LlamaEngine(int log_option) {
+  trantor::Logger::setLogLevel(trantor::Logger::kError);
+  if (log_option == kFileLoggerOption) {
+    std::filesystem::create_directories(log_folder);
+    asynce_file_logger_ = std::make_unique<trantor::AsyncFileLogger>();
+    asynce_file_logger_->setFileName(log_base_name);
+    asynce_file_logger_->startLogging();
+    trantor::Logger::setOutputFunction(
+        [&](const char* msg, const uint64_t len) {
+          asynce_file_logger_->output(msg, len);
+        },
+        [&]() { asynce_file_logger_->flush(); });
+    asynce_file_logger_->setFileSizeLimit(max_log_file_size);
+  }
+
   log_disable();
+
+  llama_log_set(
+      [](ggml_log_level level, const char* text, void* user_data) {
+        (void)level;
+        (void)user_data;
+        if (level == GGML_LOG_LEVEL_ERROR) {
+          LOG_ERROR << text;
+        } else if (level == GGML_LOG_LEVEL_DEBUG) {
+          LOG_DEBUG << text;
+        } else if (level == GGML_LOG_LEVEL_WARN) {
+          LOG_WARN << text;
+        } else {
+          LOG_INFO << text;
+        }
+      },
+      nullptr);
 }
 
 LlamaEngine::~LlamaEngine() {
-  for(auto& [_, si]: server_map_) {
+  for (auto& [_, si] : server_map_) {
     auto& l = si.ctx;
     l.ReleaseResources();
   }
   server_map_.clear();
+  asynce_file_logger_.reset();
 }
 
 void LlamaEngine::HandleChatCompletion(
@@ -158,6 +230,7 @@ void LlamaEngine::HandleEmbedding(
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> json_body,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+  SetLoggerOption(*json_body);
   if (std::exchange(print_version_, false)) {
 #if defined(CORTEXLLAMA_VERSION)
     LOG_INFO << "cortex.llamacpp version: " << CORTEXLLAMA_VERSION;
@@ -289,6 +362,24 @@ void LlamaEngine::GetModels(
   callback(std::move(status), std::move(json_resp));
   LOG_INFO << "Running models responded";
 }
+// should decrepted this function because it no longer used in cortex cpp
+void LlamaEngine::SetFileLogger() {
+  llama_log_set(
+      [](ggml_log_level level, const char* text, void* user_data) {
+        (void)level;
+        (void)user_data;
+        if (level == GGML_LOG_LEVEL_ERROR) {
+          LOG_ERROR << text;
+        } else if (level == GGML_LOG_LEVEL_DEBUG) {
+          LOG_DEBUG << text;
+        } else if (level == GGML_LOG_LEVEL_WARN) {
+          LOG_WARN << text;
+        } else {
+          LOG_INFO << text;
+        }
+      },
+      nullptr);
+}
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   gpt_params params;
@@ -339,7 +430,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       }
     }
 
-    params.n_gpu_layers = json_body->get("ngl", 300).asInt(); // change from 100 -> 300 since llama 3.1 has 292 gpu layers
+    params.n_gpu_layers =
+        json_body->get("ngl", 300)
+            .asInt();  // change from 100 -> 300 since llama 3.1 has 292 gpu layers
     params.n_ctx = json_body->get("ctx_len", 2048).asInt();
     model_type = json_body->get("model_type", "llm").asString();
     // In case of embedding only model, we set default = true
@@ -349,11 +442,13 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     params.n_ubatch = json_body->get("n_ubatch", params.n_batch).asInt();
     // Check if n_parallel exists in json_body, if not, set to drogon_thread
     params.n_parallel = json_body->get("n_parallel", 1).asInt();
-    LOG_INFO<< "Number of parallel is set to "<< params.n_parallel;
+    LOG_INFO << "Number of parallel is set to " << params.n_parallel;
     params.n_threads =
         json_body->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
-    params.cont_batching = json_body->get("cont_batching", true).asBool(); // default true according to llama.cpp upstream
+    params.cont_batching =
+        json_body->get("cont_batching", true)
+            .asBool();  // default true according to llama.cpp upstream
 
     params.cache_type_k = json_body->get("cache_type", kTypeF16).asString();
     if (!IsValidCacheType(params.cache_type_k)) {
@@ -410,12 +505,17 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 
     // LOG_INFO_LLAMA("build info",
     //                {{"build", BUILD_NUMBER}, {"commit", BUILD_COMMIT}});
-    LOG_INFO_LLAMA("system info",
-                   {
-                       {"n_threads", params.n_threads},
-                       {"total_threads", std::thread::hardware_concurrency()},
-                       {"system_info", llama_print_system_info()},
-                   });
+
+    // The log below will output to terminal automatically, we need output to be configurable
+    // LOG_INFO_LLAMA("system info",
+    //                {
+    //                    {"n_threads", params.n_threads},
+    //                    {"total_threads", std::thread::hardware_concurrency()},
+    //                    {"system_info", llama_print_system_info()},
+    //                });
+    LOG_INFO << "system info: " << "{'n_thread': " << params.n_threads
+             << ", 'total_threads': " << std::thread::hardware_concurrency()
+             << ". 'system_info': '" << llama_print_system_info() << "'}";
   }
 
   // load the model

@@ -3,10 +3,16 @@
 #include "cortex-common/enginei.h"
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
+#include "llama.h"
+#include <trantor/utils/AsyncFileLogger.h>
+
+constexpr char log_base_name[] = "logs/cortex";
+constexpr char log_folder[] = "logs";
+constexpr size_t max_log_file_size = 20000000; // ~20mb
 
 class LlamaEngine : public EngineI {
  public:
-  LlamaEngine();
+  LlamaEngine(int log_option = 0);
   ~LlamaEngine() final;
   // #### Interface ####
   void HandleChatCompletion(
@@ -27,6 +33,8 @@ class LlamaEngine : public EngineI {
   void GetModels(
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
+  void SetFileLogger();
+  void SetLoggerOption(const Json::Value& json_body);
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
@@ -66,4 +74,5 @@ class LlamaEngine : public EngineI {
   std::atomic<int> no_of_chats_ = 0;
 
   bool print_version_ = true;
+  std::unique_ptr<trantor::AsyncFileLogger> asynce_file_logger_;
 };
