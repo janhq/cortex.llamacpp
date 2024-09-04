@@ -443,7 +443,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     // Check if n_parallel exists in json_body, if not, set to drogon_thread
     params.n_parallel = json_body->get("n_parallel", 1).asInt();
     LOG_INFO << "Number of parallel is set to " << params.n_parallel;
-    params.n_threads =
+    params.cpuparams.n_threads =
         json_body->get("cpu_threads", std::thread::hardware_concurrency())
             .asInt();
     params.cont_batching =
@@ -513,7 +513,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     //                    {"total_threads", std::thread::hardware_concurrency()},
     //                    {"system_info", llama_print_system_info()},
     //                });
-    LOG_INFO << "system info: " << "{'n_thread': " << params.n_threads
+    LOG_INFO << "system info: " << "{'n_thread': " << params.cpuparams.n_threads
              << ", 'total_threads': " << std::thread::hardware_concurrency()
              << ". 'system_info': '" << llama_print_system_info() << "'}";
   }
