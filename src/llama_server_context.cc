@@ -808,7 +808,7 @@ bool LlamaServerContext::ProcessImages(LlamaClientSlot& slot) const {
     }
 
     if (!llava_image_embed_make_with_clip_img(
-            clp_ctx, params.n_threads, img.img_data, &img.image_embedding,
+            clp_ctx, params.cpuparams.n_threads, img.img_data, &img.image_embedding,
             &img.image_tokens)) {
       LOG_WARN << "Error processing the given image";
       return false;
