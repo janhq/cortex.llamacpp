@@ -167,7 +167,7 @@ jobs:
             sccache-conf-path: "/tmp/sccache.conf"
           - os: "mac"
             name: "amd64"
-            runs-on: "macos-13"
+            runs-on: "macos-12"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=OFF"
             run-e2e: true
             vulkan: false
