@@ -4,11 +4,11 @@
 #include "json/reader.h"
 
 #include <signal.h>
+#include <trantor/utils/AsyncFileLogger.h>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
 #include "trantor/utils/Logger.h"
-#include <trantor/utils/AsyncFileLogger.h>
 class Server {
  public:
   Server() {
@@ -78,7 +78,7 @@ inline void signal_handler(int signal) {
 using SyncQueue = Server::SyncQueue;
 
 int main(int argc, char** argv) {
-     std::filesystem::create_directories("./logs");
+  //  std::filesystem::create_directories("./logs");
   // trantor::AsyncFileLogger asyncFileLogger;
   // asyncFileLogger.setFileName("logs/cortex");
   // asyncFileLogger.startLogging();
@@ -103,7 +103,6 @@ int main(int argc, char** argv) {
   Server server;
   //set logger here
   server.engine_->SetFileLogger();
-  
 
   SyncJsonReader r;
   auto svr = std::make_unique<httplib::Server>();
