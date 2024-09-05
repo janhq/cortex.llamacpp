@@ -23,8 +23,6 @@ bool IsValidCacheType(const std::string& c) {
   return true;
 }
 
-
-
 struct InferenceState {
   int task_id;
   LlamaServerContext& llama;
@@ -142,6 +140,13 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
           [&]() { asynce_file_logger_->flush(); });
       asynce_file_logger_->setFileSizeLimit(max_log_file_size);
     }
+  } else {
+    // For backward compatible
+    trantor::Logger::setOutputFunction(
+        [](const char* msg, const uint64_t len) {
+          fwrite(msg, 1, static_cast<size_t>(len), stdout);
+        },
+        []() { fflush(stdout); });
   }
 
   if (!json_body["log_level"].isNull()) {
@@ -159,6 +164,8 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
     } else {
       trantor::Logger::setLogLevel(trantor::Logger::kError);
     }
+  } else {
+    trantor::Logger::setLogLevel(trantor::Logger::kDebug);
   }
 }
 
