@@ -270,6 +270,7 @@ jobs:
   
       - name: Prepare Vulkan SDK Windows
         if: ${{ matrix.vulkan && (matrix.os == 'windows') }}
+        continue-on-error: true
         run: |
           if (Test-Path C:/VulkanSDK/${env:VULKAN_VERSION}/) { Remove-Item -Path C:/VulkanSDK/${env:VULKAN_VERSION}/ -Force -Recurse }
           curl.exe -o $env:RUNNER_TEMP/VulkanSDK-Installer.exe -L "https://sdk.lunarg.com/sdk/download/${env:VULKAN_VERSION}/windows/VulkanSDK-${env:VULKAN_VERSION}-Installer.exe"
