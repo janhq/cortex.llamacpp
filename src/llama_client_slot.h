@@ -38,12 +38,12 @@ static bool server_verbose = false;
 
 using json = nlohmann::json;
 
-enum class SlotState: uint8_t {
+enum class SlotState : uint8_t {
   kIdle,
   kProcessing,
 };
 
-enum class SlotCommand: uint8_t {
+enum class SlotCommand : uint8_t {
   kNone,
   kLoadPrompt,
   kRelease,
@@ -133,8 +133,8 @@ struct LlamaClientSlot {
   std::string stopping_word;
 
   // sampling
-  struct llama_sampling_params sparams;
-  llama_sampling_context* ctx_sampling = nullptr;
+  struct gpt_sampler_params sparams;
+  struct gpt_sampler* smpl = nullptr;
 
   // multimodal
   std::vector<SlotImage> images;

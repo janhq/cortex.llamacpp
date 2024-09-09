@@ -116,6 +116,7 @@ struct LlamaServerContext {
   bool clean_kv_cache = true;
   bool all_slots_are_idle = false;
   bool add_bos_token = true;
+  bool has_eos_token  = false;
 
   std::atomic<int32_t> id_gen;
   int32_t n_ctx;  // total context for all clients / slots
