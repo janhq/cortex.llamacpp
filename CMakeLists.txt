@@ -29,6 +29,7 @@ add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
 set(CMAKE_BUILD_RPATH ".")
 set(CMAKE_INSTALL_RPATH ".")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 
 add_library(${TARGET} SHARED 
     src/llama_engine.cc
