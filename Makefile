@@ -60,7 +60,8 @@ ifeq ($(OS),Windows_NT)
 	@powershell -Command "cp .\.github\patches\windows\vcomp140.dll cortex.llamacpp\;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p cortex.llamacpp; \
-	cp build/libengine.so cortex.llamacpp/;
+	cp build/libengine.so cortex.llamacpp/; \
+	cp examples/server/build/server cortex.llamacpp/
 else
 	@mkdir -p cortex.llamacpp; \
 	cp build/libengine.dylib cortex.llamacpp/;

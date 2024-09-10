@@ -28,14 +28,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - os: "linux"
-          #   name: "amd64-avx2"
-          #   runs-on: "ubuntu-20-04"
-          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-          #   run-e2e: true
-          #   vulkan: false
-          #   sccache: true
-          #   sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
+            name: "amd64-avx2"
+            runs-on: "ubuntu-20-04"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: true
+            vulkan: false
+            sccache: true
+            sccache-conf-path: "/tmp/sccache.conf"
           # - os: "linux"
           #   name: "amd64-noavx"
           #   runs-on: "ubuntu-20-04"
