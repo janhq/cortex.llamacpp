@@ -27,6 +27,7 @@ endif()
 
 add_subdirectory(llama.cpp/examples/llava)
 add_subdirectory(llama.cpp)
+set(CMAKE_BUILD_RPATH "./")
 
 add_library(${TARGET} SHARED 
     src/llama_engine.cc
