@@ -12,6 +12,7 @@
 class Server {
  public:
   Server() {
+    setenv("LD_LIBRARY_PATH", "/home/jan/sang/engines/cortex.llamacpp/", 1);
     dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
     auto func = dylib_->get_function<EngineI*()>("get_engine");
     engine_ = func();

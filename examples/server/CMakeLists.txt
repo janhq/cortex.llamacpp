@@ -30,7 +30,7 @@ find_library(TRANTOR
     HINTS "${THIRD_PARTY_PATH}/lib"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE ${JSONCPP} ${TRANTOR} ${LINKER_FLAGS} ${CMAKE_DL_LIBS}
+target_link_libraries(${PROJECT_NAME} PRIVATE ${JSONCPP} ${TRANTOR} ${LINKER_FLAGS}
                                               ${CMAKE_THREAD_LIBS_INIT})
 
 target_include_directories(${PROJECT_NAME} PRIVATE 
