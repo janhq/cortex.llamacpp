@@ -1,5 +1,5 @@
 #include "llama_server_context.h"
-
+#include "sampling.h"
 namespace {
 const std::string base64_chars =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -458,6 +458,15 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   slot->params.seed = json_value(data, "seed", default_params.seed);
   slot->sparams.grammar = json_value(data, "grammar", default_sparams.grammar);
   slot->sparams.n_probs = json_value(data, "n_probs", default_sparams.n_probs);
+  slot->sparams.min_keep =
+      json_value(data, "min_keep", default_sparams.min_keep);
+  slot->sparams.seed = json_value(data, "seed", default_sparams.seed);
+  slot->sparams.dynatemp_range =
+      json_value(data, "dynatemp_range", default_sparams.dynatemp_range);
+  slot->sparams.dynatemp_exponent =
+      json_value(data, "dynatemp_exponent", default_sparams.dynatemp_exponent);
+  slot->sparams.ignore_eos =
+      json_value(data, "ignore_eos", default_sparams.ignore_eos);
 
   // infill
   if (data.count("input_prefix") != 0) {
@@ -969,8 +978,13 @@ void LlamaServerContext::SendFinalResponse(LlamaClientSlot& slot) {
           slot.generated_token_probs.begin(),
           slot.generated_token_probs.begin() + slot.sent_token_probs_index);
     }
-    res.result_json["completion_probabilities"] =
+    if(!slot.params.stream ){
+      res.result_json["completion_probabilities"] =
         probs_vector_to_json(ctx, probs);
+    }
+    else{
+      res.result_json["completion_probabilities"] = std::move(json());
+    }
   }
 
   if (slot.oaicompat) {
