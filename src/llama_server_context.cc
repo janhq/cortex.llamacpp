@@ -1,4 +1,5 @@
 #include "llama_server_context.h"
+#include "sampling.h"
 
 namespace {
 const std::string base64_chars =
