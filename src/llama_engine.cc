@@ -121,7 +121,7 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
   return Json::writeString(writer, root);
 }
 }  // namespace
-
+// derepted this function because we no longer support change log when load model
 void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
   if (!json_body["log_option"].isNull()) {
     int log_option = json_body["log_option"].asInt();
@@ -133,12 +133,18 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
           },
           []() { fflush(stdout); });
     } else {
+      std::string log_path = json_body.get("log_path", log_path_).asString();
+      int max_log_lines =
+          json_body.get("max_log_lines", max_log_lines_).asInt();
+      trantor::FileLogger asyncFileLogger;
+      asyncFileLogger.setFileName(log_path);
+      asyncFileLogger.setMaxLines(max_log_lines);  // Keep last 100000 lines
+      // asyncFileLogger.startLogging();
       trantor::Logger::setOutputFunction(
           [&](const char* msg, const uint64_t len) {
-            asynce_file_logger_->output(msg, len);
+            asynce_file_logger_->output_(msg, len);
           },
           [&]() { asynce_file_logger_->flush(); });
-      asynce_file_logger_->setFileSizeLimit(max_log_file_size);
     }
   } else {
     // For backward compatible
@@ -170,18 +176,9 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
 }
 
 LlamaEngine::LlamaEngine(int log_option) {
-  trantor::Logger::setLogLevel(trantor::Logger::kError);
+  trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
-    std::filesystem::create_directories(log_folder);
-    asynce_file_logger_ = std::make_unique<trantor::AsyncFileLogger>();
-    asynce_file_logger_->setFileName(log_base_name);
-    asynce_file_logger_->startLogging();
-    trantor::Logger::setOutputFunction(
-        [&](const char* msg, const uint64_t len) {
-          asynce_file_logger_->output(msg, len);
-        },
-        [&]() { asynce_file_logger_->flush(); });
-    asynce_file_logger_->setFileSizeLimit(max_log_file_size);
+    asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
 
   log_disable();
@@ -237,7 +234,7 @@ void LlamaEngine::HandleEmbedding(
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> json_body,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  SetLoggerOption(*json_body);
+  // SetLoggerOption(*json_body); // dont update log option when load model
   if (std::exchange(print_version_, false)) {
 #if defined(CORTEXLLAMA_VERSION)
     LOG_INFO << "cortex.llamacpp version: " << CORTEXLLAMA_VERSION;
@@ -370,7 +367,19 @@ void LlamaEngine::GetModels(
   LOG_INFO << "Running models responded";
 }
 // should decrepted this function because it no longer used in cortex cpp
-void LlamaEngine::SetFileLogger() {
+void LlamaEngine::SetFileLogger(int max_log_lines,
+                                const std::string& log_path) {
+  if (!asynce_file_logger_) {
+    asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
+  }
+  asynce_file_logger_->setFileName(log_path);
+  asynce_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
+  asynce_file_logger_->startLogging();
+  trantor::Logger::setOutputFunction(
+      [&](const char* msg, const uint64_t len) {
+        asynce_file_logger_->output_(msg, len);
+      },
+      [&]() { asynce_file_logger_->flush(); });
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
         (void)level;

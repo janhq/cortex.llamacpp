@@ -36,7 +36,8 @@ class EngineI {
     }
     return false;
   }
-  virtual void SetFileLogger() = 0;
+  virtual void SetFileLogger(int max_log_lines,
+                             const std::string& log_path) = 0;
 
   // API to get running models.
   virtual void GetModels(
