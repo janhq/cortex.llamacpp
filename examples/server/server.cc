@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
 
   Server server;
   //set logger here
-  server.engine_->SetFileLogger();
+  // server.engine_->SetFileLogger();
 
   SyncJsonReader r;
   auto svr = std::make_unique<httplib::Server>();
