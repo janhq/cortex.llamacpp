@@ -7,10 +7,6 @@
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
 
-constexpr char log_base_name[] = "logs/cortex";
-constexpr char log_folder[] = "logs";
-constexpr size_t max_log_file_size = 20000000;  // ~20mb
-
 class LlamaEngine : public EngineI {
  public:
   LlamaEngine(int log_option = 0);
