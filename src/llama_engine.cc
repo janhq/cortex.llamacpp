@@ -480,6 +480,10 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     if (!params.use_mmap) {
       LOG_DEBUG << "Disabled mmap";
     }
+    params.n_predict = json_body->get("n_predict", -1).asInt();
+    params.prompt = json_body->get("prompt", "").asString();
+    params.conversation = json_body->get("conversation", false).asBool();
+    params.special = json_body->get("special", false).asBool();
 
     server_map_[model_id].caching_enabled =
         json_body->get("caching_enabled", true).asBool();
@@ -599,6 +603,24 @@ void LlamaEngine::HandleInferenceImpl(
   data["temperature"] = completion.temperature;
   data["frequency_penalty"] = completion.frequency_penalty;
   data["presence_penalty"] = completion.presence_penalty;
+  data["seed"] = completion.seed;
+  data["dynatemp_range"] = completion.dynatemp_range;
+  data["dynatemp_exponent"] = completion.dynatemp_exponent;
+  data["top_k"] = completion.top_k;
+  data["min_p"] = completion.min_p;
+  data["tfs_z"] = completion.tfs_z;
+  data["typical_p"] = completion.typ_p;
+  data["repeat_last_n"] = completion.repeat_last_n;
+  data["repeat_penalty"] = completion.penalty_repeat;
+  data["mirostat"] = completion.mirostat;
+  data["mirostat_tau"] = completion.mirostat_tau;
+  data["mirostat_eta"] = completion.mirostat_eta;
+  data["penalize_nl"] = completion.penalize_nl;
+  data["ignore_eos"] = completion.ignore_eos;
+  data["n_probs"] = completion.n_probs;
+  data["min_keep"] = completion.min_keep;
+  data["grammar"] = completion.grammar;
+  int n_probs = completion.n_probs;
   const Json::Value& messages = completion.messages;
 
   if (!si.grammar_file_content.empty()) {
@@ -717,12 +739,17 @@ void LlamaEngine::HandleInferenceImpl(
     auto state = CreateInferenceState(si.ctx);
 
     // Queued task
-    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id]() {
+    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id, n_probs]() {
       state->task_id = state->llama.RequestCompletion(data, false, false, -1);
       while (state->llama.model_loaded_external) {
         TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
-          std::string to_send = result.result_json["content"];
+          std::string to_send;
+          if (n_probs > 0){
+            to_send = result.result_json["completion_probabilities"].dump();
+          }else{
+            to_send = result.result_json["content"];
+          }
           // trim the leading space if it is the first token
           if (std::exchange(state->is_first_token, false)) {
             llama_utils::ltrim(to_send);
