@@ -327,6 +327,15 @@ jobs:
         run: |
           make pre-package
 
+      - uses: 1arp/create-a-file-action@0.4.5
+        with:
+          path: 'cortex.llamacpp'
+          isAbsolutePath: false
+          file: 'version.txt'
+          content: |
+            name: ${{ matrix.os }}-${{ matrix.name }}
+            version: ${{needs.create-draft-release.outputs.version}}
+
       - name: Package
         run: |
           make package
