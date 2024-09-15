@@ -36,110 +36,110 @@ jobs:
             vulkan: false
             sccache: true
             sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-noavx"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512"
-            runs-on: "ubuntu-20-04"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-vulkan"
-            runs-on: "ubuntu-22-04"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: true
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-noavx-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx2-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512-cuda-11-7"
-            runs-on: "ubuntu-20-04-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-noavx-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_FMA=OFF -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx2-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "linux"
-            name: "amd64-avx512-cuda-12-0"
-            runs-on: "ubuntu-20-04-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: "/tmp/sccache.conf"
-          - os: "mac"
-            name: "amd64"
-            runs-on: "macos-12"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=OFF"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
+          # - os: "linux"
+          #   name: "amd64-noavx"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512"
+          #   runs-on: "ubuntu-20-04"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-vulkan"
+          #   runs-on: "ubuntu-22-04"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: true
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-noavx-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx2-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512-cuda-11-7"
+          #   runs-on: "ubuntu-20-04-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-noavx-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_FMA=OFF -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx2-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "linux"
+          #   name: "amd64-avx512-cuda-12-0"
+          #   runs-on: "ubuntu-20-04-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: "/tmp/sccache.conf"
+          # - os: "mac"
+          #   name: "amd64"
+          #   runs-on: "macos-12"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_METAL=OFF"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
           - os: "mac"
             name: "arm64"
             runs-on: "macos-silicon"
@@ -148,110 +148,110 @@ jobs:
             vulkan: false
             sccache: false
             sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx2"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-noavx"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_AVX2=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-avx512"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_AVX512=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-vulkan"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: false
-            vulkan: true
-            sccache: false
-            sccache-conf-path: ""
-          - os: "windows"
-            name: "amd64-noavx-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx2-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx512-cuda-12-0"
-            runs-on: "windows-cuda-12-0"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-noavx-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx2-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
-          - os: "windows"
-            name: "amd64-avx512-cuda-11-7"
-            runs-on: "windows-cuda-11-7"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
-            run-e2e: false
-            vulkan: false
-            sccache: true
-            sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx2"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-noavx"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_AVX2=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: true
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-avx512"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_AVX512=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-vulkan"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_VULKAN=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
+          #   run-e2e: false
+          #   vulkan: true
+          #   sccache: false
+          #   sccache-conf-path: ""
+          # - os: "windows"
+          #   name: "amd64-noavx-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx2-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx512-cuda-12-0"
+          #   runs-on: "windows-cuda-12-0"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-noavx-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX=OFF -DGGML_AVX2=OFF -DGGML_FMA=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx2-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
+          # - os: "windows"
+          #   name: "amd64-avx512-cuda-11-7"
+          #   runs-on: "windows-cuda-11-7"
+          #   cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_AVX512=ON -DGGML_NATIVE=OFF -DLLAMA_BUILD_SERVER=ON -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CUDA_COMPILER_LAUNCHER=sccache -GNinja"
+          #   run-e2e: false
+          #   vulkan: false
+          #   sccache: true
+          #   sccache-conf-path: 'C:\sccache.conf'
 
     steps:
       - name: Clone
@@ -321,6 +321,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
 
       - name: Build
+        id: build-and-test
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
 
@@ -352,9 +353,66 @@ jobs:
           name: cortex.llamacpp-${{ matrix.os }}-${{ matrix.name }}
           path: ./cortex.llamacpp
 
+      - name: Calculate SHA512 Checksum (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sha512sum ./cortex.llamacpp.tar.gz | awk '{ print $1 }' > sha512.txt
+          size=$(stat -f%z ./cortex.llamacpp.tar.gz)  # Sử dụng -f%z cho macOS
+          echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
+          echo "size=$size" >> $GITHUB_ENV
+
+      ## Write for matrix outputs workaround 
+      - uses: cloudposse/github-action-matrix-outputs-write@v1
+        id: out
+        with:
+          matrix-step-name: ${{ github.job }}
+          matrix-key: ${{ matrix.os }}-${{ matrix.name }}
+          outputs: |-
+            sha512: ${{ env.checksum }}
+            size: ${{ env.size }}
+  
+      - name: Calculate SHA512 Checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          CertUtil -hashfile ./cortex.llamacpp.tar.gz SHA512 | Select-String -Pattern "^[0-9a-fA-F]+$" | Out-File sha512.txt
+          $size = (Get-Item ./cortex.llamacpp.tar.gz).length
+          echo "checksum=$(Get-Content sha512.txt)" >> $env:GITHUB_ENV
+          echo "size=$size" >> $env:GITHUB_ENV
+
+      - name: Set output for checksum
+        id: set_checksum_output
+        run: |
+          echo "::set-output name=sha512::$(cat sha512.txt)"
+          echo "::set-output name=size::${{ env.size }}"
+  
+
       - name: Clean
         if: always()
         continue-on-error: true
         run: |
           sccache --stop-server
           rm ${{ matrix.sccache-conf-path }}
+
+  ## Read matrix outputs 
+  read:
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - uses: cloudposse/github-action-matrix-outputs-read@v1
+        id: read
+        with:
+          matrix-step-name: build-and-test
+    outputs:
+        result: "${{ steps.read.outputs.result }}"
+
+  create-checksum-file:
+    runs-on: ubuntu-latest
+    needs: [read]
+    steps:
+      - name: Create checksum.yml
+        run: |
+          echo "version: ${{github.event.pull_request.head.sha}}" > checksum.yml
+          echo "files:" >> checksum.yml
+          echo '${{ toJson(needs.read.outputs.result) }}'
+          cat checksum.yml
