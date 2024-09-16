@@ -1,34 +1,31 @@
 name: Convert model to gguf with specified quant
 
 on:
-  push:
-    branches:
-      - feat-all-quants-ci
-  # workflow_dispatch:
-  #   inputs:
-  #     source_model_id:
-  #       description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
-  #       required: true
-  #     source_model_size:
-  #       description: "The model size. For ex: 8b"
-  #       required: true
-  #       type: string
-  #     target_model_id:
-  #       description: "Target HuggingFace model ID to push. For ex: llama3.1"
-  #       required: true
-  #       type: string
-  #     quantization_level:
-  #       description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
-  #       required: true
-  #       type: string
-  #       default: 'all'
+  workflow_dispatch:
+    inputs:
+      source_model_id:
+        description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
+        required: true
+      source_model_size:
+        description: "The model size. For ex: 8b"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to push. For ex: llama3.1"
+        required: true
+        type: string
+      quantization_level:
+        description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+        required: true
+        type: string
+        default: 'all'
 
 env:
   USER_NAME: cortexso
-  SOURCE_MODEL_ID: meta-llama/Meta-Llama-3-8B-Instruct # ${{ inputs.source_model_id }}
-  SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }}
-  TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }}
-  QUANT_LEVEL: all # ${{ inputs.quantization_level }}
+  SOURCE_MODEL_ID: ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }}
+  QUANT_LEVEL: ${{ inputs.quantization_level }}
 
 jobs:
   converter:

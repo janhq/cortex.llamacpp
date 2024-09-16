@@ -29,7 +29,7 @@ env:
   QUANT_LEVEL: ${{ inputs.quantization_level }}
 
 jobs:
-  converter:
+  model-yaml-updater:
     runs-on: ubuntu-20-04-gguf
     steps:
       - name: Checkout
