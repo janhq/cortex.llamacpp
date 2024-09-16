@@ -3,10 +3,10 @@ from huggingface_hub import hf_hub_download
 import os
 from ruamel.yaml import YAML
 
-def download_yaml_from_huggingface(repo_id, filename, save_path):
+def download_yaml_from_huggingface(repo_id, filename, save_path, branch=None):
     try:
         # Download the file from the Hugging Face Hub
-        downloaded_path = hf_hub_download(repo_id=repo_id, filename=filename)
+        downloaded_path = hf_hub_download(repo_id=repo_id, filename=filename, revision=branch)
         
         # Ensure the directory for save_path exists
         os.makedirs(save_path, exist_ok=True)
@@ -63,6 +63,7 @@ def main():
     parser = argparse.ArgumentParser(description="Download a YAML file from Hugging Face, modify multiple fields, and save it")
     parser.add_argument("--repo_id", required=True, help="The ID of the Hugging Face repository")
     parser.add_argument("--filename", required=True, help="The name of the YAML file to download")
+    parser.add_argument("--branch", default=None, help="The branch to download from (default is main)")
     parser.add_argument("--save_path", required=True, help="The local path where the file should be saved")
     parser.add_argument("--key_value_pairs", required=True, nargs='+', type=parse_key_value_pair,
                         help="Field-value pairs to modify. Format: field1=value1 field2=value2 ...")
@@ -74,6 +75,7 @@ def main():
         repo_id=args.repo_id,
         filename=args.filename,
         save_path=args.save_path
+        branch=args.branch
     )
     
     if downloaded_file:
