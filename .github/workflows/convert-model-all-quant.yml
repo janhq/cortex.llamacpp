@@ -94,7 +94,7 @@ jobs:
 
       - name: Build lib for quantize
         run: |
-          cd llama.cpp && mkdir -p build && cd build && cmake .. && cmake --build . --config Release -j 32
+          cd llama.cpp && make
           cd ../../
 
       - name: Convert to GGUF
