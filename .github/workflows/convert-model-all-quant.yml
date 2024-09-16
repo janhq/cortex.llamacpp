@@ -107,25 +107,25 @@ jobs:
       - name: Quantize and Upload 
         run: |
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/model.gguf Q2_K
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/model.gguf Q2_K
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/model.gguf Q3_K_S
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/model.gguf Q3_K_S
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/model.gguf Q3_K_M
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/model.gguf Q3_K_M
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/model.gguf Q3_K_L
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/model.gguf Q3_K_L
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/model.gguf Q4_K_S
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/model.gguf Q4_K_S
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/model.gguf Q4_K_M
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/model.gguf Q4_K_M
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/model.gguf Q5_K_S
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/model.gguf Q5_K_S
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/model.gguf Q5_K_M
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/model.gguf Q5_K_M
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/model.gguf Q6_K
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/model.gguf Q6_K
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/
-          ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/model.gguf Q8_0
+          ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/model.gguf Q8_0
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf
 
       - name: Upload to Hugging Face
