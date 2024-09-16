@@ -59,6 +59,7 @@ jobs:
       - name: Prepare folders
         if: steps.check_files.outputs.files_exists == 'false'
         run: |
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/yaml/
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/yaml
       
       - name: Quantize and Upload 
