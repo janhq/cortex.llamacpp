@@ -29,7 +29,7 @@ env:
   KEY_VALUE_PAIRS: "" #${{ inputs.key_value_pairs }}
   SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }}
   TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }}
-  QUANT_LEVEL: "all" # ${{ inputs.quantization_level }}
+  QUANT_LEVEL: "q4-km" # ${{ inputs.quantization_level }}
 
 jobs:
   converter:
