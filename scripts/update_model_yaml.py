@@ -6,7 +6,10 @@ from ruamel.yaml import YAML
 def download_yaml_from_huggingface(repo_id, filename, save_path, branch=None):
     try:
         # Download the file from the Hugging Face Hub
-        downloaded_path = hf_hub_download(repo_id=repo_id, filename=filename, revision=branch)
+        try:
+            downloaded_path = hf_hub_download(repo_id=repo_id, filename=filename, revision=branch)
+        except:
+            downloaded_path = hf_hub_download(repo_id=repo_id, filename=filename)
         
         # Ensure the directory for save_path exists
         os.makedirs(save_path, exist_ok=True)

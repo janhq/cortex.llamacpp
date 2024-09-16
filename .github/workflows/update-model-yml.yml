@@ -1,4 +1,4 @@
-name: Convert model to gguf all quants
+name: Convert model to gguf with specified quant
 
 on:
   push:
@@ -11,37 +11,42 @@ on:
   #       required: true
   #       type: string
   #     target_model_id:
-  #       description: "Target HuggingFace model ID to push. For ex: llama3.1"
+  #       description: "Target HuggingFace model ID to update. For ex: llama3.1"
   #       required: true
   #       type: string
   #     source_model_size:
   #       description: "The model size. For ex: 8b"
   #       required: true
   #       type: string
+  #     quantization_level:
+  #       description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+  #       required: true
+  #       type: string
+  #       default: 'all'
 
 env:
   USER_NAME: cortexso
-  KEY_VALUE_PAIRS: "" # ${{ inputs.key_value_pairs }} 
-  SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }} 
-  TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }} 
+  KEY_VALUE_PAIRS: "" #${{ inputs.key_value_pairs }}
+  SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }}
+  QUANT_LEVEL: "all" # ${{ inputs.quantization_level }}
 
 jobs:
   converter:
     runs-on: ubuntu-20-04-gguf
     steps:
       - name: Checkout
-        uses: actions/checkout@v4 # v4.1.7
+        uses: actions/checkout@v4
         with:
           submodules: recursive
 
       - name: Set up Python
-        uses: actions/setup-python@v5 # v5.1.1
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          # architecture: 'x64'
 
       - name: Cache Python packages
-        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/pip
@@ -60,43 +65,40 @@ jobs:
         run: |
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/yaml/
           mkdir -p /mnt/models/${{ env.MODEL_NAME }}/yaml
-      
-      - name: Quantize and Upload 
+
+      - name: Quantize and Upload
         run: |
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/yaml/q2-k/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q2-k --save_path  /mnt/models/${{ env.MODEL_NAME }}/yaml/q2-k/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q2-k ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-ks --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q3-ks/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-ks ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-km --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q3-km/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-km ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-kl --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q3-kl/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-kl ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-ks --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q4-ks/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-ks ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-km --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q4-km/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-km ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-ks --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q5-ks/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-ks ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-km --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q5-km/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-km ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q6-k --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q6-k/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q6-k ${{ env.KEY_VALUE_PAIRS }}
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/
-          python3 scripts/update_model_yaml.py --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" --filename model.yml --branch ${{ env.SOURCE_MODEL_SIZE }}-gguf-q8-0 --save_path /mnt/models/${{ env.MODEL_NAME }}/yaml/q8-0/ --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-q8-0 ${{ env.KEY_VALUE_PAIRS }}
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            mkdir -p "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/"
+            python3 scripts/update_model_yaml.py \
+              --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" \
+              --filename model.yml \
+              --branch "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}" \
+              --save_path "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/" \
+              --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant} ${{ env.KEY_VALUE_PAIRS }}
+          done
 
       - name: Upload to Hugging Face
         run: |
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q2-k/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q2-k"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q3-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q3-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q3-kl/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-kl"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q4-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q4-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q5-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q5-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q6-k/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q6-k"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/yaml/q8-0/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q8-0"
+          
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" \
+              "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/" . \
+              --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}"
+          done
+
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/yaml/*
           huggingface-cli logout
-          rm -rf llama.cpp/build/
