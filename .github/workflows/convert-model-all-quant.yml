@@ -108,6 +108,7 @@ jobs:
       
       - name: Quantize model
         run: |
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/
           ./llama.cpp/build/bin/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/model.gguf ${{ env.PRECISION }}
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf
 
