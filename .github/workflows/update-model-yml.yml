@@ -54,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip3 install -r llama.cpp/requirements.txt
-          pip3 install hf-transfer huggingface-hub ruamel-yaml
+          pip3 install -I hf-transfer huggingface-hub ruamel_yaml
           git lfs install
 
       - name: Prepare folders
