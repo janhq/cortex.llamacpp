@@ -1,26 +1,34 @@
-name: Convert model to gguf all quants
+name: Convert model to gguf with specified quant
 
 on:
-  workflow_dispatch:
-    inputs:
-      source_model_id:
-        description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
-        required: true
-      source_model_size:
-        description: "The model size. For ex: 8b"
-        required: true
-        type: string
-      target_model_id:
-        description: "Target HuggingFace model ID to push. For ex: llama3.1"
-        required: true
-        type: string
+  push:
+    branches:
+      - feat-all-quants-ci
+  # workflow_dispatch:
+  #   inputs:
+  #     source_model_id:
+  #       description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
+  #       required: true
+  #     source_model_size:
+  #       description: "The model size. For ex: 8b"
+  #       required: true
+  #       type: string
+  #     target_model_id:
+  #       description: "Target HuggingFace model ID to push. For ex: llama3.1"
+  #       required: true
+  #       type: string
+  #     quantization_level:
+  #       description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+  #       required: true
+  #       type: string
+  #       default: 'all'
 
-  
 env:
   USER_NAME: cortexso
-  SOURCE_MODEL_ID:  ${{ inputs.source_model_id }}
-  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }} 
-  TARGET_MODEL_ID: ${{ inputs.target_model_id }} 
+  SOURCE_MODEL_ID: meta-llama/Meta-Llama-3-8B-Instruct # ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }}
+  QUANT_LEVEL: all # ${{ inputs.quantization_level }}
 
 jobs:
   converter:
@@ -100,43 +108,48 @@ jobs:
           python3 llama.cpp/convert_hf_to_gguf.py "/mnt/models/${{ env.MODEL_NAME }}/hf" --outfile "/mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf"
           huggingface-cli logout
       
-      - name: Quantize and Upload 
+      - name: Quantize the model 
         run: |
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/model.gguf Q2_K
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/model.gguf Q3_K_S
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/model.gguf Q3_K_M
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/model.gguf Q3_K_L
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/model.gguf Q4_K_S
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/model.gguf Q4_K_M
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/model.gguf Q5_K_S
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/model.gguf Q5_K_M
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/model.gguf Q6_K
-          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/
-          [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/model.gguf ] &&  ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/model.gguf Q8_0
+          declare -A quant_map=(
+            ["q2-k"]="Q2_K"
+            ["q3-ks"]="Q3_K_S"
+            ["q3-km"]="Q3_K_M"
+            ["q3-kl"]="Q3_K_L"
+            ["q4-ks"]="Q4_K_S"
+            ["q4-km"]="Q4_K_M"
+            ["q5-ks"]="Q5_K_S"
+            ["q5-km"]="Q5_K_M"
+            ["q6-k"]="Q6_K"
+            ["q8-0"]="Q8_0"
+          )
+
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/
+            [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/model.gguf ] && ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/model.gguf ${quant_map[${quant}]}
+          done
+
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf
 
       - name: Upload to Hugging Face
         run: |
           huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q2-k/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q2-k"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q3-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q3-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q3-kl/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q3-kl"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q4-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q4-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q4-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q5-ks/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-ks"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q5-km/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q5-km"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q6-k/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q6-k"
-          huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/q8-0/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-q8-0"
+          
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}"
+          done
+
           rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/*
           huggingface-cli logout
           rm -rf llama.cpp/build/

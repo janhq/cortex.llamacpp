@@ -1,4 +1,4 @@
-name: Convert model to gguf with specified quant
+name: Update model.yml with specified quant
 
 on:
   workflow_dispatch:
