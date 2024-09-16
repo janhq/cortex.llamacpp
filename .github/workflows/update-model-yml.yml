@@ -1,35 +1,32 @@
 name: Convert model to gguf with specified quant
 
 on:
-  push:
-    branches:
-      - feat-all-quants-ci
-  # workflow_dispatch:
-  #   inputs:
-  #     key_value_pairs:
-  #       description: "the 'key=value' pairs that you want to update, separated by space"
-  #       required: true
-  #       type: string
-  #     target_model_id:
-  #       description: "Target HuggingFace model ID to update. For ex: llama3.1"
-  #       required: true
-  #       type: string
-  #     source_model_size:
-  #       description: "The model size. For ex: 8b"
-  #       required: true
-  #       type: string
-  #     quantization_level:
-  #       description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
-  #       required: true
-  #       type: string
-  #       default: 'all'
+  workflow_dispatch:
+    inputs:
+      key_value_pairs:
+        description: "the 'key=value' pairs that you want to update, separated by space"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to update. For ex: llama3.1"
+        required: true
+        type: string
+      source_model_size:
+        description: "The model size. For ex: 8b"
+        required: true
+        type: string
+      quantization_level:
+        description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+        required: true
+        type: string
+        default: 'all'
 
 env:
   USER_NAME: cortexso
-  KEY_VALUE_PAIRS: "" #${{ inputs.key_value_pairs }}
-  SOURCE_MODEL_SIZE: 8b # ${{ inputs.source_model_size }}
-  TARGET_MODEL_ID: llama3 # ${{ inputs.target_model_id }}
-  QUANT_LEVEL: "q4-km" # ${{ inputs.quantization_level }}
+  KEY_VALUE_PAIRS: ${{ inputs.key_value_pairs }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }}
+  QUANT_LEVEL: ${{ inputs.quantization_level }}
 
 jobs:
   converter:
