@@ -74,7 +74,7 @@ def main():
     downloaded_file = download_yaml_from_huggingface(
         repo_id=args.repo_id,
         filename=args.filename,
-        save_path=args.save_path
+        save_path=args.save_path,
         branch=args.branch
     )
     
