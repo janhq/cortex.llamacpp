@@ -36,10 +36,12 @@ class EngineI {
     }
     return false;
   }
-  virtual void SetFileLogger() = 0;
 
   // API to get running models.
   virtual void GetModels(
       std::shared_ptr<Json::Value> json_body,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) = 0;
+  // API for set file logger
+  virtual void SetFileLogger(int max_log_lines,
+                             const std::string& log_path) = 0;
 };

@@ -343,7 +343,7 @@ jobs:
           make run-e2e-submodule-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: cortex.llamacpp-${{ matrix.os }}-${{ matrix.name }}
           path: ./cortex.llamacpp
