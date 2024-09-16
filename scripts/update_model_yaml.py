@@ -29,7 +29,7 @@ def modify_nested_dict(data, keys, new_value):
             data[keys[0]] = {}
         modify_nested_dict(data[keys[0]], keys[1:], new_value)
 
-def modify_yaml(file_path, field_value_pairs):
+def modify_yaml(file_path, key_value_pairs):
     yaml = YAML()
     yaml.preserve_quotes = True
     yaml.indent(mapping=2, sequence=4, offset=2)
@@ -39,7 +39,7 @@ def modify_yaml(file_path, field_value_pairs):
             data = yaml.load(file)
 
         # Modify the specified fields
-        for field, new_value in field_value_pairs:
+        for field, new_value in key_value_pairs:
             keys = field.split('.')
             modify_nested_dict(data, keys, new_value)
             print(f"Modified field '{field}' to '{new_value}'")
@@ -52,7 +52,7 @@ def modify_yaml(file_path, field_value_pairs):
     except Exception as e:
         print(f"An error occurred while modifying the YAML file: {str(e)}")
 
-def parse_field_value_pair(pair):
+def parse_key_value_pair(pair):
     try:
         field, value = pair.split('=')
         return field, value
@@ -64,7 +64,7 @@ def main():
     parser.add_argument("--repo_id", required=True, help="The ID of the Hugging Face repository")
     parser.add_argument("--filename", required=True, help="The name of the YAML file to download")
     parser.add_argument("--save_path", required=True, help="The local path where the file should be saved")
-    parser.add_argument("--field_value_pairs", required=True, nargs='+', type=parse_field_value_pair,
+    parser.add_argument("--key_value_pairs", required=True, nargs='+', type=parse_key_value_pair,
                         help="Field-value pairs to modify. Format: field1=value1 field2=value2 ...")
     
     args = parser.parse_args()
@@ -80,7 +80,7 @@ def main():
         # Modify the YAML file
         modify_yaml(
             file_path=downloaded_file,
-            field_value_pairs=args.field_value_pairs
+            key_value_pairs=args.key_value_pairs
         )
 
 if __name__ == "__main__":
