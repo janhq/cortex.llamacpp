@@ -1,29 +1,26 @@
 name: Convert model to gguf all quants
 
 on:
-  push:
-    branches:
-      - feat-all-quants-ci
-  # workflow_dispatch:
-  #   inputs:
-  #     source_model_id:
-  #       description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
-  #       required: true
-  #     source_model_size:
-  #       description: "The model size. For ex: 8b"
-  #       required: true
-  #       type: string
-  #     target_model_id:
-  #       description: "Target HuggingFace model ID to push. For ex: llama3.1"
-  #       required: true
-  #       type: string
+  workflow_dispatch:
+    inputs:
+      source_model_id:
+        description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
+        required: true
+      source_model_size:
+        description: "The model size. For ex: 8b"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to push. For ex: llama3.1"
+        required: true
+        type: string
 
   
 env:
   USER_NAME: cortexso
-  SOURCE_MODEL_ID:  meta-llama/Meta-Llama-3-8B-Instruct #${{ inputs.source_model_id }}
-  SOURCE_MODEL_SIZE: 8b #${{ inputs.source_model_size }} 
-  TARGET_MODEL_ID: llama3 #${{ inputs.target_model_id }} 
+  SOURCE_MODEL_ID:  ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }} 
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }} 
 
 jobs:
   converter:
