@@ -260,6 +260,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install coreutils macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install coreutils
+
       - name: Prepare Vulkan SDK Linux
         if: ${{ matrix.vulkan && (matrix.os == 'linux') }}
         run: |
@@ -320,6 +325,7 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
 
       - name: Build
+        id: build-and-test
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
       
@@ -334,7 +340,7 @@ jobs:
           file: 'version.txt'
           content: |
             name: ${{ matrix.os }}-${{ matrix.name }}
-            version: ${{needs.create-draft-release.outputs.version}}
+            version: ${{github.event.pull_request.head.sha}}
 
       - name: Package
         run: |
@@ -357,9 +363,79 @@ jobs:
           name: cortex.llamacpp-${{ matrix.os }}-${{ matrix.name }}
           path: ./cortex.llamacpp
 
+      - name: Calculate SHA512 Checksum (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sha512sum ./cortex.llamacpp.tar.gz | awk '{ print $1 }' > sha512.txt
+          size=$(stat -f%z ./cortex.llamacpp.tar.gz)  # Sử dụng -f%z cho macOS
+          echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
+          echo "size=$size" >> $GITHUB_ENV
+    
+      - name: Calculate SHA512 Checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          CertUtil -hashfile ./cortex.llamacpp.tar.gz SHA512 | Select-String -Pattern "^[0-9a-fA-F]+$" | Out-File sha512.txt
+          $size = (Get-Item ./cortex.llamacpp.tar.gz).length
+          echo "checksum=$(Get-Content sha512.txt)" >> $env:GITHUB_ENV
+          echo "size=$size" >> $env:GITHUB_ENV
+
+      - name: Calculate SHA512 Checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sha512sum ./cortex.llamacpp.tar.gz | awk '{ print $1 }' > sha512.txt
+          size=$(stat -c%s ./cortex.llamacpp.tar.gz)
+          echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
+          echo "size=$size" >> $GITHUB_ENV
+  
+      ## Write for matrix outputs workaround 
+      - uses: cloudposse/github-action-matrix-outputs-write@v1
+        id: out
+        with:
+          matrix-step-name: ${{ github.job }}
+          matrix-key: ${{ matrix.os }}-${{ matrix.name }}
+          outputs: |-
+            sha512: ${{ env.checksum }}
+            size: ${{ env.size }}
+
       - name: Clean
         if: always()
         continue-on-error: true
         run: |
           sccache --stop-server
           rm ${{ matrix.sccache-conf-path }}
+
+  ## Read matrix outputs 
+  read:
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - uses: cloudposse/github-action-matrix-outputs-read@v1
+        id: read
+        with:
+          matrix-step-name: build-and-test
+    outputs:
+        result: "${{ steps.read.outputs.result }}"
+
+  create-checksum-file:
+    runs-on: ubuntu-latest
+    needs: [read]
+    steps:
+      - name: Create checksum.yml
+        run: |
+          version="${{github.event.pull_request.head.sha}}"
+          outputs=${{ toJson(needs.read.outputs.result) }}
+
+          echo $outputs
+
+          echo "version: $version" > checksum.yml
+          echo "files:" >> checksum.yml
+
+          echo "$outputs" | jq -r --arg version "$version" '
+            .sha512 as $sha512 |
+            .size as $size |
+            (.sha512 | keys[]) as $key |
+            "- url: cortex.llamacpp-\($version)-\($key).tar.gz\n  sha512: >-\n    \($sha512[$key])\n  size: \($size[$key])"
+          ' >> checksum.yml
+
+          cat checksum.yml
