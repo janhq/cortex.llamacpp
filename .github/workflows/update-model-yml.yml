@@ -37,7 +37,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5 # v5.1.1
         with:
-          python-version: '3.8'
+          python-version: '3.10'
           # architecture: 'x64'
 
       - name: Cache Python packages
@@ -53,7 +53,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip3 install -I hf-transfer huggingface-hub ruamel_yaml
+          pip3 install -I hf-transfer huggingface-hub ruamel.yaml
           git lfs install
 
       - name: Prepare folders

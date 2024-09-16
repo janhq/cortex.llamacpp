@@ -1,7 +1,7 @@
 import argparse
 from huggingface_hub import hf_hub_download
 import os
-from ruamel_yaml import YAML
+from ruamel.yaml import YAML
 
 def download_yaml_from_huggingface(repo_id, filename, save_path):
     try:
