@@ -182,7 +182,7 @@ LlamaEngine::LlamaEngine(int log_option) {
     asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
 
-  log_disable();
+  gpt_log_pause(gpt_log_main());
 
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
@@ -511,10 +511,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     LOG_DEBUG << "stop: " << server_map_[model_id].stop_words.toStyledString();
 
     if (!json_body->operator[]("llama_log_folder").isNull()) {
-      log_enable();
+      gpt_log_resume(gpt_log_main());
       std::string llama_log_folder =
           json_body->operator[]("llama_log_folder").asString();
-      log_set_target(llama_log_folder + "llama.log");
+      llama_log_folder += "llama.log";
+      gpt_log_set_file(gpt_log_main(), llama_log_folder.c_str());
     }  // Set folder for llama log
   }
   if (params.model_alias == "unknown") {
@@ -749,15 +750,16 @@ void LlamaEngine::HandleInferenceImpl(
     auto state = CreateInferenceState(si.ctx);
 
     // Queued task
-    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id, n_probs]() {
+    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id,
+                          n_probs]() {
       state->task_id = state->llama.RequestCompletion(data, false, false, -1);
       while (state->llama.model_loaded_external) {
         TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
           std::string to_send;
-          if (n_probs > 0){
+          if (n_probs > 0) {
             to_send = result.result_json["completion_probabilities"].dump();
-          }else{
+          } else {
             to_send = result.result_json["content"];
           }
           // trim the leading space if it is the first token
