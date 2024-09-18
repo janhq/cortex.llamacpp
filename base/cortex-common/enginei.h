@@ -31,7 +31,7 @@ class EngineI {
   virtual bool IsSupported(const std::string& f) {
     if (f == "HandleChatCompletion" || f == "HandleEmbedding" ||
         f == "LoadModel" || f == "UnloadModel" || f == "GetModelStatus" ||
-        f == "GetModels") {
+        f == "GetModels" || f == "SetFileLogger") {
       return true;
     }
     return false;

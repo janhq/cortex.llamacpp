@@ -979,11 +979,10 @@ void LlamaServerContext::SendFinalResponse(LlamaClientSlot& slot) {
           slot.generated_token_probs.begin(),
           slot.generated_token_probs.begin() + slot.sent_token_probs_index);
     }
-    if(!slot.params.stream ){
+    if (!slot.params.stream) {
       res.result_json["completion_probabilities"] =
-        probs_vector_to_json(ctx, probs);
-    }
-    else{
+          probs_vector_to_json(ctx, probs);
+    } else {
       res.result_json["completion_probabilities"] = std::move(json());
     }
   }
@@ -1491,8 +1490,9 @@ bool LlamaServerContext::UpdateSlots() {
               slot.num_prompt_tokens_processed =
                   slot.num_prompt_tokens - slot.n_past;
 
-              LOG_TEE("slot %d : in cache: %i tokens | to process: %i tokens\n",
-                      slot.id, slot.n_past, slot.num_prompt_tokens_processed);
+              LOG_DEBUG << "slot " << slot.id << " : in cache: " << slot.n_past
+                        << " tokens | to process: "
+                        << slot.num_prompt_tokens_processed << " tokens";
             }
           }
 
