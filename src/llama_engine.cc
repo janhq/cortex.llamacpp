@@ -367,7 +367,7 @@ void LlamaEngine::GetModels(
   callback(std::move(status), std::move(json_resp));
   LOG_INFO << "Running models responded";
 }
-// should decrepted this function because it no longer used in cortex cpp
+
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
   if (!asynce_file_logger_) {
