@@ -293,6 +293,11 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install coreutils macos
+        if: runner.os == 'macOS'
+        run: |
+          brew install coreutils
+
       - name: Prepare Vulkan SDK Linux
         if: ${{ matrix.vulkan && (matrix.os == 'linux') }}
         run: |
@@ -371,12 +376,22 @@ jobs:
           SCCACHE_IDLE_TIMEOUT: "0"
 
       - name: Build
+        id: build-and-test
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
 
       - name: Pre Package
         run: |
           make pre-package
+
+      - uses: 1arp/create-a-file-action@0.4.5
+        with:
+          path: 'cortex.llamacpp'
+          isAbsolutePath: false
+          file: 'version.txt'
+          content: |
+            name: ${{ matrix.os }}-${{ matrix.name }}
+            version: ${{needs.create-draft-release.outputs.version}}
 
       - name: Code Signing macOS
         if: runner.os == 'macOS'
@@ -405,6 +420,41 @@ jobs:
           name: cortex.llamacpp-${{ matrix.os }}-${{ matrix.name }}
           path: ./cortex.llamacpp
 
+      - name: Calculate SHA512 Checksum (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          sha512sum ./cortex.llamacpp.tar.gz | awk '{ print $1 }' > sha512.txt
+          size=$(stat -f%z ./cortex.llamacpp.tar.gz)  # Sử dụng -f%z cho macOS
+          echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
+          echo "size=$size" >> $GITHUB_ENV
+  
+      - name: Calculate SHA512 Checksum (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          CertUtil -hashfile ./cortex.llamacpp.tar.gz SHA512 | Select-String -Pattern "^[0-9a-fA-F]+$" | Out-File sha512.txt
+          $size = (Get-Item ./cortex.llamacpp.tar.gz).length
+          echo "checksum=$(Get-Content sha512.txt)" >> $env:GITHUB_ENV
+          echo "size=$size" >> $env:GITHUB_ENV
+
+      - name: Calculate SHA512 Checksum (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sha512sum ./cortex.llamacpp.tar.gz | awk '{ print $1 }' > sha512.txt
+          size=$(stat -c%s ./cortex.llamacpp.tar.gz)
+          echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
+          echo "size=$size" >> $GITHUB_ENV
+  
+      ## Write for matrix outputs workaround 
+      - uses: cloudposse/github-action-matrix-outputs-write@v1
+        id: out
+        with:
+          matrix-step-name: ${{ github.job }}
+          matrix-key: ${{ matrix.os }}-${{ matrix.name }}
+          outputs: |-
+            sha512: ${{ env.checksum }}
+            size: ${{ env.size }}
+
       - uses: actions/upload-release-asset@v1.0.1
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
@@ -421,3 +471,51 @@ jobs:
         run: |
           sccache --stop-server
           rm ${{ matrix.sccache-conf-path }}
+
+  ## Read matrix outputs 
+  read:
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    steps:
+      - uses: cloudposse/github-action-matrix-outputs-read@v1
+        id: read
+        with:
+          matrix-step-name: build-and-test
+    outputs:
+        result: "${{ steps.read.outputs.result }}"
+
+  create-checksum-file:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    needs: [read, create-draft-release]
+    steps:
+      - name: Create checksum.yml
+        run: |
+          version=${{ needs.create-draft-release.outputs.version }}
+          outputs=${{ toJson(needs.read.outputs.result) }}
+
+          echo $outputs
+
+          echo "version: $version" > checksum.yml
+          echo "files:" >> checksum.yml
+
+          echo "$outputs" | jq -r --arg version "$version" '
+            .sha512 as $sha512 |
+            .size as $size |
+            (.sha512 | keys[]) as $key |
+            "- url: cortex.llamacpp-\($version)-\($key).tar.gz\n  sha512: >-\n    \($sha512[$key])\n  size: \($size[$key])"
+          ' >> checksum.yml
+
+          cat checksum.yml
+
+      - name: Upload checksum.yml to GitHub Release
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: ./checksum.yml
+          asset_name: checksum.yml
+          asset_content_type: text/yaml
