@@ -1,0 +1,101 @@
+name: Update model.yml with specified quant
+
+on:
+  workflow_dispatch:
+    inputs:
+      key_value_pairs:
+        description: "the 'key=value' pairs that you want to update, separated by space"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to update. For ex: llama3.1"
+        required: true
+        type: string
+      source_model_size:
+        description: "The model size. For ex: 8b"
+        required: true
+        type: string
+      quantization_level:
+        description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+        required: true
+        type: string
+        default: 'all'
+
+env:
+  USER_NAME: cortexso
+  KEY_VALUE_PAIRS: ${{ inputs.key_value_pairs }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }}
+  QUANT_LEVEL: ${{ inputs.quantization_level }}
+
+jobs:
+  model-yaml-updater:
+    runs-on: ubuntu-20-04-gguf
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache Python packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/share/pip
+            .venv
+          key: ${{ runner.os }}-pip-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip3 install -I hf-transfer huggingface-hub ruamel.yaml
+          git lfs install
+
+      - name: Prepare folders
+        run: |
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/yaml/
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/yaml
+
+      - name: Quantize and Upload
+        run: |
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            mkdir -p "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/"
+            python3 scripts/update_model_yaml.py \
+              --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" \
+              --filename model.yml \
+              --branch "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}" \
+              --save_path "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/" \
+              --key_value_pairs name=${{ env.TARGET_MODEL_ID }}:${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant} ${{ env.KEY_VALUE_PAIRS }}
+          done
+
+      - name: Upload to Hugging Face
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
+          
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" \
+              "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/" . \
+              --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}"
+          done
+
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/yaml/*
+          huggingface-cli logout

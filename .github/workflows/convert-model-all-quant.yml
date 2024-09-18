@@ -1,0 +1,153 @@
+name: Convert model to gguf with specified quant
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_model_id:
+        description: "Source HuggingFace model ID to pull. For ex: meta-llama/Meta-Llama-3.1-8B-Instruct"
+        required: true
+      source_model_size:
+        description: "The model size. For ex: 8b"
+        required: true
+        type: string
+      target_model_id:
+        description: "Target HuggingFace model ID to push. For ex: llama3.1"
+        required: true
+        type: string
+      quantization_level:
+        description: "Quantization level (e.g., 'q4-km') or 'all' for all levels"
+        required: true
+        type: string
+        default: 'all'
+
+env:
+  USER_NAME: cortexso
+  SOURCE_MODEL_ID: ${{ inputs.source_model_id }}
+  SOURCE_MODEL_SIZE: ${{ inputs.source_model_size }}
+  TARGET_MODEL_ID: ${{ inputs.target_model_id }}
+  QUANT_LEVEL: ${{ inputs.quantization_level }}
+
+jobs:
+  converter:
+    runs-on: ubuntu-20-04-gguf
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4 # v4.1.7
+        with:
+          submodules: recursive
+
+      - name: Set up Python
+        uses: actions/setup-python@v5 # v5.1.1
+        with:
+          python-version: '3.12'
+          # architecture: 'x64'
+
+      - name: Cache Python packages
+        uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local/share/pip
+            .venv
+          key: ${{ runner.os }}-pip-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          pip3 install -r llama.cpp/requirements.txt
+          pip3 install hf-transfer
+          git lfs install
+
+      - name: Extract MODEL_NAME
+        run: |
+          SOURCE_MODEL_ID="${{ env.SOURCE_MODEL_ID }}"
+          MODEL_NAME="$(echo $SOURCE_MODEL_ID | rev | cut -d/ -f1 | rev)"
+          echo $MODEL_NAME
+          MODEL_NAME="$(echo $MODEL_NAME | tr '[:upper:]' '[:lower:]')"
+          echo $MODEL_NAME
+          echo "MODEL_NAME=$MODEL_NAME" >> $GITHUB_ENV
+
+      - name: Print environment variables
+        run: |
+          echo "SOURCE_MODEL_ID: ${{ env.SOURCE_MODEL_ID }}"
+          echo "MODEL_NAME: ${{ env.MODEL_NAME }}"
+      - name: Check file existence
+        id: check_files
+        uses: andstor/file-existence-action@v1
+        with:
+          files: "/mnt/models/${{ env.MODEL_NAME }}/hf"
+
+
+      - name: Prepare folders
+        if: steps.check_files.outputs.files_exists == 'false'
+        run: |
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/hf
+          
+      
+      - name: Download Hugging Face model
+        id: download_hf
+        if: steps.check_files.outputs.files_exists == 'false'
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
+          huggingface-cli download --repo-type model --local-dir /mnt/models/${{ env.MODEL_NAME }}/hf ${{ env.SOURCE_MODEL_ID }}
+          huggingface-cli logout
+
+      - name: Build lib for quantize
+        run: |
+          cd llama.cpp && make
+          cd ../../
+
+      - name: Convert to GGUF
+        run: |
+          mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_READ }} --add-to-git-credential
+          python3 llama.cpp/convert_hf_to_gguf.py "/mnt/models/${{ env.MODEL_NAME }}/hf" --outfile "/mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf"
+          huggingface-cli logout
+      
+      - name: Quantize the model 
+        run: |
+          declare -A quant_map=(
+            ["q2-k"]="Q2_K"
+            ["q3-ks"]="Q3_K_S"
+            ["q3-km"]="Q3_K_M"
+            ["q3-kl"]="Q3_K_L"
+            ["q4-ks"]="Q4_K_S"
+            ["q4-km"]="Q4_K_M"
+            ["q5-ks"]="Q5_K_S"
+            ["q5-km"]="Q5_K_M"
+            ["q6-k"]="Q6_K"
+            ["q8-0"]="Q8_0"
+          )
+
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            mkdir -p /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/
+            [ ! -f /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/model.gguf ] && ./llama.cpp/llama-quantize /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf /mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/model.gguf ${quant_map[${quant}]}
+          done
+
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/model-origin.gguf
+
+      - name: Upload to Hugging Face
+        run: |
+          huggingface-cli login --token ${{ secrets.HUGGINGFACE_TOKEN_WRITE }} --add-to-git-credential
+          
+          if [ "${{ env.QUANT_LEVEL }}" = "all" ]; then
+            quant_levels=("q2-k" "q3-ks" "q3-km" "q3-kl" "q4-ks" "q4-km" "q5-ks" "q5-km" "q6-k" "q8-0")
+          else
+            quant_levels=("${{ env.QUANT_LEVEL }}")
+          fi
+
+          for quant in "${quant_levels[@]}"; do
+            huggingface-cli upload "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" "/mnt/models/${{ env.MODEL_NAME }}/gguf/${quant}/" . --revision "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}"
+          done
+
+          rm -rf /mnt/models/${{ env.MODEL_NAME }}/gguf/*
+          huggingface-cli logout
+          rm -rf llama.cpp/build/
+
