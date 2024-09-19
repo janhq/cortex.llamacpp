@@ -11,6 +11,8 @@ AZURE_TENANT_ID ?= xxxx
 AZURE_CLIENT_SECRET ?= xxxx
 AZURE_CERT_NAME ?= xxxx
 DEVELOPER_ID ?= xxxx
+CUDA_DOWNLOAD_URL ?= "https://catalog.jan.ai/dist/cuda-dependencies/12.0/linux/cuda.tar.gz"
+DOWNLOAD_CUDA_DEPS ?= false
 
 # Default target, does nothing
 all:
@@ -51,8 +53,23 @@ else
 	cmake --build . --config Release;
 endif
 
+download-cuda-deps:
+ifeq ($(OS),Windows_NT)
+	@powershell -Command "mkdir -p cortex.llamacpp;"
+	@powershell -Command "Invoke-WebRequest -Uri $(CUDA_DOWNLOAD_URL) -OutFile cortex.llamacpp\cuda.tar.gz; cd cortex.llamacpp; tar -xzf cuda.tar.gz; rm cuda.tar.gz;"
+else ifeq ($(shell uname -s),Linux)
+	@mkdir -p cortex.llamacpp; \
+	wget $(CUDA_DOWNLOAD_URL) -O cortex.llamacpp/cuda.tar.gz; \
+	cd cortex.llamacpp; \
+	tar -xzf cuda.tar.gz; \
+	rm cuda.tar.gz;
+else
+	@echo "Skipping CUDA dependencies download for macOS"
+endif
+
 pre-package:
 ifeq ($(OS),Windows_NT)
+	@powershell -Command "mkdir -p cortex.llamacpp;"
 	@powershell -Command "mkdir -p cortex.llamacpp; cp build\engine.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\msvcp140.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcruntime140_1.dll cortex.llamacpp\;"

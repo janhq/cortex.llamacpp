@@ -69,6 +69,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: false
+            cuda-download-url: ""
           - os: "linux"
             name: "amd64-noavx"
             runs-on: "ubuntu-20-04"
@@ -77,6 +79,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: false
+            cuda-download-url: ""
           - os: "linux"
             name: "amd64-avx"
             runs-on: "ubuntu-20-04"
@@ -85,6 +89,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: false
+            cuda-download-url: ""
           - os: "linux"
             name: "amd64-avx512"
             runs-on: "ubuntu-20-04"
@@ -93,6 +99,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: false
+            cuda-download-url: ""
           - os: "linux"
             name: "amd64-vulkan"
             runs-on: "ubuntu-22-04"
@@ -101,6 +109,8 @@ jobs:
             vulkan: true
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: false
+            cuda-download-url: ""
           - os: "linux"
             name: "amd64-noavx-cuda-11-7"
             runs-on: "ubuntu-20-04-cuda-11-7"
@@ -109,6 +119,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx2-cuda-11-7"
             runs-on: "ubuntu-20-04-cuda-11-7"
@@ -117,6 +129,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx-cuda-11-7"
             runs-on: "ubuntu-20-04-cuda-11-7"
@@ -125,6 +139,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx512-cuda-11-7"
             runs-on: "ubuntu-20-04-cuda-11-7"
@@ -133,6 +149,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-noavx-cuda-12-0"
             runs-on: "ubuntu-20-04-cuda-12-0"
@@ -141,6 +159,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx2-cuda-12-0"
             runs-on: "ubuntu-20-04-cuda-12-0"
@@ -149,6 +169,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx-cuda-12-0"
             runs-on: "ubuntu-20-04-cuda-12-0"
@@ -157,6 +179,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz"
           - os: "linux"
             name: "amd64-avx512-cuda-12-0"
             runs-on: "ubuntu-20-04-cuda-12-0"
@@ -165,6 +189,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz"
           - os: "mac"
             name: "amd64"
             runs-on: "macos-12"
@@ -173,6 +199,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "mac"
             name: "arm64"
             runs-on: "macos-latest"
@@ -181,6 +209,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-avx2"
             runs-on: "windows-cuda-11-7"
@@ -189,6 +219,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-noavx"
             runs-on: "windows-cuda-11-7"
@@ -197,6 +229,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-avx"
             runs-on: "windows-cuda-12-0"
@@ -205,6 +239,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-avx512"
             runs-on: "windows-cuda-12-0"
@@ -213,6 +249,8 @@ jobs:
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-vulkan"
             runs-on: "windows-cuda-12-0"
@@ -221,6 +259,8 @@ jobs:
             vulkan: true
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: false
+            cuda-download-url: ""
           - os: "windows"
             name: "amd64-noavx-cuda-12-0"
             runs-on: "windows-cuda-12-0"
@@ -229,6 +269,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx2-cuda-12-0"
             runs-on: "windows-cuda-12-0"
@@ -237,6 +279,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx-cuda-12-0"
             runs-on: "windows-cuda-12-0"
@@ -245,6 +289,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx512-cuda-12-0"
             runs-on: "windows-cuda-12-0"
@@ -253,6 +299,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-noavx-cuda-11-7"
             runs-on: "windows-cuda-11-7"
@@ -261,6 +309,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx2-cuda-11-7"
             runs-on: "windows-cuda-11-7"
@@ -269,6 +319,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx-cuda-11-7"
             runs-on: "windows-cuda-11-7"
@@ -277,6 +329,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz"
           - os: "windows"
             name: "amd64-avx512-cuda-11-7"
             runs-on: "windows-cuda-11-7"
@@ -285,6 +339,8 @@ jobs:
             vulkan: false
             ccache: true
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
+            cuda: true
+            cuda-download-url: "http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz"
 
     steps:
       - name: Clone
@@ -385,6 +441,11 @@ jobs:
         id: build-and-test
         run: |
           make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}"
+
+      - name: Download cuda
+        if: ${{ matrix.cuda }}
+        run: |
+          make download-cuda-deps DOWNLOAD_CUDA_DEPS=${{ matrix.cuda }} CUDA_DOWNLOAD_URL="${{ matrix.cuda-download-url}}"
 
       - name: Pre Package
         run: |
