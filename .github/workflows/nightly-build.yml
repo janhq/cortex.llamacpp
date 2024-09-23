@@ -321,7 +321,7 @@ jobs:
         run: |
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          aws s3 cp s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} ${{ matrix.ccache-dir }} --recursive --endpoint ${{ secrets.MINIO_ENDPOINT }} --cli-read-timeout 0
+          aws s3 sync s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} ${{ matrix.ccache-dir }}  --endpoint ${{ secrets.MINIO_ENDPOINT }} --cli-read-timeout 0
         env:
           AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
@@ -331,7 +331,7 @@ jobs:
         if: runner.os == 'Linux'
         continue-on-error: true
         run: |
-          aws s3 cp s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} ${{ matrix.ccache-dir }} --recursive --endpoint ${{ secrets.MINIO_ENDPOINT }} --cli-read-timeout 0
+          aws s3 sync s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} ${{ matrix.ccache-dir }}  --endpoint ${{ secrets.MINIO_ENDPOINT }} --cli-read-timeout 0
         env:
           AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
@@ -477,7 +477,7 @@ jobs:
         run: |
           Import-Module "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
           refreshenv
-          aws s3 cp ${{ matrix.ccache-dir }} s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} --recursive --endpoint ${{ secrets.MINIO_ENDPOINT }}
+          aws s3 sync ${{ matrix.ccache-dir }} s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }}  --endpoint ${{ secrets.MINIO_ENDPOINT }}
         env:
           AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
@@ -487,7 +487,7 @@ jobs:
         continue-on-error: true
         if: always() && runner.os == 'Linux'
         run: |
-          aws s3 cp ${{ matrix.ccache-dir }} s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }} --recursive --endpoint ${{ secrets.MINIO_ENDPOINT }}
+          aws s3 sync ${{ matrix.ccache-dir }} s3://${{ secrets.MINIO_BUCKET_NAME }}/ccache-data-${{ matrix.os }}-${{ matrix.name }}  --endpoint ${{ secrets.MINIO_ENDPOINT }}
         env:
           AWS_ACCESS_KEY_ID: "${{ secrets.MINIO_ACCESS_KEY_ID }}"
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
