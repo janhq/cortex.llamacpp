@@ -507,13 +507,18 @@ jobs:
         result: "${{ steps.read.outputs.result }}"
 
   create-checksum-file:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20-04
     permissions:
       contents: write
     needs: [read, create-draft-release]
     steps:
-      - name: Create checksum.yml
+      - name: Download cuda dependencies from s3 and create checksum
         run: |
+          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz -O /tmp/cuda-12-0-linux-amd64.tar.gz
+          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz -O /tmp/cuda-11-7-linux-amd64.tar.gz
+          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz -O /tmp/cuda-12-0-windows-amd64.tar.gz
+          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz -O /tmp/cuda-11-7-windows-amd64.tar.gz
+
           version=${{ needs.create-draft-release.outputs.version }}
           outputs=${{ toJson(needs.read.outputs.result) }}
 
@@ -529,6 +534,26 @@ jobs:
             "- url: cortex.llamacpp-\($version)-\($key).tar.gz\n  sha512: >-\n    \($sha512[$key])\n  size: \($size[$key])"
           ' >> checksum.yml
 
+          echo "- url: cuda-12-0-linux-amd64.tar.gz" >> checksum.yml
+          echo "  sha512: >-" >> checksum.yml
+          echo "    $(sha512sum /tmp/cuda-12-0-linux-amd64.tar.gz | awk '{ print $1 }')" >> checksum.yml
+          echo "  size: $(stat -c%s /tmp/cuda-12-0-linux-amd64.tar.gz)" >> checksum.yml
+
+          echo "- url: cuda-11-7-linux-amd64.tar.gz" >> checksum.yml
+          echo "  sha512: >-" >> checksum.yml
+          echo "    $(sha512sum /tmp/cuda-11-7-linux-amd64.tar.gz | awk '{ print $1 }')" >> checksum.yml
+          echo "  size: $(stat -c%s /tmp/cuda-11-7-linux-amd64.tar.gz)" >> checksum.yml
+
+          echo "- url: cuda-11-7-windows-amd64.tar.gz" >> checksum.yml
+          echo "  sha512: >-" >> checksum.yml
+          echo "    $(sha512sum /tmp/cuda-11-7-windows-amd64.tar.gz | awk '{ print $1 }')" >> checksum.yml
+          echo "  size: $(stat -c%s /tmp/cuda-11-7-windows-amd64.tar.gz)" >> checksum.yml
+
+          echo "- url: cuda-12-0-windows-amd64.tar.gz" >> checksum.yml
+          echo "  sha512: >-" >> checksum.yml
+          echo "    $(sha512sum /tmp/cuda-12-0-windows-amd64.tar.gz | awk '{ print $1 }')" >> checksum.yml
+          echo "  size: $(stat -c%s /tmp/cuda-12-0-windows-amd64.tar.gz)" >> checksum.yml
+
           cat checksum.yml
 
       - name: Upload checksum.yml to GitHub Release
@@ -541,3 +566,47 @@ jobs:
           asset_path: ./checksum.yml
           asset_name: checksum.yml
           asset_content_type: text/yaml
+
+      - name: upload cuda-12-0-linux-amd64.tar.gz to Github Release
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: /tmp/cuda-12-0-linux-amd64.tar.gz
+          asset_name: cuda-12-0-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: upload cuda-11-7-linux-amd64.tar.gz to Github Release
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: /tmp/cuda-11-7-linux-amd64.tar.gz
+          asset_name: cuda-11-7-linux-amd64.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: upload cuda-12-0-windows-amd64.tar.gz to Github Release
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: /tmp/cuda-12-0-windows-amd64.tar.gz
+          asset_name: cuda-12-0-windows-amd64.tar.gz
+          asset_content_type: application/gzip
+      
+      - name: upload cuda-11-7-windows-amd64.tar.gz to Github Release
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-draft-release.outputs.upload_url }}
+          asset_path: /tmp/cuda-11-7-windows-amd64.tar.gz
+          asset_name: cuda-11-7-windows-amd64.tar.gz
+          asset_content_type: application/gzip
