@@ -48,35 +48,17 @@ RUN apt-get update -y \
     zstd \
     pkg-config \
     ccache \
-    cargo \
+    gcc \
+    g++ \
     && ln -sf /usr/bin/python3 /usr/bin/python \
     && ln -sf /usr/bin/pip3 /usr/bin/pip \
     && rm -rf /var/lib/apt/lists/*
-
-RUN cargo install sccache --locked
-
-RUN chmod +x /root/.cargo/bin/sccache && cp /root/.cargo/bin/sccache /usr/local/bin/sccache
 
 # Add Kitware's APT repository for CMake
 RUN wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null && \
     apt-add-repository "deb https://apt.kitware.com/ubuntu/ $(lsb_release -cs) main" && \
     apt-get update && \
     apt-get install -y cmake
-
-# Add PPA for newer versions of GCC
-RUN add-apt-repository ppa:ubuntu-toolchain-r/test && \
-    apt-get update && \
-    apt-get install -y gcc-11 g++-11 cpp-11 && \
-    # Clean up
-    apt-get clean
-
-# Update alternatives for GCC and related tools
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110 \
-                         --slave /usr/bin/g++ g++ /usr/bin/g++-11 \
-                         --slave /usr/bin/gcov gcov /usr/bin/gcov-11 \
-                         --slave /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-11 \
-                         --slave /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-11 && \
-    update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-11 110
 
 # Download latest git-lfs version
 RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash && \
@@ -91,7 +73,7 @@ RUN adduser --disabled-password --gecos "" --uid $RUNNER_UID runner \
 
 ENV HOME=/home/runner
 
-ARG RUNNER_VERSION=2.317.0
+ARG RUNNER_VERSION=2.319.1
 
 # cd into the user directory, download and unzip the github actions runner
 RUN cd /home/runner && mkdir actions-runner && cd actions-runner \
