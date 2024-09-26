@@ -73,7 +73,7 @@ jobs:
 
           for quant in "${quant_levels[@]}"; do
             mkdir -p "/mnt/models/${{ env.MODEL_NAME }}/yaml/${quant}/"
-            python3 scripts/update_model_yaml.py \
+            python3 scripts/update_model_yml.py \
               --repo_id "${{ env.USER_NAME }}/${{ env.TARGET_MODEL_ID }}" \
               --filename model.yml \
               --branch "${{ env.SOURCE_MODEL_SIZE }}-gguf-${quant}" \
