@@ -260,10 +260,15 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Apply patch file
+        run: |
+          cd llama.cpp
+          git apply ../patches/0001-Add-API-query-buffer-size.patch
+
       - name: use python for linux
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: "3.9"
 
       - name: Install tools on Windows
         if: runner.os == 'Windows'
@@ -316,7 +321,7 @@ jobs:
           sudo wget -qO /etc/apt/sources.list.d/lunarg-vulkan-jammy.list https://packages.lunarg.com/vulkan/lunarg-vulkan-jammy.list
           sudo apt-get update -y
           sudo apt-get install -y build-essential vulkan-sdk
-  
+
       - name: Prepare Vulkan SDK Windows
         if: ${{ matrix.vulkan && (matrix.os == 'windows') }}
         continue-on-error: true
@@ -342,9 +347,9 @@ jobs:
 
       - uses: 1arp/create-a-file-action@0.4.5
         with:
-          path: 'cortex.llamacpp'
+          path: "cortex.llamacpp"
           isAbsolutePath: false
-          file: 'version.txt'
+          file: "version.txt"
           content: |
             name: ${{ matrix.os }}-${{ matrix.name }}
             version: ${{github.event.pull_request.head.sha}}
@@ -371,7 +376,7 @@ jobs:
           size=$(stat -f%z ./cortex.llamacpp.tar.gz)  # Sử dụng -f%z cho macOS
           echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
           echo "size=$size" >> $GITHUB_ENV
-  
+
       - name: Calculate SHA512 Checksum (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
@@ -388,8 +393,8 @@ jobs:
           size=$(stat -c%s ./cortex.llamacpp.tar.gz)
           echo "checksum=$(cat sha512.txt)" >> $GITHUB_ENV
           echo "size=$size" >> $GITHUB_ENV
-  
-      ## Write for matrix outputs workaround 
+
+      ## Write for matrix outputs workaround
       - uses: cloudposse/github-action-matrix-outputs-write@v1
         id: out
         with:
@@ -421,7 +426,7 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
           AWS_DEFAULT_REGION: "${{ secrets.MINIO_REGION }}"
 
-  ## Read matrix outputs 
+  ## Read matrix outputs
   read:
     runs-on: ubuntu-latest
     needs: [build-and-test]
@@ -431,7 +436,7 @@ jobs:
         with:
           matrix-step-name: build-and-test
     outputs:
-        result: "${{ steps.read.outputs.result }}"
+      result: "${{ steps.read.outputs.result }}"
 
   create-checksum-file:
     runs-on: ubuntu-latest
@@ -455,3 +460,4 @@ jobs:
           ' >> checksum.yml
 
           cat checksum.yml
+

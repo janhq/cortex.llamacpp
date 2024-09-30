@@ -26,6 +26,11 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
+    - name: Apply patch file
+      run: |
+        cd llama.cpp
+        git apply ../patches/0001-Add-API-query-buffer-size.patch
+
     - name: Configure Git
       run: |
         git config --global user.name 'github-actions[bot]'
@@ -80,6 +85,11 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
+    - name: Apply patch file
+      run: |
+        cd llama.cpp
+        git apply ../patches/0001-Add-API-query-buffer-size.patch
+
     - name: Wait for CI to pass
       env:
           GITHUB_TOKEN: ${{ secrets.PAT_SERVICE_ACCOUNT }}
@@ -122,6 +132,11 @@ jobs:
         ref: main
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
+
+    - name: Apply patch file
+      run: |
+        cd llama.cpp
+        git apply ../patches/0001-Add-API-query-buffer-size.patch
 
     - name: Configure Git
       run: |
