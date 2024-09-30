@@ -1,0 +1,55 @@
+From 72dddbe754079fc0009eada73f2ac1010ba1b472 Mon Sep 17 00:00:00 2001
+From: James Nguyen <jamesnguyen@Jamess-Laptop.local>
+Date: Mon, 30 Sep 2024 14:11:49 +0700
+Subject: [PATCH] Add API query buffer size
+
+---
+ include/llama.h |  3 +++
+ src/llama.cpp   | 10 ++++++++++
+ 2 files changed, 13 insertions(+)
+
+diff --git a/include/llama.h b/include/llama.h
+index 132937a0..e1b49b1f 100644
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -8,6 +8,7 @@
+ #include <stdint.h>
+ #include <stdio.h>
+ #include <stdbool.h>
++#include <unordered_map>
+ 
+ #ifdef LLAMA_SHARED
+ #    if defined(_WIN32) && !defined(__MINGW32__)
+@@ -445,6 +446,8 @@ extern "C" {
+ 
+     LLAMA_API const struct llama_model * llama_get_model(const struct llama_context * ctx);
+ 
++    LLAMA_API const std::unordered_map<std::string, size_t> llama_get_all_buffer(const struct llama_model * model);
++
+     LLAMA_API enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx);
+     LLAMA_API enum llama_vocab_type   llama_vocab_type  (const struct llama_model * model);
+     LLAMA_API enum llama_rope_type    llama_rope_type   (const struct llama_model * model);
+diff --git a/src/llama.cpp b/src/llama.cpp
+index 0accb149..59c9f5be 100644
+--- a/src/llama.cpp
++++ b/src/llama.cpp
+@@ -19221,6 +19221,16 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
+     return &ctx->model;
+ }
+ 
++const std::unordered_map<std::string, size_t> llama_get_all_buffer(const struct llama_model * model) {
++    std::unordered_map<std::string, size_t> buffer_map;
++    for (const auto buf : model->bufs) {
++        std::string buf_name = ggml_backend_buffer_name(buf);
++        auto buf_size = ggml_backend_buffer_get_size(buf);
++        buffer_map.emplace(std::make_pair(buf_name, buf_size));
++    }
++    return buffer_map;
++}
++
+ enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
+     return ctx->cparams.pooling_type;
+ }
+-- 
+2.39.5 (Apple Git-154)
+

@@ -294,6 +294,14 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Navigate to submodule directory
+        run: |
+          cd llama.cpp
+
+      - name: Apply patch file
+        run: |
+          git apply ../patches/0001-Add-API-query-buffer-size.patch
+        
       - name: use python for linux
         uses: actions/setup-python@v4
         with:
