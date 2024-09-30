@@ -260,12 +260,9 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Navigate to submodule directory
-        run: |
-          cd llama.cpp
-
       - name: Apply patch file
         run: |
+          cd llama.cpp
           git apply ../patches/0001-Add-API-query-buffer-size.patch
 
       - name: use python for linux
