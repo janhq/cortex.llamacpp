@@ -79,7 +79,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           submodules: recursive
-      
+
+      - name: Apply patch file
+        run: |
+          cd llama.cpp
+          git apply ../patches/0001-Add-API-query-buffer-size.patch
+
       - name: Set up Python
         uses: actions/setup-python@v5 # v5.1.1
         with:
