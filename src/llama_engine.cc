@@ -345,16 +345,8 @@ void LlamaEngine::GetModels(
   Json::Value model_array(Json::arrayValue);
   for (const auto& [m, s] : server_map_) {
     if (s.ctx.model_loaded_external) {
-      uint64_t ram{0};
-      uint64_t vram{0};
-      for (const auto& item : llama_get_all_buffer(s.ctx.model)) {
-        LOG_INFO << "Buffer: " << item.first << " " << item.second;
-        if (item.first == "CPU") {
-          ram += item.second;
-        } else {
-          vram += item.second;
-        }
-      }
+      uint64_t vram = llama_get_other_buffer(s.ctx.model);
+      uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
 
       Json::Value val;
       val["id"] = m;
