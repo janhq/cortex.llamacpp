@@ -13,14 +13,18 @@ namespace llama_utils {
 
 inline std::string models_folder = "./models";
 
+// TODO(sang) add unit tests for utils
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86164
+// std::regex_search operator .* is implemented recursively which result in this example in a stack overflow.
+// example for image data: data:image/jpeg;base64,/9j/4AAQS ...
 inline std::string extractBase64(const std::string& input) {
-  std::regex pattern("base64,(.*)");
+  std::regex pattern("^(.*?base64,)");
   std::smatch match;
 
+  // Check if the pattern matches the input
   if (std::regex_search(input, match, pattern)) {
-    std::string base64_data = match[1];
-    base64_data = base64_data.substr(0, base64_data.length() - 1);
-    return base64_data;
+    // Return the substring after "base64,"
+    return input.substr(match[0].length());
   }
 
   return "";
