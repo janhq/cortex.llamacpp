@@ -643,25 +643,33 @@ void LlamaEngine::HandleInferenceImpl(
   };
 
   if (!si.ctx.multimodal) {
+    auto get_message = [](const Json::Value& msg_content) -> std::string {
+      if (msg_content.isArray()) {
+        for (const auto& mc : msg_content) {
+          if (mc["type"].asString() == "text") {
+            return mc["text"].asString();
+          }
+        }
+      } else {
+        return msg_content.asString();
+      }
+      return "";
+    };
+
     for (const auto& message : messages) {
       std::string input_role = message["role"].asString();
       std::string role;
       if (input_role == "user") {
         role = si.user_prompt;
-        std::string content = message["content"].asString();
-        formatted_output += role + content;
       } else if (input_role == "assistant") {
         role = si.ai_prompt;
-        std::string content = message["content"].asString();
-        formatted_output += role + content;
       } else if (input_role == "system") {
         role = si.system_prompt;
-        std::string content = message["content"].asString();
-        formatted_output = role + content + formatted_output;
-
       } else {
         role = input_role;
-        std::string content = message["content"].asString();
+      }
+
+      if (auto content = get_message(message["content"]); !content.empty()) {
         formatted_output += role + content;
       }
     }
