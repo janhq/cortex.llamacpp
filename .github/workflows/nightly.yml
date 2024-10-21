@@ -26,11 +26,6 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.PAT_SERVICE_ACCOUNT }}
 
-    - name: Apply patch file
-      run: |
-        cd llama.cpp
-        git apply ../patches/0001-Add-API-query-buffer-size.patch
-
     - name: Configure Git
       run: |
         git config --global user.name 'github-actions[bot]'
