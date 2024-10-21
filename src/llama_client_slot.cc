@@ -26,7 +26,7 @@ void LlamaClientSlot::Reset() {
   images.clear();
 }
 
-bool LlamaClientSlot::HasBudget(gpt_params& global_params) {
+bool LlamaClientSlot::HasBudget(common_params& global_params) {
   n_remaining = -1;
   if (params.n_predict != -1) {
     n_remaining = params.n_predict - n_decoded;

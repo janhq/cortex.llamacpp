@@ -99,7 +99,7 @@ size_t find_partial_stop_string(const std::string& stop,
 // format incomplete utf-8 multibyte character for output
 inline std::string tokens_to_output_formatted_string(const llama_context* ctx,
                                                      const llama_token token) {
-  std::string out = token == -1 ? "" : llama_token_to_piece(ctx, token);
+  std::string out = token == -1 ? "" : common_token_to_piece(ctx, token);
   // if the size is 1 and first bit is 1, meaning it's a partial character
   //   (size > 1 meaning it's already a known token)
   if (out.size() == 1 && (out[0] & 0x80) == 0x80) {
@@ -153,7 +153,7 @@ LlamaServerContext::~LlamaServerContext() {
   }
 }
 
-bool LlamaServerContext::LoadModel(const gpt_params& params_) {
+bool LlamaServerContext::LoadModel(const common_params& params_) {
   params = params_;
   if (!params.mmproj.empty()) {
     multimodal = true;
@@ -178,7 +178,7 @@ bool LlamaServerContext::LoadModel(const gpt_params& params_) {
     }
   }
 
-  auto res = llama_init_from_gpt_params(params);
+  auto res = common_init_from_params(params);
   model = res.model;
   ctx = res.context;
   if (model == nullptr) {
@@ -356,15 +356,8 @@ void LlamaServerContext::ReleaseResources() {
   }
 }
 
-std::vector<llama_token> LlamaServerContext::Tokenize(const json& json_prompt,
-                                                      bool add_bos) const {
-  // TODO: currently, we tokenize using special tokens by default
-  //       this is not always correct (see
-  //       https://github.com/ggerganov/llama.cpp/pull/4160#issuecomment-1824826216)
-  //       but it's better compared to completely ignoring ChatML and other
-  //       chat templates
-  const bool TMP_FORCE_SPECIAL = true;
-
+std::vector<llama_token> LlamaServerContext::Tokenize(
+    const json& json_prompt, bool add_special, bool parse_special) const {
   // If `add_bos` is true, we only add BOS, when json_prompt is a string,
   // or the first element of the json_prompt array is a string.
   std::vector<llama_token> prompt_tokens;
@@ -376,10 +369,10 @@ std::vector<llama_token> LlamaServerContext::Tokenize(const json& json_prompt,
         auto s = p.template get<std::string>();
         std::vector<llama_token> p;
         if (first) {
-          p = ::llama_tokenize(ctx, s, add_bos, TMP_FORCE_SPECIAL);
+          p = common_tokenize(ctx, s, add_special, parse_special);
           first = false;
         } else {
-          p = ::llama_tokenize(ctx, s, false, TMP_FORCE_SPECIAL);
+          p = common_tokenize(ctx, s, false, parse_special);
         }
         prompt_tokens.insert(prompt_tokens.end(), p.begin(), p.end());
       } else {
@@ -391,7 +384,7 @@ std::vector<llama_token> LlamaServerContext::Tokenize(const json& json_prompt,
     }
   } else {
     auto s = json_prompt.template get<std::string>();
-    prompt_tokens = ::llama_tokenize(ctx, s, add_bos, TMP_FORCE_SPECIAL);
+    prompt_tokens = common_tokenize(ctx, s, add_special, parse_special);
   }
 
   return prompt_tokens;
@@ -516,7 +509,7 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
               slot->sparams.logit_bias.push_back({tok, bias});
             }
           } else if (el[0].is_string()) {
-            auto toks = llama_tokenize(model, el[0].get<std::string>(), false);
+            auto toks = common_tokenize(model, el[0].get<std::string>(), false);
             for (auto tok : toks) {
               slot->sparams.logit_bias.push_back({tok, bias});
             }
@@ -606,9 +599,9 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   }
 
   if (slot->smpl != nullptr) {
-    gpt_sampler_free(slot->smpl);
+    common_sampler_free(slot->smpl);
   }
-  slot->smpl = gpt_sampler_init(model, slot->sparams);
+  slot->smpl = common_sampler_init(model, slot->sparams);
   // llama_set_rng_seed(ctx, slot->params.seed);
   slot->command = SlotCommand::kLoadPrompt;
   slot->prompt_tokens.clear();
@@ -622,14 +615,14 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
 }
 
 void LlamaServerContext::UpdateSystemPrompt() {
-  system_tokens = ::llama_tokenize(ctx, system_prompt, add_bos_token);
+  system_tokens = ::common_tokenize(ctx, system_prompt, add_bos_token);
 
-  llama_batch_clear(batch);
+  common_batch_clear(batch);
 
   KvCacheClear();
 
   for (int i = 0; i < (int)system_tokens.size(); ++i) {
-    llama_batch_add(batch, system_tokens[i], i, {0}, false);
+    common_batch_add(batch, system_tokens[i], i, {0}, false);
   }
 
   if (llama_decode(ctx, batch) != 0) {
@@ -698,7 +691,7 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
                                       LlamaClientSlot& slot) {
   // remember which tokens were sampled - used for repetition penalties during
   // sampling
-  const std::string token_str = llama_token_to_piece(ctx, result.tok);
+  const std::string token_str = common_token_to_piece(ctx, result.tok);
   slot.sampled = result.tok;
 
   // search stop word and delete it
@@ -862,7 +855,7 @@ json LlamaServerContext::GetFormatedGeneration(LlamaClientSlot& slot) {
   std::vector<std::string> samplers;
   samplers.reserve(slot.sparams.samplers.size());
   for (const auto& sampler : slot.sparams.samplers) {
-    samplers.emplace_back(gpt_sampler_type_to_str(sampler));
+    samplers.emplace_back(common_sampler_type_to_str(sampler));
   }
 
   return json{
@@ -914,7 +907,7 @@ void LlamaServerContext::SendPartialResponse(LlamaClientSlot& slot,
   if (slot.sparams.n_probs > 0) {
     std::vector<CompletionTokenOutput> probs_output = {};
     const std::vector<llama_token> to_send_toks =
-        llama_tokenize(ctx, tkn.text_to_send, false);
+        common_tokenize(ctx, tkn.text_to_send, false);
     size_t probs_pos = std::min(slot.sent_token_probs_index,
                                 slot.generated_token_probs.size());
     size_t probs_stop_pos =
@@ -970,7 +963,7 @@ void LlamaServerContext::SendFinalResponse(LlamaClientSlot& slot) {
     std::vector<CompletionTokenOutput> probs = {};
     if (!slot.params.stream && slot.stopped_word) {
       const std::vector<llama_token> stop_word_toks =
-          llama_tokenize(ctx, slot.stopping_word, false);
+          common_tokenize(ctx, slot.stopping_word, false);
       probs = std::vector<CompletionTokenOutput>(
           slot.generated_token_probs.begin(),
           slot.generated_token_probs.end() - stop_word_toks.size());
@@ -1036,7 +1029,7 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
       continue;
     }
 
-    llama_embd_normalize(embd, embd_res.data(), n_embd);
+    common_embd_normalize(embd, embd_res.data(), n_embd);
   }
   res.result_json = json{
       {"tokens_evaluated", slot.num_prompt_tokens},
@@ -1061,17 +1054,8 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
     for (int32_t i = 0; i < (int32_t)batch.n_tokens; i += n_batch) {
       const int32_t n_tokens = std::min(n_batch, (int32_t)(batch.n_tokens - i));
       llama_batch batch_view = {
-          n_tokens,
-          batch.token + i,
-          nullptr,
-          batch.pos + i,
-          batch.n_seq_id + i,
-          batch.seq_id + i,
-          batch.logits + i,
-          0,
-          0,
-          0,  // unused
-      };
+          n_tokens,           batch.token + i,  nullptr,         batch.pos + i,
+          batch.n_seq_id + i, batch.seq_id + i, batch.logits + i};
       if (llama_decode(ctx, batch_view)) {
         LOG_WARN << __func__ << " : failed to eval\n";
         return false;
@@ -1087,11 +1071,17 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
 
       const int n_embd = llama_n_embd(model);
       llama_batch batch_img = {
-          n_eval,  nullptr,     (img.image_embedding + i * n_embd),
-          nullptr, nullptr,     nullptr,
-          nullptr, slot.n_past, 1,
-          0,
-      };
+          n_eval,  nullptr, (img.image_embedding + i * n_embd),
+          nullptr, nullptr, nullptr,
+          nullptr};
+
+      for (int i = 0; i < n_eval; i++) {
+        batch.pos[i] = slot.n_past + i;
+        batch.n_seq_id[i] = 1;
+        batch.seq_id[i] = 0;
+        batch.logits[i] = false;
+      }
+
       if (llama_decode(ctx, batch_img)) {
         LOG_DEBUG << __func__ << " : failed to eval image";
         return false;
@@ -1100,7 +1090,7 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
     }
     image_idx++;
 
-    llama_batch_clear(batch);
+    common_batch_clear(batch);
 
     // append prefix of next image
     const auto json_prompt =
@@ -1110,9 +1100,9 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
             (json)(slot.images[image_idx].prefix_prompt);
 
     std::vector<llama_token> append_tokens =
-        Tokenize(json_prompt, false);  // has next image
+        Tokenize(json_prompt, false, false);  // has next image
     for (int i = 0; i < (int)append_tokens.size(); ++i) {
-      llama_batch_add(batch, append_tokens[i], slot.n_past, {slot.id}, true);
+      common_batch_add(batch, append_tokens[i], slot.n_past, {slot.id}, true);
       slot.n_past += 1;
     }
   }
@@ -1247,7 +1237,7 @@ bool LlamaServerContext::UpdateSlots() {
     UpdateSystemPrompt();
   }
 
-  llama_batch_clear(batch);
+  common_batch_clear(batch);
 
   if (all_slots_are_idle) {
     if (system_prompt.empty() && clean_kv_cache) {
@@ -1321,8 +1311,8 @@ bool LlamaServerContext::UpdateSlots() {
 
     slot.i_batch = batch.n_tokens;
 
-    llama_batch_add(batch, slot.sampled, system_tokens.size() + slot.n_past,
-                    {slot.id}, true);
+    common_batch_add(batch, slot.sampled, system_tokens.size() + slot.n_past,
+                     {slot.id}, true);
 
     slot.n_decoded += 1;
     slot.n_past += 1;
@@ -1377,8 +1367,10 @@ bool LlamaServerContext::UpdateSlots() {
               params.input_suffix.erase(0, 1);
               suff_rm_leading_spc = false;
             }
-            auto prefix_tokens = Tokenize(slot.params.input_prefix, false);
-            auto suffix_tokens = Tokenize(slot.params.input_suffix, false);
+            auto prefix_tokens =
+                Tokenize(slot.params.input_prefix, false, false);
+            auto suffix_tokens =
+                Tokenize(slot.params.input_suffix, false, false);
 
             const int space_token =
                 29871;  // TODO: this should not be hardcoded
@@ -1398,10 +1390,9 @@ bool LlamaServerContext::UpdateSlots() {
             prefix_tokens.push_back(llama_token_middle(model));
             prompt_tokens = prefix_tokens;
           } else {
-            prompt_tokens = Tokenize(
-                slot.prompt,
-                system_prompt.empty() &&
-                    add_bos_token);  // add BOS if there isn't system prompt
+            prompt_tokens =
+                Tokenize(slot.prompt, system_prompt.empty() && add_bos_token,
+                         true);  // add BOS if there isn't system prompt
           }
 
           slot.n_past = 0;
@@ -1475,7 +1466,7 @@ bool LlamaServerContext::UpdateSlots() {
               GGML_ASSERT(slot.num_prompt_tokens < slot.n_ctx);
             }
 
-            gpt_sampler_reset(slot.smpl);
+            common_sampler_reset(slot.smpl);
 
             if (!slot.params.cache_prompt) {
               slot.n_past = 0;
@@ -1483,7 +1474,7 @@ bool LlamaServerContext::UpdateSlots() {
             } else {
               // push the prompt into the sampling context (do not apply grammar)
               for (auto& token : prompt_tokens) {
-                gpt_sampler_accept(slot.smpl, token, false);
+                common_sampler_accept(slot.smpl, token, false);
               }
 
               slot.n_past = common_part(slot.cache_tokens, prompt_tokens);
@@ -1541,7 +1532,7 @@ bool LlamaServerContext::UpdateSlots() {
           // there is no common part left (except for the system prompt)
           slot.n_past = 0;
           // TODO: is the system prompt ever in the sampling context?
-          gpt_sampler_reset(slot.smpl);
+          common_sampler_reset(slot.smpl);
         }
 
         // remove the non-common part from the cache
@@ -1553,11 +1544,13 @@ bool LlamaServerContext::UpdateSlots() {
 
         // process the prefix of first image
         std::vector<llama_token> prefix_tokens =
-            has_images ? Tokenize(slot.images[0].prefix_prompt, add_bos_token)
-                       : prompt_tokens;
+            has_images
+                ? Tokenize(slot.images[0].prefix_prompt, add_bos_token, false)
+                : prompt_tokens;
         for (; slot.n_past < (int)prefix_tokens.size(); ++slot.n_past) {
-          llama_batch_add(batch, prefix_tokens[slot.n_past],
-                          system_tokens.size() + slot.n_past, {slot.id}, false);
+          common_batch_add(batch, prefix_tokens[slot.n_past],
+                           system_tokens.size() + slot.n_past, {slot.id},
+                           false);
           if (slot.params.cache_prompt) {
             slot.cache_tokens.push_back(prompt_tokens[slot.n_past]);
           }
@@ -1617,16 +1610,8 @@ bool LlamaServerContext::UpdateSlots() {
   for (int32_t i = 0; i < (int32_t)batch.n_tokens; i += n_batch) {
     const int32_t n_tokens = std::min(n_batch, (int32_t)(batch.n_tokens - i));
     llama_batch batch_view = {
-        n_tokens,
-        batch.token + i,
-        nullptr,
-        batch.pos + i,
-        batch.n_seq_id + i,
-        batch.seq_id + i,
-        batch.logits + i,
-        0,
-        0,
-        0,  // unused
+        n_tokens,           batch.token + i,  nullptr,          batch.pos + i,
+        batch.n_seq_id + i, batch.seq_id + i, batch.logits + i,
     };
 
     const int ret = llama_decode(ctx, batch_view);
@@ -1674,9 +1659,9 @@ bool LlamaServerContext::UpdateSlots() {
 
       CompletionTokenOutput result;
       const llama_token id =
-          gpt_sampler_sample(slot.smpl, ctx, slot.i_batch - i);
+          common_sampler_sample(slot.smpl, ctx, slot.i_batch - i);
 
-      gpt_sampler_accept(slot.smpl, id, true);
+      common_sampler_accept(slot.smpl, id, true);
 
       if (slot.n_decoded == 1) {
         slot.t_start_genereration = ggml_time_us();
@@ -1684,7 +1669,7 @@ bool LlamaServerContext::UpdateSlots() {
             (slot.t_start_genereration - slot.t_start_process_prompt) / 1e3;
       }
 
-      const auto* cur_p = gpt_sampler_get_candidates(slot.smpl);
+      const auto* cur_p = common_sampler_get_candidates(slot.smpl);
       result.tok = id;
 
       for (size_t i = 0; i < (size_t)slot.sparams.n_probs; ++i) {
