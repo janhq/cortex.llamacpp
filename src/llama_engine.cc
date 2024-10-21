@@ -182,7 +182,7 @@ LlamaEngine::LlamaEngine(int log_option) {
     asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
 
-  gpt_log_pause(gpt_log_main());
+  common_log_pause(common_log_main());
 
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
@@ -403,7 +403,7 @@ void LlamaEngine::SetFileLogger(int max_log_lines,
 }
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
-  gpt_params params;
+  common_params params;
   std::string model_type;
   auto model_id = llama_utils::GetModelId(*json_body);
   // By default will setting based on number of handlers
@@ -515,11 +515,11 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     LOG_DEBUG << "stop: " << server_map_[model_id].stop_words.toStyledString();
 
     if (!json_body->operator[]("llama_log_folder").isNull()) {
-      gpt_log_resume(gpt_log_main());
+      common_log_resume(common_log_main());
       std::string llama_log_folder =
           json_body->operator[]("llama_log_folder").asString();
       llama_log_folder += "llama.log";
-      gpt_log_set_file(gpt_log_main(), llama_log_folder.c_str());
+      common_log_set_file(common_log_main(), llama_log_folder.c_str());
     }  // Set folder for llama log
   }
   if (params.model_alias == "unknown") {
