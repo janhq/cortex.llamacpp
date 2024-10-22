@@ -978,6 +978,8 @@ void LlamaEngine::WarmUpModel(const std::string& model_id) {
     pseudo["prompt"] = "Hello";
     pseudo["n_predict"] = 2;
     pseudo["stream"] = false;
+    pseudo["cache_prompt"] = server_map_[model_id].caching_enabled;
+    pseudo["n_keep"] = 0;
     const int task_id =
         si->second.ctx.RequestCompletion(pseudo, false, false, -1);
     TaskResult result = si->second.ctx.NextResult(task_id);
