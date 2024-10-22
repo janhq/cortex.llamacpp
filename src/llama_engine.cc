@@ -976,7 +976,7 @@ void LlamaEngine::WarmUpModel(const std::string& model_id) {
 
     LOG_INFO << "Warm-up model: " << model_id;
     pseudo["prompt"] = "Hello";
-    pseudo["n_predict"] = 2;
+    pseudo["n_predict"] = 10;
     pseudo["stream"] = false;
     pseudo["cache_prompt"] = server_map_[model_id].caching_enabled;
     pseudo["n_keep"] = 0;
