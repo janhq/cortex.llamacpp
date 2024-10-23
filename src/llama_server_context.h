@@ -72,7 +72,7 @@ template <class Iter>
 static std::string tokens_to_str(llama_context* ctx, Iter begin, Iter end) {
   std::string ret;
   for (; begin != end; ++begin) {
-    ret += llama_token_to_piece(ctx, *begin);
+    ret += common_token_to_piece(ctx, *begin);
   }
   return ret;
 }
@@ -111,7 +111,7 @@ struct LlamaServerContext {
 
   clip_ctx* clp_ctx = nullptr;
 
-  gpt_params params;
+  common_params params;
 
   llama_batch batch;
 
@@ -152,7 +152,7 @@ struct LlamaServerContext {
   ~LlamaServerContext();
 
  public:
-  bool LoadModel(const gpt_params& params_);
+  bool LoadModel(const common_params& params_);
   void Initialize();
   void KvCacheClear();
   json GetModelProps();
@@ -164,8 +164,8 @@ struct LlamaServerContext {
   void ReleaseResources();
 
  private:
-  std::vector<llama_token> Tokenize(const json& json_prompt,
-                                    bool add_bos) const;
+  std::vector<llama_token> Tokenize(const json& json_prompt, bool add_special,
+                                    bool parse_special) const;
 
   LlamaClientSlot* GetSlot(int id);
 

@@ -133,8 +133,8 @@ struct LlamaClientSlot {
   std::string stopping_word;
 
   // sampling
-  struct gpt_sampler_params sparams;
-  struct gpt_sampler* smpl = nullptr;
+  struct common_sampler_params sparams;
+  struct common_sampler* smpl = nullptr;
 
   // multimodal
   std::vector<SlotImage> images;
@@ -154,7 +154,7 @@ struct LlamaClientSlot {
 
   void Reset();
 
-  bool HasBudget(gpt_params& global_params);
+  bool HasBudget(common_params& global_params);
 
   bool Available() const;
 
