@@ -35,7 +35,7 @@ struct ChatCompletionRequest {
 
 inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
   ChatCompletionRequest completion;
-  gpt_sampler_params default_params;
+  common_sampler_params default_params;
   if (jsonBody) {
     completion.stream = (*jsonBody).get("stream", false).asBool();
     completion.max_tokens = (*jsonBody).get("max_tokens", 500).asInt();
