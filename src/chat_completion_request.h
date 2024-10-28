@@ -2,7 +2,6 @@
 #include <json.hpp>
 #include "json/value.h"
 #include "sampling.h"
-#include "trantor/utils/Logger.h"
 namespace llama::inferences {
 
 nlohmann::json ConvertJsonCppToNlohmann(const Json::Value& input) {
