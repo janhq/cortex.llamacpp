@@ -2,7 +2,7 @@
 #include <json.hpp>
 #include "json/value.h"
 #include "sampling.h"
-
+#include "trantor/utils/Logger.h"
 namespace llama::inferences {
 
 nlohmann::json ConvertJsonCppToNlohmann(const Json::Value& input) {
@@ -112,10 +112,10 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.n_probs = (*jsonBody).get("n_probs", 0).asInt();
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
     completion.grammar = (*jsonBody).get("grammar", "").asString();
-    const Json::Value& inputLogitBias = (*jsonBody)["logit_bias"];
-    if (!inputLogitBias.isNull()) {
+    const Json::Value& input_logit_bias = (*jsonBody)["logit_bias"];
+    if (!input_logit_bias.isNull()) {
       completion.logit_bias =
-          ChatCompletionRequest::ConvertLogitBiasToArray(inputLogitBias);
+          ChatCompletionRequest::ConvertLogitBiasToArray(input_logit_bias);
     }
   }
   return completion;
