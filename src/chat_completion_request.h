@@ -1,9 +1,36 @@
 #pragma once
+#include <json.hpp>
 #include "json/value.h"
 #include "sampling.h"
-#include "llama.h"
 
 namespace llama::inferences {
+
+nlohmann::json ConvertJsonCppToNlohmann(const Json::Value& input) {
+  if (input.isNull()) {
+    return nullptr;
+  } else if (input.isBool()) {
+    return input.asBool();
+  } else if (input.isInt()) {
+    return input.asInt();
+  } else if (input.isDouble()) {
+    return input.asDouble();
+  } else if (input.isString()) {
+    return input.asString();
+  } else if (input.isArray()) {
+    nlohmann::json arr = nlohmann::json::array();
+    for (const auto& elem : input) {
+      arr.push_back(ConvertJsonCppToNlohmann(elem));
+    }
+    return arr;
+  } else if (input.isObject()) {
+    nlohmann::json obj = nlohmann::json::object();
+    for (const auto& key : input.getMemberNames()) {
+      obj[key] = ConvertJsonCppToNlohmann(input[key]);
+    }
+    return obj;
+  }
+  return nullptr;
+}
 struct ChatCompletionRequest {
   bool stream = false;
   int max_tokens = 500;
@@ -32,7 +59,21 @@ struct ChatCompletionRequest {
   int n_probs = 0;
   int min_keep = 0;
   std::string grammar;
-  std::vector<llama_logit_bias> logit_bias;
+  Json::Value logit_bias = Json::Value(Json::arrayValue);
+
+  static Json::Value ConvertLogitBiasToArray(const Json::Value& input) {
+    Json::Value result(Json::arrayValue);
+    if (input.isObject()) {
+      const auto& memberNames = input.getMemberNames();
+      for (const auto& tokenStr : memberNames) {
+        Json::Value pair(Json::arrayValue);
+        pair.append(std::stoi(tokenStr));
+        pair.append(input[tokenStr].asFloat());
+        result.append(pair);
+      }
+    }
+    return result;
+  }
 };
 
 inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
@@ -52,14 +93,17 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.model_id = (*jsonBody).get("model", {}).asString();
 
     completion.seed = (*jsonBody).get("seed", -1).asInt();
-    completion.dynatemp_range = (*jsonBody).get("dynatemp_range", 0.0f).asFloat();
-    completion.dynatemp_exponent = (*jsonBody).get("dynatemp_exponent", 0.0f).asFloat();
+    completion.dynatemp_range =
+        (*jsonBody).get("dynatemp_range", 0.0f).asFloat();
+    completion.dynatemp_exponent =
+        (*jsonBody).get("dynatemp_exponent", 0.0f).asFloat();
     completion.top_k = (*jsonBody).get("top_k", 40).asInt();
     completion.min_p = (*jsonBody).get("min_p", 0.05f).asFloat();
     completion.tfs_z = (*jsonBody).get("tfs_z", 1.0f).asFloat();
     completion.typ_p = (*jsonBody).get("typ_p", 1.0f).asFloat();
     completion.repeat_last_n = (*jsonBody).get("repeat_last_n", 64).asInt();
-    completion.penalty_repeat = (*jsonBody).get("repeat_penalty", 1.1f).asFloat();
+    completion.penalty_repeat =
+        (*jsonBody).get("repeat_penalty", 1.1f).asFloat();
     completion.mirostat = (*jsonBody).get("mirostat", false).asBool();
     completion.mirostat_tau = (*jsonBody).get("mirostat_tau", 5.0f).asFloat();
     completion.mirostat_eta = (*jsonBody).get("mirostat_eta", 0.1f).asFloat();
@@ -68,7 +112,11 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.n_probs = (*jsonBody).get("n_probs", 0).asInt();
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
     completion.grammar = (*jsonBody).get("grammar", "").asString();
-    completion.logit_bias = (*jsonBody)["logit_bias"];
+    const Json::Value& inputLogitBias = (*jsonBody)["logit_bias"];
+    if (!inputLogitBias.isNull()) {
+      completion.logit_bias =
+          ChatCompletionRequest::ConvertLogitBiasToArray(inputLogitBias);
+    }
   }
   return completion;
 }

@@ -345,16 +345,16 @@ void LlamaEngine::GetModels(
   Json::Value model_array(Json::arrayValue);
   for (const auto& [m, s] : server_map_) {
     if (s.ctx.model_loaded_external) {
-      uint64_t vram = llama_get_other_buffer(s.ctx.model);
-      uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
+      // uint64_t vram = llama_get_other_buffer(s.ctx.model);
+      // uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
 
       Json::Value val;
       val["id"] = m;
       val["engine"] = "cortex.llamacpp";
       val["start_time"] = s.start_time;
       val["model_size"] = llama_model_size(s.ctx.model);
-      val["vram"] = vram;
-      val["ram"] = ram;
+      // val["vram"] = vram;
+      // val["ram"] = ram;
       val["object"] = "model";
       model_array.append(val);
     }
@@ -635,7 +635,11 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
-  data["logit_bias"] = completion.logit_bias;
+  json arr = json::array();
+  for (const auto& elem : completion.logit_bias) {
+    arr.push_back(llama::inferences::ConvertJsonCppToNlohmann(elem));
+  }
+  data["logit_bias"] = std::move(arr);
   int n_probs = completion.n_probs;
   const Json::Value& messages = completion.messages;
 
