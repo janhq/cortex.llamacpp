@@ -30,6 +30,7 @@ struct ChatCompletionRequest {
   bool ignore_eos = false;
   int n_probs = 0;
   int min_keep = 0;
+  bool include_usage = false;
   std::string grammar;
 };
 
@@ -38,6 +39,12 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
   common_sampler_params default_params;
   if (jsonBody) {
     completion.stream = (*jsonBody).get("stream", false).asBool();
+    if(completion.stream) {
+      auto& stream_options = (*jsonBody)["stream_options"];
+      if(!stream_options.isNull()) {
+        completion.include_usage = stream_options.get("include_usage", false).asBool();
+      }
+    }
     completion.max_tokens = (*jsonBody).get("max_tokens", 500).asInt();
     completion.top_p = (*jsonBody).get("top_p", 0.95).asFloat();
     completion.temperature = (*jsonBody).get("temperature", 0.8).asFloat();
