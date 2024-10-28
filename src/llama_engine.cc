@@ -345,16 +345,16 @@ void LlamaEngine::GetModels(
   Json::Value model_array(Json::arrayValue);
   for (const auto& [m, s] : server_map_) {
     if (s.ctx.model_loaded_external) {
-      // uint64_t vram = llama_get_other_buffer(s.ctx.model);
-      // uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
+      uint64_t vram = llama_get_other_buffer(s.ctx.model);
+      uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
 
       Json::Value val;
       val["id"] = m;
       val["engine"] = "cortex.llamacpp";
       val["start_time"] = s.start_time;
       val["model_size"] = llama_model_size(s.ctx.model);
-      // val["vram"] = vram;
-      // val["ram"] = ram;
+      val["vram"] = vram;
+      val["ram"] = ram;
       val["object"] = "model";
       model_array.append(val);
     }
