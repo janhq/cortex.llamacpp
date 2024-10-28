@@ -1,6 +1,7 @@
 #pragma once
 #include "json/value.h"
 #include "sampling.h"
+#include "llama.h"
 
 namespace llama::inferences {
 struct ChatCompletionRequest {
@@ -31,6 +32,7 @@ struct ChatCompletionRequest {
   int n_probs = 0;
   int min_keep = 0;
   std::string grammar;
+  std::vector<llama_logit_bias> logit_bias;
 };
 
 inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
@@ -66,6 +68,7 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.n_probs = (*jsonBody).get("n_probs", 0).asInt();
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
     completion.grammar = (*jsonBody).get("grammar", "").asString();
+    completion.logit_bias = (*jsonBody)["logit_bias"];
   }
   return completion;
 }
