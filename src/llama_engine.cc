@@ -635,6 +635,11 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
+  json arr = json::array();
+  for (const auto& elem : completion.logit_bias) {
+    arr.push_back(llama::inferences::ConvertJsonCppToNlohmann(elem));
+  }
+  data["logit_bias"] = std::move(arr);
   int n_probs = completion.n_probs;
   const Json::Value& messages = completion.messages;
 
