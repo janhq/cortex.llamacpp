@@ -599,7 +599,6 @@ void LlamaEngine::HandleInferenceImpl(
   data["dynatemp_exponent"] = completion.dynatemp_exponent;
   data["top_k"] = completion.top_k;
   data["min_p"] = completion.min_p;
-  data["tfs_z"] = completion.tfs_z;
   data["typical_p"] = completion.typ_p;
   data["repeat_last_n"] = completion.repeat_last_n;
   data["repeat_penalty"] = completion.penalty_repeat;
