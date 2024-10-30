@@ -71,5 +71,5 @@ class LlamaEngine : public EngineI {
   std::atomic<int> no_of_chats_ = 0;
 
   bool print_version_ = true;
-  std::unique_ptr<trantor::FileLogger> asynce_file_logger_;
+  std::unique_ptr<trantor::FileLogger> async_file_logger_;
 };

@@ -168,9 +168,9 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
   //     // asyncFileLogger.startLogging();
   //     trantor::Logger::setOutputFunction(
   //         [&](const char* msg, const uint64_t len) {
-  //           asynce_file_logger_->output_(msg, len);
+  //           async_file_logger_->output_(msg, len);
   //         },
-  //         [&]() { asynce_file_logger_->flush(); });
+  //         [&]() { async_file_logger_->flush(); });
   //   }
   // } else {
   //   // For backward compatible
@@ -204,7 +204,7 @@ void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
-    asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
+    async_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
 
   common_log_pause(common_log_main());
@@ -232,7 +232,7 @@ LlamaEngine::~LlamaEngine() {
     l.ReleaseResources();
   }
   server_map_.clear();
-  asynce_file_logger_.reset();
+  async_file_logger_.reset();
 }
 
 void LlamaEngine::HandleChatCompletion(
@@ -399,17 +399,21 @@ void LlamaEngine::GetModels(
 
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
-  if (!asynce_file_logger_) {
-    asynce_file_logger_ = std::make_unique<trantor::FileLogger>();
+  if (!async_file_logger_) {
+    async_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
-  asynce_file_logger_->setFileName(log_path);
-  asynce_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
-  asynce_file_logger_->startLogging();
+  async_file_logger_->setFileName(log_path);
+  async_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
+  async_file_logger_->startLogging();
   trantor::Logger::setOutputFunction(
       [&](const char* msg, const uint64_t len) {
-        asynce_file_logger_->output_(msg, len);
+        if (async_file_logger_)
+          async_file_logger_->output_(msg, len);
       },
-      [&]() { asynce_file_logger_->flush(); });
+      [&]() {
+        if (async_file_logger_)
+          async_file_logger_->flush();
+      });
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
         (void)level;
