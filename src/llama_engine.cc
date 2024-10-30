@@ -147,60 +147,6 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
-// derepted this function because we no longer support change log when load model
-void LlamaEngine::SetLoggerOption(const Json::Value& json_body) {
-  // if (!json_body["log_option"].isNull()) {
-  //   int log_option = json_body["log_option"].asInt();
-  //   if (log_option != kFileLoggerOption) {
-  //     // Revert to default trantor logger output function
-  //     trantor::Logger::setOutputFunction(
-  //         [](const char* msg, const uint64_t len) {
-  //           fwrite(msg, 1, static_cast<size_t>(len), stdout);
-  //         },
-  //         []() { fflush(stdout); });
-  //   } else {
-  //     std::string log_path =
-  //         json_body.get("log_path", "./logs/cortex.log").asString();
-  //     int max_log_lines = json_body.get("max_log_lines", 100000).asInt();
-  //     trantor::FileLogger asyncFileLogger;
-  //     asyncFileLogger.setFileName(log_path);
-  //     asyncFileLogger.setMaxLines(max_log_lines);  // Keep last 100000 lines
-  //     // asyncFileLogger.startLogging();
-  //     trantor::Logger::setOutputFunction(
-  //         [&](const char* msg, const uint64_t len) {
-  //           async_file_logger_->output_(msg, len);
-  //         },
-  //         [&]() { async_file_logger_->flush(); });
-  //   }
-  // } else {
-  //   // For backward compatible
-  //   trantor::Logger::setOutputFunction(
-  //       [](const char* msg, const uint64_t len) {
-  //         fwrite(msg, 1, static_cast<size_t>(len), stdout);
-  //       },
-  //       []() { fflush(stdout); });
-  // }
-
-  // if (!json_body["log_level"].isNull()) {
-  //   std::string log_level = json_body["log_level"].asString();
-  //   if (log_level == "trace") {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kTrace);
-  //   } else if (log_level == "debug") {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kDebug);
-  //   } else if (log_level == "info") {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kInfo);
-  //   } else if (log_level == "warn") {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kWarn);
-  //   } else if (log_level == "fatal") {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kFatal);
-  //   } else {
-  //     trantor::Logger::setLogLevel(trantor::Logger::kError);
-  //   }
-  // } else {
-  //   trantor::Logger::setLogLevel(trantor::Logger::kDebug);
-  // }
-}
-
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
@@ -260,7 +206,6 @@ void LlamaEngine::HandleEmbedding(
 void LlamaEngine::LoadModel(
     std::shared_ptr<Json::Value> json_body,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
-  // SetLoggerOption(*json_body); // dont update log option when load model
   if (std::exchange(print_version_, false)) {
 #if defined(CORTEXLLAMA_VERSION)
     LOG_INFO << "cortex.llamacpp version: " << CORTEXLLAMA_VERSION;
