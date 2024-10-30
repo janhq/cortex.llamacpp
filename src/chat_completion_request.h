@@ -46,7 +46,6 @@ struct ChatCompletionRequest {
   float dynatemp_exponent = 1.0f;
   int top_k = 40;
   float min_p = 0.05f;
-  float tfs_z = 1.0f;
   float typ_p = 1.0f;
   int repeat_last_n = 64;
   float penalty_repeat = 1.0f;
@@ -105,7 +104,6 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
         (*jsonBody).get("dynatemp_exponent", 0.0f).asFloat();
     completion.top_k = (*jsonBody).get("top_k", 40).asInt();
     completion.min_p = (*jsonBody).get("min_p", 0.05f).asFloat();
-    completion.tfs_z = (*jsonBody).get("tfs_z", 1.0f).asFloat();
     completion.typ_p = (*jsonBody).get("typ_p", 1.0f).asFloat();
     completion.repeat_last_n = (*jsonBody).get("repeat_last_n", 64).asInt();
     completion.penalty_repeat =
