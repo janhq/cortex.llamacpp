@@ -31,7 +31,6 @@ class LlamaEngine : public EngineI {
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void SetFileLogger(int max_log_lines, const std::string& log_path) final;
-  void SetLoggerOption(const Json::Value& json_body);
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
@@ -71,5 +70,5 @@ class LlamaEngine : public EngineI {
   std::atomic<int> no_of_chats_ = 0;
 
   bool print_version_ = true;
-  std::unique_ptr<trantor::FileLogger> asynce_file_logger_;
+  std::unique_ptr<trantor::FileLogger> async_file_logger_;
 };
