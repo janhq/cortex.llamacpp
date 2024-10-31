@@ -610,7 +610,7 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
-  data["n"] = completion.n; // number of choices to return
+  data["n"] = completion.n;  // number of choices to return
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
     arr.push_back(llama::inferences::ConvertJsonCppToNlohmann(elem));
@@ -849,7 +849,6 @@ void LlamaEngine::HandleInferenceImpl(
                << "Non stream, waiting for respone";
       if (!json_value(d, "stream", false)) {
         bool has_error = false;
-        std::string completion_text;
         int prompt_tokens = 0;
         int predicted_tokens = 0;
         std::vector<TaskResult> results;
@@ -857,6 +856,7 @@ void LlamaEngine::HandleInferenceImpl(
           results.push_back(state->llama.NextResult(task_ids[i]));
         }
         // TaskResult result = state->llama.NextResult(task_id);
+        int index = 0;
         for (auto& result : results) {
           if (!result.error && result.stop) {
             prompt_tokens += result.result_json["tokens_evaluated"].get<int>();
@@ -869,10 +869,13 @@ void LlamaEngine::HandleInferenceImpl(
                   llama_utils::generate_random_string(20), "_", to_send, "_",
                   prompt_tokens, predicted_tokens);
             } else {
-              respData["choices"].append(CreateFullReturnJson(
+              auto choice = CreateFullReturnJson(
                   llama_utils::generate_random_string(20), "_", to_send, "_",
-                  prompt_tokens, predicted_tokens)["choices"][0]);
+                  prompt_tokens, predicted_tokens)["choices"][0];
+              choice["index"] = index;
+              respData["choices"].append(choice);
             }
+            index += 1;
 
           } else {
             bool has_error = true;
