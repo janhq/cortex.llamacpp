@@ -680,6 +680,7 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
+  data["n"] = completion.n;  // number of choices to return
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
     arr.push_back(llama::inferences::ConvertJsonCppToNlohmann(elem));
@@ -906,35 +907,61 @@ void LlamaEngine::HandleInferenceImpl(
       LOG_INFO << "Request " << request_id << ": " << "Inference completed";
     });
   } else {
+    int n = completion.n;
     auto state = CreateInferenceState(si.ctx);
-    si.q->runTaskInQueue([this, n_probs, request_id, state,
+
+    si.q->runTaskInQueue([this,n, n_probs, request_id, state,
                           cb = std::move(callback), d = std::move(data)]() {
       Json::Value respData;
-      int task_id = state->llama.RequestCompletion(d, false, false, -1);
+      std::vector<int> task_ids;
+      for (int i = 0; i < n; i++) {
+        task_ids.push_back(state->llama.RequestCompletion(d, false, false, -1));
+      }
       LOG_INFO << "Request " << request_id << ": "
                << "Non stream, waiting for respone";
       if (!json_value(d, "stream", false)) {
         bool has_error = false;
-        std::string completion_text;
-        TaskResult result = state->llama.NextResult(task_id);
-        if (!result.error && result.stop) {
-          json logprobs;
-          int prompt_tokens = result.result_json["tokens_evaluated"];
-          int predicted_tokens = result.result_json["tokens_predicted"];
-          std::string to_send = result.result_json["content"];
-          llama_utils::ltrim(to_send);
-          if (n_probs > 0) {
-            logprobs = result.result_json["completion_probabilities"];
-          }
-          respData = CreateFullReturnJson(
-              llama_utils::generate_random_string(20), "_", to_send, "_",
-              prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs);
-        } else {
-          bool has_error = true;
-          respData["message"] = "Internal error during inference";
-          LOG_ERROR << "Request " << request_id << ": "
-                    << "Error during inference";
+
+        int prompt_tokens = 0;
+        int predicted_tokens = 0;
+        std::vector<TaskResult> results;
+        for (int i = 0; i < n; i++) {
+          results.push_back(state->llama.NextResult(task_ids[i]));
         }
+        // TaskResult result = state->llama.NextResult(task_id);
+        int index = 0;
+        for (auto& result : results) {
+          if (!result.error && result.stop) {
+            prompt_tokens += result.result_json["tokens_evaluated"].get<int>();
+            predicted_tokens +=
+                result.result_json["tokens_predicted"].get<int>();
+            std::string to_send = result.result_json["content"];
+            llama_utils::ltrim(to_send);
+            if (n_probs > 0) {
+                logprobs = result.result_json["completion_probabilities"];
+            }
+            if (respData.empty()) {
+              respData = CreateFullReturnJson(
+                  llama_utils::generate_random_string(20), "_", to_send, "_",
+                  prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs);
+            } else {
+              auto choice = CreateFullReturnJson(
+                  llama_utils::generate_random_string(20), "_", to_send, "_",
+                  prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs)["choices"][0];
+              choice["index"] = index;
+              respData["choices"].append(choice);
+            }
+            index += 1;
+
+          } else {
+            bool has_error = true;
+            respData["message"] = "Internal error during inference";
+            LOG_ERROR << "Request " << request_id << ": "
+                      << "Error during inference";
+            break;
+          }
+        }
+
         Json::Value status;
         status["is_done"] = true;
         status["has_error"] = has_error;
