@@ -932,6 +932,7 @@ void LlamaEngine::HandleInferenceImpl(
         int index = 0;
         for (auto& result : results) {
           if (!result.error && result.stop) {
+            json logprobs;
             prompt_tokens += result.result_json["tokens_evaluated"].get<int>();
             predicted_tokens +=
                 result.result_json["tokens_predicted"].get<int>();
