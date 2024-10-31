@@ -62,13 +62,75 @@ Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
 
   return dataItem;
 }
+std::vector<int> getUTF8Bytes(const std::string& str) {
+  std::vector<int> bytes;
+  for (unsigned char c : str) {
+    bytes.push_back(static_cast<int>(c));
+  }
+  return bytes;
+}
+
+Json::Value TransformLogProbs(const json& logprobs) {
+  Json::Value root;
+  Json::Value logprobs_json(Json::arrayValue);
+
+  // Iterate through each token group in the input
+  for (const auto& token_group : logprobs) {
+    Json::Value content_item;
+
+    // Set the token (content)
+    content_item["token"] = token_group["content"].get<std::string>();
+
+    // Get the probabilities array
+    const auto& probs = token_group["probs"];
+
+    // Set the main token's logprob (first probability)
+    if (!probs.empty()) {
+      content_item["logprob"] = probs[0]["prob"].get<double>();
+    }
+
+    // Get UTF-8 bytes for the token
+    std::vector<int> bytes =
+        getUTF8Bytes(token_group["content"].get<std::string>());
+    Json::Value bytes_array(Json::arrayValue);
+    for (int byte : bytes) {
+      bytes_array.append(byte);
+    }
+    content_item["bytes"] = bytes_array;
+
+    // Create top_logprobs array
+    Json::Value top_logprobs(Json::arrayValue);
+    for (const auto& prob_item : probs) {
+      Json::Value logprob_item;
+      logprob_item["token"] = prob_item["tok_str"].get<std::string>();
+      logprob_item["logprob"] = prob_item["prob"].get<double>();
+
+      // Get UTF-8 bytes for this alternative token
+      std::vector<int> alt_bytes =
+          getUTF8Bytes(prob_item["tok_str"].get<std::string>());
+      Json::Value alt_bytes_array(Json::arrayValue);
+      for (int byte : alt_bytes) {
+        alt_bytes_array.append(byte);
+      }
+      logprob_item["bytes"] = alt_bytes_array;
+
+      top_logprobs.append(logprob_item);
+    }
+    content_item["top_logprobs"] = top_logprobs;
+
+    logprobs_json.append(content_item);
+  }
+  root["content"] = logprobs_json;
+  return root;
+}
 
 Json::Value CreateFullReturnJson(const std::string& id,
                                  const std::string& model,
                                  const std::string& content,
                                  const std::string& system_fingerprint,
                                  int prompt_tokens, int completion_tokens,
-                                 Json::Value finish_reason = Json::Value()) {
+                                 Json::Value finish_reason = Json::Value(),
+                                 std::optional<json> logprobs = std::nullopt) {
   Json::Value root;
 
   root["id"] = id;
@@ -86,6 +148,9 @@ Json::Value CreateFullReturnJson(const std::string& id,
   message["content"] = content;
   choice["message"] = message;
   choice["finish_reason"] = finish_reason;
+  if (logprobs.has_value() && !logprobs.value().empty()) {
+    choice["logprobs"] = TransformLogProbs(logprobs.value());
+  }
 
   choicesArray.append(choice);
   root["choices"] = choicesArray;
@@ -102,7 +167,8 @@ Json::Value CreateFullReturnJson(const std::string& id,
 std::string CreateReturnJson(const std::string& id, const std::string& model,
                              const std::string& content,
                              Json::Value finish_reason, bool include_usage,
-                             std::optional<Usage> usage = std::nullopt) {
+                             std::optional<Usage> usage = std::nullopt,
+                             std::optional<json> logprobs = std::nullopt) {
   Json::Value root;
 
   root["id"] = id;
@@ -118,8 +184,12 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
     choice["index"] = 0;
     Json::Value delta;
     delta["content"] = content;
+    delta["role"] = "assistant";
     choice["delta"] = delta;
     choice["finish_reason"] = finish_reason;
+    if (logprobs.has_value() && !logprobs.value().empty()) {
+      choice["logprobs"] = TransformLogProbs(logprobs.value());
+    }
 
     choicesArray.append(choice);
   }
@@ -750,11 +820,11 @@ void LlamaEngine::HandleInferenceImpl(
         TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
           std::string to_send;
+          json logprobs;
           if (n_probs > 0) {
-            to_send = result.result_json["completion_probabilities"].dump();
-          } else {
-            to_send = result.result_json["content"];
+            logprobs = result.result_json["completion_probabilities"];
           }
+          to_send = result.result_json["content"];
           // trim the leading space if it is the first token
           if (std::exchange(state->is_first_token, false)) {
             llama_utils::ltrim(to_send);
@@ -763,7 +833,8 @@ void LlamaEngine::HandleInferenceImpl(
           const std::string str =
               "data: " +
               CreateReturnJson(llama_utils::generate_random_string(20), "_",
-                               to_send, "", include_usage, std::nullopt) +
+                               to_send, "", include_usage, std::nullopt,
+                               logprobs) +
               "\n\n";
           Json::Value respData;
           respData["data"] = str;
@@ -836,8 +907,8 @@ void LlamaEngine::HandleInferenceImpl(
     });
   } else {
     auto state = CreateInferenceState(si.ctx);
-    si.q->runTaskInQueue([this, request_id, state, cb = std::move(callback),
-                          d = std::move(data)]() {
+    si.q->runTaskInQueue([this, n_probs, request_id, state,
+                          cb = std::move(callback), d = std::move(data)]() {
       Json::Value respData;
       int task_id = state->llama.RequestCompletion(d, false, false, -1);
       LOG_INFO << "Request " << request_id << ": "
@@ -847,13 +918,17 @@ void LlamaEngine::HandleInferenceImpl(
         std::string completion_text;
         TaskResult result = state->llama.NextResult(task_id);
         if (!result.error && result.stop) {
+          json logprobs;
           int prompt_tokens = result.result_json["tokens_evaluated"];
           int predicted_tokens = result.result_json["tokens_predicted"];
           std::string to_send = result.result_json["content"];
           llama_utils::ltrim(to_send);
+          if (n_probs > 0) {
+            logprobs = result.result_json["completion_probabilities"];
+          }
           respData = CreateFullReturnJson(
               llama_utils::generate_random_string(20), "_", to_send, "_",
-              prompt_tokens, predicted_tokens);
+              prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs);
         } else {
           bool has_error = true;
           respData["message"] = "Internal error during inference";
