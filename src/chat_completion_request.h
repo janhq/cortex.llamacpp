@@ -56,6 +56,7 @@ struct ChatCompletionRequest {
   bool ignore_eos = false;
   int n_probs = 0;
   int min_keep = 0;
+  int n = 1;
   bool include_usage = false;
   std::string grammar;
   Json::Value logit_bias = Json::Value(Json::arrayValue);
@@ -115,6 +116,7 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.ignore_eos = (*jsonBody).get("ignore_eos", false).asBool();
     completion.n_probs = (*jsonBody).get("n_probs", 0).asInt();
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
+    completion.n = (*jsonBody).get("n", 1).asInt();
     completion.grammar = (*jsonBody).get("grammar", "").asString();
     const Json::Value& input_logit_bias = (*jsonBody)["logit_bias"];
     if (!input_logit_bias.isNull()) {
