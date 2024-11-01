@@ -90,8 +90,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
     }
 
     // Get UTF-8 bytes for the token
-    std::vector<int> bytes =
-        getUTF8Bytes(token_group["content"].get<std::string>());
+    auto bytes = getUTF8Bytes(token_group["content"].get<std::string>());
     Json::Value bytes_array(Json::arrayValue);
     for (int byte : bytes) {
       bytes_array.append(byte);
@@ -106,8 +105,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
       logprob_item["logprob"] = prob_item["prob"].get<double>();
 
       // Get UTF-8 bytes for this alternative token
-      std::vector<int> alt_bytes =
-          getUTF8Bytes(prob_item["tok_str"].get<std::string>());
+      auto alt_bytes = getUTF8Bytes(prob_item["tok_str"].get<std::string>());
       Json::Value alt_bytes_array(Json::arrayValue);
       for (int byte : alt_bytes) {
         alt_bytes_array.append(byte);
@@ -910,7 +908,7 @@ void LlamaEngine::HandleInferenceImpl(
     int n = completion.n;
     auto state = CreateInferenceState(si.ctx);
 
-    si.q->runTaskInQueue([this,n, n_probs, request_id, state,
+    si.q->runTaskInQueue([this, n, n_probs, request_id, state,
                           cb = std::move(callback), d = std::move(data)]() {
       Json::Value respData;
       std::vector<int> task_ids;
@@ -939,16 +937,18 @@ void LlamaEngine::HandleInferenceImpl(
             std::string to_send = result.result_json["content"];
             llama_utils::ltrim(to_send);
             if (n_probs > 0) {
-                logprobs = result.result_json["completion_probabilities"];
+              logprobs = result.result_json["completion_probabilities"];
             }
             if (respData.empty()) {
               respData = CreateFullReturnJson(
                   llama_utils::generate_random_string(20), "_", to_send, "_",
-                  prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs);
+                  prompt_tokens, predicted_tokens, Json::Value("stop"),
+                  logprobs);
             } else {
               auto choice = CreateFullReturnJson(
                   llama_utils::generate_random_string(20), "_", to_send, "_",
-                  prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs)["choices"][0];
+                  prompt_tokens, predicted_tokens, Json::Value("stop"),
+                  logprobs)["choices"][0];
               choice["index"] = index;
               respData["choices"].append(choice);
             }
