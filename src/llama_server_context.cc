@@ -781,6 +781,8 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     slot.AddTokenString(result);
     if (slot.params.stream) {
       SendPartialResponse(slot, result);
+    } else {
+      slot.sent_token_probs_index++;
     }
   }
 
@@ -998,7 +1000,7 @@ void LlamaServerContext::SendFinalResponse(LlamaClientSlot& slot) {
           common_tokenize(ctx, slot.stopping_word, false);
       probs = std::vector<CompletionTokenOutput>(
           slot.generated_token_probs.begin(),
-          slot.generated_token_probs.end() - stop_word_toks.size());
+          slot.generated_token_probs.end() - 1);
     } else {
       probs = std::vector<CompletionTokenOutput>(
           slot.generated_token_probs.begin(),
