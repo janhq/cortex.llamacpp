@@ -495,6 +495,10 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   slot->sparams.ignore_eos =
       json_value(data, "ignore_eos", default_sparams.ignore_eos);
 
+  slot->prompt_tokens =
+      json_value(data, "prompt_tokens", json::array()).get<std::vector<int>>();
+  slot->num_prompt_tokens = slot->prompt_tokens.size();
+
   // infill
   if (data.count("input_prefix") != 0) {
     slot->params.input_prefix = data["input_prefix"];
@@ -637,7 +641,9 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   slot->smpl = common_sampler_init(model, slot->sparams);
   // llama_set_rng_seed(ctx, slot->params.seed);
   slot->command = SlotCommand::kLoadPrompt;
-  slot->prompt_tokens.clear();
+  if (slot->num_prompt_tokens == 0 && !slot->embedding) {
+    slot->prompt_tokens.clear();
+  }
 
   all_slots_are_idle = false;
 

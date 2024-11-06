@@ -4,6 +4,7 @@
 #include <memory>
 
 #include "json/value.h"
+#include "trantor/utils/Logger.h"
 
 // Interface for inference engine.
 // Note: only append new function to keep the compatibility.
@@ -31,7 +32,7 @@ class EngineI {
   virtual bool IsSupported(const std::string& f) {
     if (f == "HandleChatCompletion" || f == "HandleEmbedding" ||
         f == "LoadModel" || f == "UnloadModel" || f == "GetModelStatus" ||
-        f == "GetModels" || f == "SetFileLogger") {
+        f == "GetModels" || f == "SetFileLogger" || f == "SetLogLevel") {
       return true;
     }
     return false;
@@ -44,4 +45,5 @@ class EngineI {
   // API for set file logger
   virtual void SetFileLogger(int max_log_lines,
                              const std::string& log_path) = 0;
+  virtual void SetLogLevel(trantor::Logger::LogLevel log_level) = 0;
 };

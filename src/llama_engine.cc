@@ -24,6 +24,25 @@ bool IsValidCacheType(const std::string& c) {
   return true;
 }
 
+bool AreAllElementsInt32(const Json::Value& arr) {
+  if (!arr.isArray()) {
+    return false;
+  }
+
+  for (const auto& element : arr) {
+    if (!element.isInt()) {
+      return false;
+    }
+    // Check if value is within int32_t range
+    int64_t value = element.asInt64();
+    if (value < std::numeric_limits<int32_t>::min() ||
+        value > std::numeric_limits<int32_t>::max()) {
+      return false;
+    }
+  }
+  return true;
+}
+
 struct InferenceState {
   int task_id;
   LlamaServerContext& llama;
@@ -48,7 +67,7 @@ std::shared_ptr<InferenceState> CreateInferenceState(LlamaServerContext& l) {
 }
 
 Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
-                                   int prompt_tokens) {
+                                   int index) {
   Json::Value dataItem;
 
   dataItem["object"] = "embedding";
@@ -58,7 +77,7 @@ Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
     embeddingArray.append(value);
   }
   dataItem["embedding"] = embeddingArray;
-  dataItem["index"] = 0;
+  dataItem["index"] = index;
 
   return dataItem;
 }
@@ -410,11 +429,16 @@ void LlamaEngine::GetModels(
   LOG_INFO << "Running models responded";
 }
 
+void LlamaEngine::SetLogLevel(trantor::Logger::LogLevel log_level) {
+  trantor::Logger::setLogLevel(log_level);
+}
+
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
   if (!async_file_logger_) {
     async_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
+
   async_file_logger_->setFileName(log_path);
   async_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
   async_file_logger_->startLogging();
@@ -1006,18 +1030,55 @@ void LlamaEngine::HandleEmbeddingImpl(
         responseData.append(CreateEmbeddingPayload(embedding_result, 0));
       } else if (input.isArray()) {
         // Process each element in the array input
-        for (const auto& elem : input) {
-          if (elem.isString()) {
-            const int task_id = state->llama.RequestCompletion(
-                {{"prompt", elem.asString()}, {"n_predict", 0}}, false, true,
-                -1);
-            TaskResult result = state->llama.NextResult(task_id);
+        if (AreAllElementsInt32(input)) {
+          // Process the array of int32 tokens
+          state->task_id = state->llama.RequestCompletion(
+              {{"prompt", "Mock prompt"},
+               {"n_predict", 0},
+               {"prompt_tokens",
+                llama::inferences::ConvertJsonCppToNlohmann(input)}},
+              false, true, -1);
+          TaskResult result = state->llama.NextResult(state->task_id);
+          prompt_tokens +=
+              static_cast<int>(result.result_json["tokens_evaluated"]);
+          std::vector<float> embedding_result = result.result_json["embedding"];
+          responseData.append(CreateEmbeddingPayload(embedding_result, 0));
+        } else {
+
+          std::vector<int> task_ids;
+          int index = 0;
+          for (const auto& elem : input) {
+            if (elem.isString()) {
+              const int task_id = state->llama.RequestCompletion(
+                  {{"prompt", elem.asString()}, {"n_predict", 0}}, false, true,
+                  -1);
+
+              task_ids.push_back(task_id);
+              index++;
+            } else if (elem.isArray()) {  // Check if elem is an array
+              bool all_int32 = AreAllElementsInt32(elem);
+
+              if (all_int32 && elem.size() > 0) {
+                // Convert token array to string representation for RequestCompletion
+
+                const int task_id = state->llama.RequestCompletion(
+                    {{"prompt", "Mock prompt"},
+                     {"n_predict", 0},
+                     {"prompt_tokens",
+                      llama::inferences::ConvertJsonCppToNlohmann(elem)}},
+                    false, true, -1);
+                task_ids.push_back(task_id);
+                index++;
+              }
+            }
+          }
+          for (int i = 0; i < index; i++) {
+            TaskResult result = state->llama.NextResult(task_ids[i]);
             int cur_pt = result.result_json["tokens_evaluated"];
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-            responseData.append(
-                CreateEmbeddingPayload(embedding_result, cur_pt));
+            responseData.append(CreateEmbeddingPayload(embedding_result, i));
           }
         }
       }
