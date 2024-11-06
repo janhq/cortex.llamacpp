@@ -67,17 +67,60 @@ std::shared_ptr<InferenceState> CreateInferenceState(LlamaServerContext& l) {
 }
 
 Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
-                                   int index) {
+                                   int index, bool is_base64) {
   Json::Value dataItem;
-
   dataItem["object"] = "embedding";
-
-  Json::Value embeddingArray(Json::arrayValue);
-  for (const auto& value : embedding) {
-    embeddingArray.append(value);
-  }
-  dataItem["embedding"] = embeddingArray;
   dataItem["index"] = index;
+
+  if (is_base64) {
+    // Convert float vector to bytes
+    const char* bytes = reinterpret_cast<const char*>(embedding.data());
+    size_t byte_length = embedding.size() * sizeof(float);
+
+    // Base64 encode the bytes
+    // Calculate the base64 output length (including padding)
+    size_t encoded_length = ((byte_length + 2) / 3) * 4;
+    std::string base64_str;
+    base64_str.resize(encoded_length);
+
+    // Use base64 encoding
+    static const char base64_chars[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    size_t i = 0, j = 0;
+    while (i < byte_length) {
+      uint32_t octet_a =
+          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
+      uint32_t octet_b =
+          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
+      uint32_t octet_c =
+          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
+
+      uint32_t triple = (octet_a << 16) + (octet_b << 8) + octet_c;
+
+      base64_str[j++] = base64_chars[(triple >> 18) & 0x3F];
+      base64_str[j++] = base64_chars[(triple >> 12) & 0x3F];
+      base64_str[j++] = base64_chars[(triple >> 6) & 0x3F];
+      base64_str[j++] = base64_chars[triple & 0x3F];
+    }
+
+    // Add padding if necessary
+    if (byte_length % 3 == 1) {
+      base64_str[encoded_length - 1] = '=';
+      base64_str[encoded_length - 2] = '=';
+    } else if (byte_length % 3 == 2) {
+      base64_str[encoded_length - 1] = '=';
+    }
+
+    dataItem["embedding"] = base64_str;
+  } else {
+    // Original array format
+    Json::Value embeddingArray(Json::arrayValue);
+    for (const auto& value : embedding) {
+      embeddingArray.append(value);
+    }
+    dataItem["embedding"] = embeddingArray;
+  }
 
   return dataItem;
 }
@@ -1015,6 +1058,8 @@ void LlamaEngine::HandleEmbeddingImpl(
                                            request_id,
                                            mid = std::move(model_id)]() {
     Json::Value responseData(Json::arrayValue);
+    bool is_base64 =
+        (*json_body).get("encoding_format", "float").asString() == "base64";
 
     int prompt_tokens = 0;
     if (json_body->isMember("input")) {
@@ -1027,7 +1072,8 @@ void LlamaEngine::HandleEmbeddingImpl(
         prompt_tokens +=
             static_cast<int>(result.result_json["tokens_evaluated"]);
         std::vector<float> embedding_result = result.result_json["embedding"];
-        responseData.append(CreateEmbeddingPayload(embedding_result, 0));
+        responseData.append(
+            CreateEmbeddingPayload(embedding_result, 0, is_base64));
       } else if (input.isArray()) {
         // Process each element in the array input
         if (AreAllElementsInt32(input)) {
@@ -1042,7 +1088,8 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
-          responseData.append(CreateEmbeddingPayload(embedding_result, 0));
+          responseData.append(
+              CreateEmbeddingPayload(embedding_result, 0, is_base64));
         } else {
 
           std::vector<int> task_ids;
@@ -1078,7 +1125,8 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-            responseData.append(CreateEmbeddingPayload(embedding_result, i));
+            responseData.append(
+                CreateEmbeddingPayload(embedding_result, i, is_base64));
           }
         }
       }
