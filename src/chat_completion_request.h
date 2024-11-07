@@ -5,30 +5,30 @@
 namespace llama::inferences {
 
 Json::Value ConvertNlohmannToJsonCpp(const nlohmann::json& input) {
-    if (input.is_null()) {
-        return Json::Value(Json::nullValue);
-    } else if (input.is_boolean()) {
-        return Json::Value(input.get<bool>());
-    } else if (input.is_number_integer()) {
-        return Json::Value(input.get<int>());
-    } else if (input.is_number_float()) {
-        return Json::Value(input.get<double>());
-    } else if (input.is_string()) {
-        return Json::Value(input.get<std::string>());
-    } else if (input.is_array()) {
-        Json::Value arr(Json::arrayValue);
-        for (const auto& elem : input) {
-            arr.append(ConvertNlohmannToJsonCpp(elem));
-        }
-        return arr;
-    } else if (input.is_object()) {
-        Json::Value obj(Json::objectValue);
-        for (auto it = input.begin(); it != input.end(); ++it) {
-            obj[it.key()] = ConvertNlohmannToJsonCpp(it.value());
-        }
-        return obj;
-    }
+  if (input.is_null()) {
     return Json::Value(Json::nullValue);
+  } else if (input.is_boolean()) {
+    return Json::Value(input.get<bool>());
+  } else if (input.is_number_integer()) {
+    return Json::Value(input.get<int>());
+  } else if (input.is_number_float()) {
+    return Json::Value(input.get<double>());
+  } else if (input.is_string()) {
+    return Json::Value(input.get<std::string>());
+  } else if (input.is_array()) {
+    Json::Value arr(Json::arrayValue);
+    for (const auto& elem : input) {
+      arr.append(ConvertNlohmannToJsonCpp(elem));
+    }
+    return arr;
+  } else if (input.is_object()) {
+    Json::Value obj(Json::objectValue);
+    for (auto it = input.begin(); it != input.end(); ++it) {
+      obj[it.key()] = ConvertNlohmannToJsonCpp(it.value());
+    }
+    return obj;
+  }
+  return Json::Value(Json::nullValue);
 }
 
 nlohmann::json ConvertJsonCppToNlohmann(const Json::Value& input) {
@@ -144,8 +144,13 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.penalize_nl = (*jsonBody).get("penalize_nl", true).asBool();
     completion.ignore_eos = (*jsonBody).get("ignore_eos", false).asBool();
     completion.logprobs = (*jsonBody).get("logprobs", false).asBool();
+    int top_logprobs = (*jsonBody).get("top_logprobs", 0).asInt();
+    int n_probs = (*jsonBody).get("n_probs", 0).asInt();
     if (completion.logprobs) {
-      completion.n_probs = (*jsonBody).get("top_logprobs", 0).asInt();
+      completion.n_probs = top_logprobs;
+    } else if (n_probs > 0) {
+      completion.logprobs = true;
+      completion.n_probs = n_probs;
     }
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
     completion.n = (*jsonBody).get("n", 1).asInt();
