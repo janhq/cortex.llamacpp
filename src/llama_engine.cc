@@ -34,7 +34,7 @@ bool AreAllElementsInt32(const Json::Value& arr) {
       return false;
     }
     // Check if value is within int32_t range
-    int64_t value = element.asInt64();
+    auto value = element.asInt();
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -74,43 +74,8 @@ Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
 
   if (is_base64) {
     // Convert float vector to bytes
-    const char* bytes = reinterpret_cast<const char*>(embedding.data());
-    size_t byte_length = embedding.size() * sizeof(float);
-
-    // Base64 encode the bytes
-    // Calculate the base64 output length (including padding)
-    size_t encoded_length = ((byte_length + 2) / 3) * 4;
-    std::string base64_str;
-    base64_str.resize(encoded_length);
-
-    // Use base64 encoding
-    static const char base64_chars[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-    size_t i = 0, j = 0;
-    while (i < byte_length) {
-      uint32_t octet_a =
-          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
-      uint32_t octet_b =
-          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
-      uint32_t octet_c =
-          i < byte_length ? static_cast<unsigned char>(bytes[i++]) : 0;
-
-      uint32_t triple = (octet_a << 16) + (octet_b << 8) + octet_c;
-
-      base64_str[j++] = base64_chars[(triple >> 18) & 0x3F];
-      base64_str[j++] = base64_chars[(triple >> 12) & 0x3F];
-      base64_str[j++] = base64_chars[(triple >> 6) & 0x3F];
-      base64_str[j++] = base64_chars[triple & 0x3F];
-    }
-
-    // Add padding if necessary
-    if (byte_length % 3 == 1) {
-      base64_str[encoded_length - 1] = '=';
-      base64_str[encoded_length - 2] = '=';
-    } else if (byte_length % 3 == 2) {
-      base64_str[encoded_length - 1] = '=';
-    }
+    auto base64_str =
+        llama_utils::base64Encode(llama_utils::FloatVectorToBytes(embedding));
 
     dataItem["embedding"] = base64_str;
   } else {

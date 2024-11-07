@@ -30,6 +30,14 @@ inline std::string extractBase64(const std::string& input) {
   return "";
 }
 
+inline std::vector<unsigned char> FloatVectorToBytes(
+    const std::vector<float>& floats) {
+  const auto* float_bytes =
+      reinterpret_cast<const unsigned char*>(floats.data());
+  return std::vector<unsigned char>(
+      float_bytes, float_bytes + (floats.size() * sizeof(float)));
+}
+
 // Helper function to encode data to Base64
 inline std::string base64Encode(const std::vector<unsigned char>& data) {
   static const char encodingTable[] =
