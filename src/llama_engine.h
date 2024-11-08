@@ -6,6 +6,7 @@
 #include "llama.h"
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
+#include "trantor/utils/Logger.h"
 
 class LlamaEngine : public EngineI {
  public:
@@ -31,6 +32,8 @@ class LlamaEngine : public EngineI {
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
   void SetFileLogger(int max_log_lines, const std::string& log_path) final;
+  void SetLogLevel(trantor::Logger::LogLevel log_level =
+                       trantor::Logger::LogLevel::kInfo) final;
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
