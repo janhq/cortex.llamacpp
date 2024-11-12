@@ -34,7 +34,11 @@ bool AreAllElementsInt32(const Json::Value& arr) {
       return false;
     }
     // Check if value is within int32_t range
+<<<<<<< HEAD
     int64_t value = element.asInt64();
+=======
+    auto value = element.asInt();
+>>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -67,17 +71,26 @@ std::shared_ptr<InferenceState> CreateInferenceState(LlamaServerContext& l) {
 }
 
 Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
-                                   int index) {
+
+                                   int index, bool is_base64) {
   Json::Value dataItem;
-
   dataItem["object"] = "embedding";
-
-  Json::Value embeddingArray(Json::arrayValue);
-  for (const auto& value : embedding) {
-    embeddingArray.append(value);
-  }
-  dataItem["embedding"] = embeddingArray;
   dataItem["index"] = index;
+
+  if (is_base64) {
+    // Convert float vector to bytes
+    auto base64_str =
+        llama_utils::base64Encode(llama_utils::FloatVectorToBytes(embedding));
+
+    dataItem["embedding"] = base64_str;
+  } else {
+    // Original array format
+    Json::Value embeddingArray(Json::arrayValue);
+    for (const auto& value : embedding) {
+      embeddingArray.append(value);
+    }
+    dataItem["embedding"] = embeddingArray;
+  }
 
   return dataItem;
 }
@@ -1015,6 +1028,8 @@ void LlamaEngine::HandleEmbeddingImpl(
                                            request_id,
                                            mid = std::move(model_id)]() {
     Json::Value responseData(Json::arrayValue);
+    bool is_base64 =
+        (*json_body).get("encoding_format", "float").asString() == "base64";
 
     int prompt_tokens = 0;
     if (json_body->isMember("input")) {
@@ -1027,7 +1042,8 @@ void LlamaEngine::HandleEmbeddingImpl(
         prompt_tokens +=
             static_cast<int>(result.result_json["tokens_evaluated"]);
         std::vector<float> embedding_result = result.result_json["embedding"];
-        responseData.append(CreateEmbeddingPayload(embedding_result, 0));
+        responseData.append(
+            CreateEmbeddingPayload(embedding_result, 0, is_base64));
       } else if (input.isArray()) {
         // Process each element in the array input
         if (AreAllElementsInt32(input)) {
@@ -1042,7 +1058,12 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
+<<<<<<< HEAD
           responseData.append(CreateEmbeddingPayload(embedding_result, 0));
+=======
+          responseData.append(
+              CreateEmbeddingPayload(embedding_result, 0, is_base64));
+>>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
         } else {
 
           std::vector<int> task_ids;
@@ -1078,7 +1099,12 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
+<<<<<<< HEAD
             responseData.append(CreateEmbeddingPayload(embedding_result, i));
+=======
+            responseData.append(
+                CreateEmbeddingPayload(embedding_result, i, is_base64));
+>>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
           }
         }
       }
