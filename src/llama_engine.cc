@@ -1,6 +1,7 @@
 #include "llama_engine.h"
-
 #include <chrono>
+#include <cmath>
+#include <limits>
 #include <optional>
 #include "json/writer.h"
 #include "llama_utils.h"
@@ -34,11 +35,7 @@ bool AreAllElementsInt32(const Json::Value& arr) {
       return false;
     }
     // Check if value is within int32_t range
-<<<<<<< HEAD
-    int64_t value = element.asInt64();
-=======
     auto value = element.asInt();
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -118,7 +115,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
 
     // Set the main token's logprob (first probability)
     if (!probs.empty()) {
-      content_item["logprob"] = probs[0]["prob"].get<double>();
+      content_item["logprob"] = std::log(probs[0]["prob"].get<double>()+ std::numeric_limits<double>::epsilon());
     }
 
     // Get UTF-8 bytes for the token
@@ -134,7 +131,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
     for (const auto& prob_item : probs) {
       Json::Value logprob_item;
       logprob_item["token"] = prob_item["tok_str"].get<std::string>();
-      logprob_item["logprob"] = prob_item["prob"].get<double>();
+      logprob_item["logprob"] = std::log(prob_item["prob"].get<double>() + std::numeric_limits<double>::epsilon());
 
       // Get UTF-8 bytes for this alternative token
       auto alt_bytes = getUTF8Bytes(prob_item["tok_str"].get<std::string>());
@@ -1058,12 +1055,8 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
-<<<<<<< HEAD
-          responseData.append(CreateEmbeddingPayload(embedding_result, 0));
-=======
           responseData.append(
               CreateEmbeddingPayload(embedding_result, 0, is_base64));
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
         } else {
 
           std::vector<int> task_ids;
@@ -1099,12 +1092,8 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-<<<<<<< HEAD
-            responseData.append(CreateEmbeddingPayload(embedding_result, i));
-=======
             responseData.append(
                 CreateEmbeddingPayload(embedding_result, i, is_base64));
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
           }
         }
       }
