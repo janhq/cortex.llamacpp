@@ -476,8 +476,8 @@ void LlamaEngine::SetFileLogger(int max_log_lines,
         }
       },
       nullptr);
-  freopen(log_path.c_str(), "w", stderr);
-  freopen(log_path.c_str(), "w", stdout);
+  freopen(log_path.c_str(), "a", stderr);
+  freopen(log_path.c_str(), "a", stdout);
 }
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
