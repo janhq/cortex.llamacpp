@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    tags: ["v*"]
     paths:
       [
         ".github/scripts/**",
@@ -50,9 +50,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           token: ${{ secrets.GITHUB_TOKEN }}
           name: "${{ env.VERSION }}"
-          draft: true
+          draft: false
           generate_release_notes: true
-          prerelease: false
+          prerelease: true
 
   build-and-test:
     runs-on: ${{ matrix.runs-on }}

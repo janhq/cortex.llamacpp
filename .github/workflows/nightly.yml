@@ -16,6 +16,7 @@ jobs:
     outputs:
       pr_number: ${{ steps.check-update.outputs.pr_number }}
       pr_created: ${{ steps.check-update.outputs.pr_created }}
+      release_name: ${{ steps.check-update.outputs.release_name }}
 
     steps:
     - name: Checkout repository
@@ -39,6 +40,7 @@ jobs:
         cd llama.cpp
         latest_release=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.tag_name')
         release_name=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.name')
+        echo "::set-output name=release_name::$release_name"
         git fetch
         current_commit=$(git rev-parse HEAD)
         git checkout $latest_release
@@ -140,28 +142,6 @@ jobs:
 
     - name: Create and push a new tag
       run: |
-        # Function to get the latest release tag
-        get_latest_tag() {
-          local retries=0
-          local max_retries=3
-          local tag
-          while [ $retries -lt $max_retries ]; do
-            tag=$(curl -s https://api.github.com/repos/janhq/cortex.llamacpp/releases/latest | jq -r .tag_name)
-            if [ -n "$tag" ] && [ "$tag" != "null" ]; then
-              echo $tag
-              return
-            else
-              let retries++
-              echo "Retrying... ($retries/$max_retries)"
-              sleep 2
-            fi
-          done
-          echo "Failed to fetch latest tag after $max_retries attempts."
-          exit 1
-        }
-
-        LATEST_TAG=$(get_latest_tag)
-        date_suffix=$(date +'%d.%m.%y')
-        new_tag="${LATEST_TAG}-${date_suffix}"
+        new_tag="v${{ needs.update-submodule.outputs.release_name }}"
         git tag $new_tag
         git push origin $new_tag
