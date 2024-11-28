@@ -512,7 +512,13 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   if (json_body) {
     if (!json_body->operator[]("mmproj").isNull()) {
       LOG_INFO << "MMPROJ FILE detected, multi-model enabled!";
+#if defined(_WIN32)
+      std::wstring mp_ws =
+          Utf8ToWstring(json_body->operator[]("mmproj").asString());
+      params.mmproj = WstringToUtf8(mp_ws);
+#else
       params.mmproj = json_body->operator[]("mmproj").asString();
+#endif
     }
     if (!json_body->operator[]("grp_attn_n").isNull()) {
       params.grp_attn_n = json_body->operator[]("grp_attn_n").asInt();
