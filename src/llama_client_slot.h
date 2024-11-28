@@ -133,7 +133,7 @@ struct LlamaClientSlot {
   std::string stopping_word;
 
   // sampling
-  struct common_sampler_params sparams;
+  struct common_params_sampling sparams;
   struct common_sampler* smpl = nullptr;
 
   // multimodal
