@@ -1,6 +1,7 @@
 #include "llama_engine.h"
-
 #include <chrono>
+#include <cmath>
+#include <limits>
 #include <optional>
 #include "json/writer.h"
 #include "llama_utils.h"
@@ -118,7 +119,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
 
     // Set the main token's logprob (first probability)
     if (!probs.empty()) {
-      content_item["logprob"] = probs[0]["prob"].get<double>();
+      content_item["logprob"] = std::log(probs[0]["prob"].get<double>()+ std::numeric_limits<double>::epsilon());
     }
 
     // Get UTF-8 bytes for the token
@@ -134,7 +135,7 @@ Json::Value TransformLogProbs(const json& logprobs) {
     for (const auto& prob_item : probs) {
       Json::Value logprob_item;
       logprob_item["token"] = prob_item["tok_str"].get<std::string>();
-      logprob_item["logprob"] = prob_item["prob"].get<double>();
+      logprob_item["logprob"] = std::log(prob_item["prob"].get<double>() + std::numeric_limits<double>::epsilon());
 
       // Get UTF-8 bytes for this alternative token
       auto alt_bytes = getUTF8Bytes(prob_item["tok_str"].get<std::string>());
@@ -479,8 +480,8 @@ void LlamaEngine::SetFileLogger(int max_log_lines,
         }
       },
       nullptr);
-  freopen(log_path.c_str(), "w", stderr);
-  freopen(log_path.c_str(), "w", stdout);
+  freopen(log_path.c_str(), "a", stderr);
+  freopen(log_path.c_str(), "a", stdout);
 }
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
