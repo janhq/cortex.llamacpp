@@ -1017,7 +1017,6 @@ void LlamaEngine::HandleInferenceImpl(
         status["is_stream"] = false;
         status["status_code"] = k200OK;
         cb(std::move(status), std::move(respData));
-        std::cout << "Response: " << respData.toStyledString() << std::endl;
         LOG_INFO << "Request " << request_id << ": " << "Inference completed";
       }
     });
