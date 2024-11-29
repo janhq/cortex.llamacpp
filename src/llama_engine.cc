@@ -7,7 +7,16 @@
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
+
+
+#if defined(_WIN32)
+#include <windows.h>
+#include <codecvt>
+#include <locale>
+#endif
+
 namespace {
+
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
@@ -17,6 +26,19 @@ constexpr const int kFileLoggerOption = 0;
 constexpr const auto kTypeF16 = "f16";
 constexpr const auto kType_Q8_0 = "q8_0";
 constexpr const auto kType_Q4_0 = "q4_0";
+
+#if defined(_WIN32)
+// TODO(sang) deprecated in c++20
+std::string WstringToUtf8(const std::wstring& wstr) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.to_bytes(wstr);
+}
+
+std::wstring Utf8ToWstring(const std::string& str) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.from_bytes(str);
+}
+#endif
 
 bool IsValidCacheType(const std::string& c) {
   if (c != kTypeF16 && c != kType_Q8_0 && c != kType_Q4_0) {
@@ -493,7 +515,13 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   if (json_body) {
     if (!json_body->operator[]("mmproj").isNull()) {
       LOG_INFO << "MMPROJ FILE detected, multi-model enabled!";
+#if defined(_WIN32)
+      std::wstring mp_ws =
+          Utf8ToWstring(json_body->operator[]("mmproj").asString());
+      params.mmproj = WstringToUtf8(mp_ws);
+#else
       params.mmproj = json_body->operator[]("mmproj").asString();
+#endif
     }
     if (!json_body->operator[]("grp_attn_n").isNull()) {
       params.grp_attn_n = json_body->operator[]("grp_attn_n").asInt();
@@ -526,9 +554,15 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       LOG_ERROR << "Missing model path in request";
       return false;
     } else {
+#if defined(_WIN32)
+      std::wstring mp_ws = Utf8ToWstring(model_path.asString());
+      if (std::filesystem::exists(std::filesystem::path(mp_ws))) {
+        params.model = WstringToUtf8(mp_ws);
+#else
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
         params.model = model_path.asString();
+#endif
       } else {
         LOG_ERROR << "Could not find model in path " << model_path.asString();
       }
