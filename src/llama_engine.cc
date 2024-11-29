@@ -3,10 +3,10 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include "json-schema-to-grammar.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
-
 namespace {
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
@@ -35,11 +35,8 @@ bool AreAllElementsInt32(const Json::Value& arr) {
       return false;
     }
     // Check if value is within int32_t range
-<<<<<<< HEAD
-    int64_t value = element.asInt64();
-=======
     auto value = element.asInt();
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
+
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -119,7 +116,9 @@ Json::Value TransformLogProbs(const json& logprobs) {
 
     // Set the main token's logprob (first probability)
     if (!probs.empty()) {
-      content_item["logprob"] = std::log(probs[0]["prob"].get<double>()+ std::numeric_limits<double>::epsilon());
+      content_item["logprob"] =
+          std::log(probs[0]["prob"].get<double>() +
+                   std::numeric_limits<double>::epsilon());
     }
 
     // Get UTF-8 bytes for the token
@@ -135,7 +134,9 @@ Json::Value TransformLogProbs(const json& logprobs) {
     for (const auto& prob_item : probs) {
       Json::Value logprob_item;
       logprob_item["token"] = prob_item["tok_str"].get<std::string>();
-      logprob_item["logprob"] = std::log(prob_item["prob"].get<double>() + std::numeric_limits<double>::epsilon());
+      logprob_item["logprob"] =
+          std::log(prob_item["prob"].get<double>() +
+                   std::numeric_limits<double>::epsilon());
 
       // Get UTF-8 bytes for this alternative token
       auto alt_bytes = getUTF8Bytes(prob_item["tok_str"].get<std::string>());
@@ -716,6 +717,15 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
+  if (!completion.json_schema.isNull() &&
+      (completion.json_schema.isMember("type") &&
+       (completion.json_schema["type"] == "json_object" ||
+        completion.json_schema["type"] == "json_schema"))) {
+
+    data["grammar"] =
+        json_schema_to_grammar(llama::inferences::ConvertJsonCppToNlohmann(
+            completion.json_schema["json_schema"]["schema"]));
+  }
   data["n"] = completion.n;  // number of choices to return
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
@@ -1007,7 +1017,7 @@ void LlamaEngine::HandleInferenceImpl(
         status["is_stream"] = false;
         status["status_code"] = k200OK;
         cb(std::move(status), std::move(respData));
-
+        std::cout << "Response: " << respData.toStyledString() << std::endl;
         LOG_INFO << "Request " << request_id << ": " << "Inference completed";
       }
     });
@@ -1059,12 +1069,9 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
-<<<<<<< HEAD
-          responseData.append(CreateEmbeddingPayload(embedding_result, 0));
-=======
+
           responseData.append(
               CreateEmbeddingPayload(embedding_result, 0, is_base64));
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
         } else {
 
           std::vector<int> task_ids;
@@ -1100,12 +1107,9 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
-<<<<<<< HEAD
-            responseData.append(CreateEmbeddingPayload(embedding_result, i));
-=======
+
             responseData.append(
                 CreateEmbeddingPayload(embedding_result, i, is_base64));
->>>>>>> fda2c59e2c42b957a7a63c5666cb128ca09911ef
           }
         }
       }
