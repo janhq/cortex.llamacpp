@@ -3,9 +3,11 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include "json-schema-to-grammar.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
+
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -56,6 +58,7 @@ bool AreAllElementsInt32(const Json::Value& arr) {
     }
     // Check if value is within int32_t range
     auto value = element.asInt();
+
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -748,6 +751,15 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
+  if (!completion.json_schema.isNull() &&
+      (completion.json_schema.isMember("type") &&
+       (completion.json_schema["type"] == "json_object" ||
+        completion.json_schema["type"] == "json_schema"))) {
+
+    data["grammar"] =
+        json_schema_to_grammar(llama::inferences::ConvertJsonCppToNlohmann(
+            completion.json_schema["json_schema"]["schema"]));
+  }
   data["n"] = completion.n;  // number of choices to return
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
@@ -1039,7 +1051,6 @@ void LlamaEngine::HandleInferenceImpl(
         status["is_stream"] = false;
         status["status_code"] = k200OK;
         cb(std::move(status), std::move(respData));
-
         LOG_INFO << "Request " << request_id << ": " << "Inference completed";
       }
     });
@@ -1091,6 +1102,7 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
+
           responseData.append(
               CreateEmbeddingPayload(embedding_result, 0, is_base64));
         } else {
@@ -1128,6 +1140,7 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
+
             responseData.append(
                 CreateEmbeddingPayload(embedding_result, i, is_base64));
           }
