@@ -11,13 +11,17 @@
 
 class LlamaEngine : public EngineI {
  public:
-  constexpr auto kEngineName = "cortex.llamacpp";
+  constexpr static auto kEngineName = "cortex.llamacpp";
 
   LlamaEngine(int log_option = 0);
   ~LlamaEngine() final;
 
   // #### Interface ####
+  void RegisterLibraryPath(RegisterLibraryOption opts) final;
+
   void Load(EngineLoadOption opts) final;
+
+  void Unload(EngineUnloadOption opts) final;
 
   void HandleChatCompletion(
       std::shared_ptr<Json::Value> jsonBody,
