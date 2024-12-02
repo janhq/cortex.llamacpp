@@ -268,6 +268,33 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
+void LlamaEngine::Load(EngineLoadOption opts) final {
+  LOG_INFO << "Loading engine..";
+
+  LOG_DEBUG << "Use custom engine path: " << opts.custom_engine_path;
+  LOG_DEBUG << "Engine path: " << opts.engine_path;
+
+#if defined(_WIN32)
+  if (!opts.custom_engine_path) {
+    if (auto cookie = AddDllDirectory(p.c_str()); cookie != 0) {
+      LOG_INFO << "Added dll directory: " << p.string();
+      cookies_.push_back(cookie);
+    } else {
+      LOG_WARN << "Could not add dll directory: " << p.string();
+    }
+
+    if (auto cuda_cookie = AddDllDirectory(opts.cuda_path.c_str());
+        cuda_cookie != 0) {
+      LOG_INFO << "Added cuda dll directory: " << p.string();
+      cookies_.push_back(cookie);
+    } else {
+      LOG_WARN << "Could not add cuda dll directory: " << p.string();
+    }
+  }
+#endif
+  LOG_INFO << "Engine loaded successfully";
+}
+
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
@@ -294,12 +321,22 @@ LlamaEngine::LlamaEngine(int log_option) {
 }
 
 LlamaEngine::~LlamaEngine() {
+  LOG_INFO << "Unloading engine..";
   for (auto& [_, si] : server_map_) {
     auto& l = si.ctx;
     l.ReleaseResources();
   }
   server_map_.clear();
   async_file_logger_.reset();
+
+#if defined(_WIN32)
+  for (const auto& cookie : cookies_) {
+    if (!RemoveDllDirectory(cookie)) {
+      LOG_WARN << "Could not remove dll directory";
+    }
+  }
+#endif
+  LOG_INFO << "Engine unloaded successfully";
 }
 
 void LlamaEngine::HandleChatCompletion(

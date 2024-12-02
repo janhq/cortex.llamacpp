@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 
@@ -10,7 +11,15 @@
 // Note: only append new function to keep the compatibility.
 class EngineI {
  public:
+  struct EngineLoadOption {
+    std::filesystem::path engine_path;
+    std::filesystem::path cuda_path;  // TODO: make this more generic
+    bool custom_engine_path;
+  };
+
   virtual ~EngineI() {}
+
+  virtual void Load(EngineLoadOption opts) = 0;
 
   virtual void HandleChatCompletion(
       std::shared_ptr<Json::Value> json_body,
