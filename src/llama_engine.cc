@@ -91,7 +91,6 @@ std::shared_ptr<InferenceState> CreateInferenceState(LlamaServerContext& l) {
 }
 
 Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
-
                                    int index, bool is_base64) {
   Json::Value dataItem;
   dataItem["object"] = "embedding";
@@ -114,6 +113,7 @@ Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
 
   return dataItem;
 }
+
 std::vector<int> getUTF8Bytes(const std::string& str) {
   std::vector<int> bytes;
   for (unsigned char c : str) {
@@ -271,6 +271,71 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
+void LlamaEngine::RegisterLibraryPath(RegisterLibraryOption opts) {
+#if defined(LINUX)
+  const char* name = "LD_LIBRARY_PATH";
+  std::string v;
+  if (auto g = getenv(name); g) {
+    v += g;
+  }
+  LOG_DEBUG << "LD_LIBRARY_PATH before: " << v;
+
+  for (const auto& p : opts.paths) {
+    v += p.string() + ":" + v;
+  }
+
+  setenv(name, v.c_str(), true);
+  LOG_DEBUG << "LD_LIBRARY_PATH after: " << getenv(name);
+#endif
+}
+
+void LlamaEngine::Load(EngineLoadOption opts) {
+  LOG_INFO << "Loading engine..";
+
+  LOG_DEBUG << "Use custom engine path: " << opts.custom_engine_path;
+  LOG_DEBUG << "Engine path: " << opts.engine_path.string();
+
+  SetFileLogger(opts.max_log_lines, opts.log_path.string());
+  SetLogLevel(opts.log_level);
+
+#if defined(_WIN32)
+  if (!opts.custom_engine_path) {
+    if (auto cookie = AddDllDirectory(opts.engine_path.c_str()); cookie != 0) {
+      LOG_INFO << "Added dll directory: " << opts.engine_path.string();
+      cookies_.push_back(cookie);
+    } else {
+      LOG_WARN << "Could not add dll directory: " << opts.engine_path.string();
+    }
+
+    if (auto cuda_cookie = AddDllDirectory(opts.cuda_path.c_str());
+        cuda_cookie != 0) {
+      LOG_INFO << "Added cuda dll directory: " << opts.cuda_path.string();
+      cookies_.push_back(cuda_cookie);
+    } else {
+      LOG_WARN << "Could not add cuda dll directory: "
+               << opts.cuda_path.string();
+    }
+  }
+#endif
+  LOG_INFO << "Engine loaded successfully";
+}
+
+void LlamaEngine::Unload(EngineUnloadOption opts) {
+  LOG_INFO << "Unloading engine..";
+  LOG_DEBUG << "Unload dll: " << opts.unload_dll;
+
+  if (opts.unload_dll) {
+#if defined(_WIN32)
+    for (const auto& cookie : cookies_) {
+      if (!RemoveDllDirectory(cookie)) {
+        LOG_WARN << "Could not remove dll directory";
+      }
+    }
+#endif
+  }
+  LOG_INFO << "Engine unloaded successfully";
+}
+
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
@@ -303,6 +368,8 @@ LlamaEngine::~LlamaEngine() {
   }
   server_map_.clear();
   async_file_logger_.reset();
+
+  LOG_INFO << "LlamaEngine destructed successfully";
 }
 
 void LlamaEngine::HandleChatCompletion(
