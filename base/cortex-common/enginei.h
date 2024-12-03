@@ -32,7 +32,8 @@ class EngineI {
   virtual bool IsSupported(const std::string& f) {
     if (f == "HandleChatCompletion" || f == "HandleEmbedding" ||
         f == "LoadModel" || f == "UnloadModel" || f == "GetModelStatus" ||
-        f == "GetModels" || f == "SetFileLogger" || f == "SetLogLevel") {
+        f == "GetModels" || f == "SetFileLogger" || f == "SetLogLevel" ||
+        f == "StopInferencing") {
       return true;
     }
     return false;
@@ -46,4 +47,6 @@ class EngineI {
   virtual void SetFileLogger(int max_log_lines,
                              const std::string& log_path) = 0;
   virtual void SetLogLevel(trantor::Logger::LogLevel log_level) = 0;
+
+  virtual void StopInferencing(const std::string& model_id) = 0;
 };

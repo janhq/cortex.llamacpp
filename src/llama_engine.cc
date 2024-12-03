@@ -8,7 +8,6 @@
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
 
-
 #if defined(_WIN32)
 #include <windows.h>
 #include <codecvt>
@@ -470,6 +469,10 @@ void LlamaEngine::SetLogLevel(trantor::Logger::LogLevel log_level) {
   trantor::Logger::setLogLevel(log_level);
 }
 
+void LlamaEngine::StopInferencing(const std::string& model_id) {
+  AddForceStopInferenceModel(model_id);
+}
+
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
   if (!async_file_logger_) {
@@ -892,12 +895,19 @@ void LlamaEngine::HandleInferenceImpl(
     LOG_INFO << "Request " << request_id << ": "
              << "Streamed, waiting for respone";
     auto state = CreateInferenceState(si.ctx);
+    auto model_id = completion.model_id;
 
     // Queued task
-    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id,
-                          n_probs, include_usage]() {
+    si.q->runTaskInQueue([this, cb = std::move(callback), state, data,
+                          request_id, n_probs, include_usage, model_id]() {
       state->task_id = state->llama.RequestCompletion(data, false, false, -1);
       while (state->llama.model_loaded_external) {
+        if (HasForceStopInferenceModel(model_id)) {
+          LOG_INFO << "Force stop inferencing for model: " << model_id;
+          state->llama.RequestCancel(state->task_id);
+          RemoveForceStopInferenceModel(model_id);
+          break;
+        }
         TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
           std::string to_send;
@@ -1218,6 +1228,28 @@ bool LlamaEngine::ShouldInitBackend() const {
       return false;
   }
   return true;
+}
+
+void LlamaEngine::AddForceStopInferenceModel(const std::string& id) {
+  std::lock_guard l(fsi_mtx_);
+  if (force_stop_inference_models_.find(id) ==
+      force_stop_inference_models_.end()) {
+    LOG_INFO << "Added force stop inferencing model: " << id;
+    force_stop_inference_models_.insert(id);
+  }
+}
+void LlamaEngine::RemoveForceStopInferenceModel(const std::string& id) {
+  std::lock_guard l(fsi_mtx_);
+  if (force_stop_inference_models_.find(id) !=
+      force_stop_inference_models_.end()) {
+    force_stop_inference_models_.erase(id);
+  }
+}
+
+bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
+  std::lock_guard l(fsi_mtx_);
+  return force_stop_inference_models_.find(id) !=
+         force_stop_inference_models_.end();
 }
 
 extern "C" {
