@@ -38,25 +38,25 @@ If you don't have git, you can download the source code as a file archive from [
 - **On Linux, and Windows:**
 
   ```bash
-  make build-example-server CMAKE_EXTRA_FLAGS=""
+  make build-example-server CMAKE_EXTRA_FLAGS="-DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON"
   ```
   
 - **On MacOS with Apple Silicon:**
 
   ```bash
-  make build-example-server CMAKE_EXTRA_FLAGS="-DGGML_METAL_EMBED_LIBRARY=ON"
+  make build-example-server CMAKE_EXTRA_FLAGS="-DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_METAL_EMBED_LIBRARY=ON"
   ```
 
 - **On MacOS with Intel processors:**
 
   ```bash
-  make build-example-server CMAKE_EXTRA_FLAGS="-DGGML_METAL=OFF"
+  make build-example-server CMAKE_EXTRA_FLAGS="-DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_METAL=OFF"
   ```
 
 - **On Linux with CUDA:**
 
   ```bash
-  make build-example-server CMAKE_EXTRA_FLAGS="-DGGML_CUDA=ON"
+  make build-example-server CMAKE_EXTRA_FLAGS="-DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_CUDA=ON"
   ```
 
 # Quickstart
