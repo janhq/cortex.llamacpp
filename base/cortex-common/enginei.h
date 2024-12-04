@@ -81,4 +81,3 @@ class EngineI {
 
   virtual void StopInferencing(const std::string& model_id) = 0;
 };
-
