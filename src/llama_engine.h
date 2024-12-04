@@ -1,4 +1,5 @@
 #pragma once
+
 #include <trantor/utils/AsyncFileLogger.h>
 #include <unordered_set>
 #include "chat_completion_request.h"
@@ -11,9 +12,18 @@
 
 class LlamaEngine : public EngineI {
  public:
+  constexpr static auto kEngineName = "cortex.llamacpp";
+
   LlamaEngine(int log_option = 0);
   ~LlamaEngine() final;
+
   // #### Interface ####
+  void RegisterLibraryPath(RegisterLibraryOption opts) final;
+
+  void Load(EngineLoadOption opts) final;
+
+  void Unload(EngineUnloadOption opts) final;
+
   void HandleChatCompletion(
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback) final;
@@ -83,4 +93,8 @@ class LlamaEngine : public EngineI {
 
   bool print_version_ = true;
   std::unique_ptr<trantor::FileLogger> async_file_logger_;
+
+#if defined(_WIN32)
+  std::vector<DLL_DIRECTORY_COOKIE> cookies_;
+#endif
 };
