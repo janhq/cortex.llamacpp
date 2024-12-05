@@ -23,6 +23,14 @@ class Server {
     }
   }
 
+  void ForceStopInferencing(const std::string& model_id) {
+    if (engine_) {
+      engine_->StopInferencing(model_id);
+    } else {
+      LOG_WARN << "Engine is null";
+    }
+  }
+
  public:
   std::unique_ptr<dylib> dylib_;
   EngineI* engine_;
@@ -122,9 +130,10 @@ int main(int argc, char** argv) {
   };
 
   auto process_stream_res = [&server](httplib::Response& resp,
-                                      std::shared_ptr<SyncQueue> q) {
+                                      std::shared_ptr<SyncQueue> q,
+                                      const std::string& model_id) {
     const auto chunked_content_provider =
-        [&server, q](size_t size, httplib::DataSink& sink) {
+        [&server, q, model_id](size_t size, httplib::DataSink& sink) {
           while (true) {
             auto [status, res] = q->wait_and_pop();
             auto str = res["data"].asString();
@@ -132,7 +141,8 @@ int main(int argc, char** argv) {
 
             if (!sink.write(str.c_str(), str.size())) {
               LOG_WARN << "Failed to write";
-              //   return false;
+              server.ForceStopInferencing(model_id);
+              return false;
             }
             if (status["has_error"].asBool() || status["is_done"].asBool()) {
               LOG_INFO << "Done";
@@ -183,6 +193,7 @@ int main(int argc, char** argv) {
     auto req_body = std::make_shared<Json::Value>();
     r.Parse(req.body, *req_body);
     bool is_stream = (*req_body).get("stream", false).asBool();
+    std::string model_id = (*req_body).get("model", "invalid_model").asString();
     // This is an async call, need to use queue
     auto q = std::make_shared<SyncQueue>();
     server.engine_->HandleChatCompletion(
@@ -190,7 +201,7 @@ int main(int argc, char** argv) {
           q->push(std::make_pair(status, res));
         });
     if (is_stream) {
-      process_stream_res(resp, q);
+      process_stream_res(resp, q, model_id);
     } else {
       process_non_stream_res(resp, *q);
     }

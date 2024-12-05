@@ -1,6 +1,7 @@
 #pragma once
 
 #include <trantor/utils/AsyncFileLogger.h>
+#include <unordered_set>
 #include "chat_completion_request.h"
 #include "cortex-common/enginei.h"
 #include "file_logger.h"
@@ -44,6 +45,7 @@ class LlamaEngine : public EngineI {
   void SetFileLogger(int max_log_lines, const std::string& log_path) final;
   void SetLogLevel(trantor::Logger::LogLevel log_level =
                        trantor::Logger::LogLevel::kInfo) final;
+  void StopInferencing(const std::string& model_id) final;
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
@@ -58,6 +60,10 @@ class LlamaEngine : public EngineI {
       const std::string& model_id);
   void WarmUpModel(const std::string& model_id);
   bool ShouldInitBackend() const;
+
+  void AddForceStopInferenceModel(const std::string& id);
+  void RemoveForceStopInferenceModel(const std::string& id);
+  bool HasForceStopInferenceModel(const std::string& id) const;
 
  private:
   struct ServerInfo {
@@ -78,6 +84,9 @@ class LlamaEngine : public EngineI {
 
   // key: model_id, value: ServerInfo
   std::unordered_map<std::string, ServerInfo> server_map_;
+  // lock the force_stop_inference_models_
+  mutable std::mutex fsi_mtx_;
+  std::unordered_set<std::string> force_stop_inference_models_;
 
   std::atomic<int> no_of_requests_ = 0;
   std::atomic<int> no_of_chats_ = 0;
