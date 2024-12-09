@@ -3,11 +3,19 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include "json-schema-to-grammar.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <codecvt>
+#include <locale>
+#endif
+
 namespace {
+
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
@@ -17,6 +25,19 @@ constexpr const int kFileLoggerOption = 0;
 constexpr const auto kTypeF16 = "f16";
 constexpr const auto kType_Q8_0 = "q8_0";
 constexpr const auto kType_Q4_0 = "q4_0";
+
+#if defined(_WIN32)
+// TODO(sang) deprecated in c++20
+std::string WstringToUtf8(const std::wstring& wstr) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.to_bytes(wstr);
+}
+
+std::wstring Utf8ToWstring(const std::string& str) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.from_bytes(str);
+}
+#endif
 
 bool IsValidCacheType(const std::string& c) {
   if (c != kTypeF16 && c != kType_Q8_0 && c != kType_Q4_0) {
@@ -36,6 +57,7 @@ bool AreAllElementsInt32(const Json::Value& arr) {
     }
     // Check if value is within int32_t range
     auto value = element.asInt();
+
     if (value < std::numeric_limits<int32_t>::min() ||
         value > std::numeric_limits<int32_t>::max()) {
       return false;
@@ -68,7 +90,6 @@ std::shared_ptr<InferenceState> CreateInferenceState(LlamaServerContext& l) {
 }
 
 Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
-
                                    int index, bool is_base64) {
   Json::Value dataItem;
   dataItem["object"] = "embedding";
@@ -91,6 +112,7 @@ Json::Value CreateEmbeddingPayload(const std::vector<float>& embedding,
 
   return dataItem;
 }
+
 std::vector<int> getUTF8Bytes(const std::string& str) {
   std::vector<int> bytes;
   for (unsigned char c : str) {
@@ -115,7 +137,9 @@ Json::Value TransformLogProbs(const json& logprobs) {
 
     // Set the main token's logprob (first probability)
     if (!probs.empty()) {
-      content_item["logprob"] = std::log(probs[0]["prob"].get<double>()+ std::numeric_limits<double>::epsilon());
+      content_item["logprob"] =
+          std::log(probs[0]["prob"].get<double>() +
+                   std::numeric_limits<double>::epsilon());
     }
 
     // Get UTF-8 bytes for the token
@@ -131,7 +155,9 @@ Json::Value TransformLogProbs(const json& logprobs) {
     for (const auto& prob_item : probs) {
       Json::Value logprob_item;
       logprob_item["token"] = prob_item["tok_str"].get<std::string>();
-      logprob_item["logprob"] = std::log(prob_item["prob"].get<double>() + std::numeric_limits<double>::epsilon());
+      logprob_item["logprob"] =
+          std::log(prob_item["prob"].get<double>() +
+                   std::numeric_limits<double>::epsilon());
 
       // Get UTF-8 bytes for this alternative token
       auto alt_bytes = getUTF8Bytes(prob_item["tok_str"].get<std::string>());
@@ -244,6 +270,71 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 }  // namespace
 
+void LlamaEngine::RegisterLibraryPath(RegisterLibraryOption opts) {
+#if defined(LINUX)
+  const char* name = "LD_LIBRARY_PATH";
+  std::string v;
+  if (auto g = getenv(name); g) {
+    v += g;
+  }
+  LOG_DEBUG << "LD_LIBRARY_PATH before: " << v;
+
+  for (const auto& p : opts.paths) {
+    v += p.string() + ":" + v;
+  }
+
+  setenv(name, v.c_str(), true);
+  LOG_DEBUG << "LD_LIBRARY_PATH after: " << getenv(name);
+#endif
+}
+
+void LlamaEngine::Load(EngineLoadOption opts) {
+  LOG_INFO << "Loading engine..";
+
+  LOG_DEBUG << "Use custom engine path: " << opts.custom_engine_path;
+  LOG_DEBUG << "Engine path: " << opts.engine_path.string();
+
+  SetFileLogger(opts.max_log_lines, opts.log_path.string());
+  SetLogLevel(opts.log_level);
+
+#if defined(_WIN32)
+  if (!opts.custom_engine_path) {
+    if (auto cookie = AddDllDirectory(opts.engine_path.c_str()); cookie != 0) {
+      LOG_INFO << "Added dll directory: " << opts.engine_path.string();
+      cookies_.push_back(cookie);
+    } else {
+      LOG_WARN << "Could not add dll directory: " << opts.engine_path.string();
+    }
+
+    if (auto cuda_cookie = AddDllDirectory(opts.cuda_path.c_str());
+        cuda_cookie != 0) {
+      LOG_INFO << "Added cuda dll directory: " << opts.cuda_path.string();
+      cookies_.push_back(cuda_cookie);
+    } else {
+      LOG_WARN << "Could not add cuda dll directory: "
+               << opts.cuda_path.string();
+    }
+  }
+#endif
+  LOG_INFO << "Engine loaded successfully";
+}
+
+void LlamaEngine::Unload(EngineUnloadOption opts) {
+  LOG_INFO << "Unloading engine..";
+  LOG_DEBUG << "Unload dll: " << opts.unload_dll;
+
+  if (opts.unload_dll) {
+#if defined(_WIN32)
+    for (const auto& cookie : cookies_) {
+      if (!RemoveDllDirectory(cookie)) {
+        LOG_WARN << "Could not remove dll directory";
+      }
+    }
+#endif
+  }
+  LOG_INFO << "Engine unloaded successfully";
+}
+
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
   if (log_option == kFileLoggerOption) {
@@ -276,6 +367,8 @@ LlamaEngine::~LlamaEngine() {
   }
   server_map_.clear();
   async_file_logger_.reset();
+
+  LOG_INFO << "LlamaEngine destructed successfully";
 }
 
 void LlamaEngine::HandleChatCompletion(
@@ -443,6 +536,10 @@ void LlamaEngine::SetLogLevel(trantor::Logger::LogLevel log_level) {
   trantor::Logger::setLogLevel(log_level);
 }
 
+void LlamaEngine::StopInferencing(const std::string& model_id) {
+  AddForceStopInferenceModel(model_id);
+}
+
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
   if (!async_file_logger_) {
@@ -488,7 +585,13 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   if (json_body) {
     if (!json_body->operator[]("mmproj").isNull()) {
       LOG_INFO << "MMPROJ FILE detected, multi-model enabled!";
+#if defined(_WIN32)
+      std::wstring mp_ws =
+          Utf8ToWstring(json_body->operator[]("mmproj").asString());
+      params.mmproj = WstringToUtf8(mp_ws);
+#else
       params.mmproj = json_body->operator[]("mmproj").asString();
+#endif
     }
     if (!json_body->operator[]("grp_attn_n").isNull()) {
       params.grp_attn_n = json_body->operator[]("grp_attn_n").asInt();
@@ -521,9 +624,15 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       LOG_ERROR << "Missing model path in request";
       return false;
     } else {
+#if defined(_WIN32)
+      std::wstring mp_ws = Utf8ToWstring(model_path.asString());
+      if (std::filesystem::exists(std::filesystem::path(mp_ws))) {
+        params.model = WstringToUtf8(mp_ws);
+#else
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
         params.model = model_path.asString();
+#endif
       } else {
         LOG_ERROR << "Could not find model in path " << model_path.asString();
       }
@@ -712,6 +821,15 @@ void LlamaEngine::HandleInferenceImpl(
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
   data["grammar"] = completion.grammar;
+  if (!completion.json_schema.isNull() &&
+      (completion.json_schema.isMember("type") &&
+       (completion.json_schema["type"] == "json_object" ||
+        completion.json_schema["type"] == "json_schema"))) {
+
+    data["grammar"] =
+        json_schema_to_grammar(llama::inferences::ConvertJsonCppToNlohmann(
+            completion.json_schema["json_schema"]["schema"]));
+  }
   data["n"] = completion.n;  // number of choices to return
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
@@ -844,12 +962,19 @@ void LlamaEngine::HandleInferenceImpl(
     LOG_INFO << "Request " << request_id << ": "
              << "Streamed, waiting for respone";
     auto state = CreateInferenceState(si.ctx);
+    auto model_id = completion.model_id;
 
     // Queued task
-    si.q->runTaskInQueue([cb = std::move(callback), state, data, request_id,
-                          n_probs, include_usage]() {
+    si.q->runTaskInQueue([this, cb = std::move(callback), state, data,
+                          request_id, n_probs, include_usage, model_id]() {
       state->task_id = state->llama.RequestCompletion(data, false, false, -1);
       while (state->llama.model_loaded_external) {
+        if (HasForceStopInferenceModel(model_id)) {
+          LOG_INFO << "Force stop inferencing for model: " << model_id;
+          state->llama.RequestCancel(state->task_id);
+          RemoveForceStopInferenceModel(model_id);
+          break;
+        }
         TaskResult result = state->llama.NextResult(state->task_id);
         if (!result.error) {
           std::string to_send;
@@ -1003,7 +1128,6 @@ void LlamaEngine::HandleInferenceImpl(
         status["is_stream"] = false;
         status["status_code"] = k200OK;
         cb(std::move(status), std::move(respData));
-
         LOG_INFO << "Request " << request_id << ": " << "Inference completed";
       }
     });
@@ -1055,6 +1179,7 @@ void LlamaEngine::HandleEmbeddingImpl(
           prompt_tokens +=
               static_cast<int>(result.result_json["tokens_evaluated"]);
           std::vector<float> embedding_result = result.result_json["embedding"];
+
           responseData.append(
               CreateEmbeddingPayload(embedding_result, 0, is_base64));
         } else {
@@ -1092,6 +1217,7 @@ void LlamaEngine::HandleEmbeddingImpl(
             prompt_tokens += cur_pt;
             std::vector<float> embedding_result =
                 result.result_json["embedding"];
+
             responseData.append(
                 CreateEmbeddingPayload(embedding_result, i, is_base64));
           }
@@ -1169,6 +1295,28 @@ bool LlamaEngine::ShouldInitBackend() const {
       return false;
   }
   return true;
+}
+
+void LlamaEngine::AddForceStopInferenceModel(const std::string& id) {
+  std::lock_guard l(fsi_mtx_);
+  if (force_stop_inference_models_.find(id) ==
+      force_stop_inference_models_.end()) {
+    LOG_INFO << "Added force stop inferencing model: " << id;
+    force_stop_inference_models_.insert(id);
+  }
+}
+void LlamaEngine::RemoveForceStopInferenceModel(const std::string& id) {
+  std::lock_guard l(fsi_mtx_);
+  if (force_stop_inference_models_.find(id) !=
+      force_stop_inference_models_.end()) {
+    force_stop_inference_models_.erase(id);
+  }
+}
+
+bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
+  std::lock_guard l(fsi_mtx_);
+  return force_stop_inference_models_.find(id) !=
+         force_stop_inference_models_.end();
 }
 
 extern "C" {

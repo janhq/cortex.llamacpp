@@ -88,6 +88,7 @@ struct ChatCompletionRequest {
   bool include_usage = false;
   std::string grammar;
   Json::Value logit_bias = Json::Value(Json::arrayValue);
+  Json::Value json_schema;
 
   static Json::Value ConvertLogitBiasToArray(const Json::Value& input) {
     Json::Value result(Json::arrayValue);
@@ -106,7 +107,7 @@ struct ChatCompletionRequest {
 
 inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
   ChatCompletionRequest completion;
-  common_sampler_params default_params;
+  common_params_sampling default_params;
   if (jsonBody) {
     completion.stream = (*jsonBody).get("stream", false).asBool();
     if (completion.stream) {
@@ -155,6 +156,7 @@ inline ChatCompletionRequest fromJson(std::shared_ptr<Json::Value> jsonBody) {
     completion.min_keep = (*jsonBody).get("min_keep", 0).asInt();
     completion.n = (*jsonBody).get("n", 1).asInt();
     completion.grammar = (*jsonBody).get("grammar", "").asString();
+    completion.json_schema = (*jsonBody).get("response_format", Json::Value::null);
     const Json::Value& input_logit_bias = (*jsonBody)["logit_bias"];
     if (!input_logit_bias.isNull()) {
       completion.logit_bias =

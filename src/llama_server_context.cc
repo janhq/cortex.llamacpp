@@ -445,7 +445,7 @@ LlamaClientSlot* LlamaServerContext::GetSlot(int id) {
 bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
   SlotParams default_params;
   // Sampling parameter defaults are loaded from the global server context (but individual requests can still override them)
-  auto default_sparams = params.sparams;
+  auto default_sparams = params.sampling;
 
   if (data.count("__oaicompat") != 0) {
     slot->oaicompat = true;
