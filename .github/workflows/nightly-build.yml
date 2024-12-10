@@ -499,6 +499,12 @@ jobs:
           AWS_SECRET_ACCESS_KEY: "${{ secrets.MINIO_SECRET_ACCESS_KEY }}"
           AWS_DEFAULT_REGION: "${{ secrets.MINIO_REGION }}"
 
+      - name: Remove Keychain
+        continue-on-error: true
+        if: always() && runner.os == 'macOS'
+        run: |
+          security delete-keychain signing_temp.keychain
+
 
   ## Read matrix outputs 
   read:
