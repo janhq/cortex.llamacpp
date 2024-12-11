@@ -4,8 +4,8 @@ SET(TARGET engine)
 
 if(UNIX AND NOT APPLE)
   add_compile_definitions(LINUX)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -pthread")
-  add_compile_options(-fPIC -pthread)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -Wl,-z,nodefaultlib -fPIC -pthread")
+  add_compile_options(-Wl,-z,nodefaultlib -fPIC -pthread)
   find_package(Threads)
 endif()
 
