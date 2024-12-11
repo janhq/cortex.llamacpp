@@ -1,14 +1,14 @@
 #pragma once
 
-#include <trantor/utils/AsyncFileLogger.h>
-#include <unordered_set>
-#include "chat_completion_request.h"
+// #include <trantor/utils/AsyncFileLogger.h>
+// #include <unordered_set>
+// #include "chat_completion_request.h"
 #include "cortex-common/enginei.h"
-#include "file_logger.h"
-#include "llama.h"
-#include "llama_server_context.h"
-#include "trantor/utils/ConcurrentTaskQueue.h"
-#include "trantor/utils/Logger.h"
+// #include "file_logger.h"
+// #include "llama.h"
+// #include "llama_server_context.h"
+// #include "trantor/utils/ConcurrentTaskQueue.h"
+// #include "trantor/utils/Logger.h"
 
 class LlamaEngine : public EngineI {
  public:
@@ -49,9 +49,9 @@ class LlamaEngine : public EngineI {
 
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
-  void HandleInferenceImpl(
-      llama::inferences::ChatCompletionRequest&& completion,
-      std::function<void(Json::Value&&, Json::Value&&)>&& callback);
+//   void HandleInferenceImpl(
+//       llama::inferences::ChatCompletionRequest&& completion,
+//       std::function<void(Json::Value&&, Json::Value&&)>&& callback);
   void HandleEmbeddingImpl(
       std::shared_ptr<Json::Value> jsonBody,
       std::function<void(Json::Value&&, Json::Value&&)>&& callback);
@@ -66,35 +66,35 @@ class LlamaEngine : public EngineI {
   bool HasForceStopInferenceModel(const std::string& id) const;
 
  private:
-  struct ServerInfo {
-    LlamaServerContext ctx;
-    std::unique_ptr<trantor::ConcurrentTaskQueue> q;
-    std::string user_prompt;
-    std::string ai_prompt;
-    std::string system_prompt;
-    std::string pre_prompt;
-    int repeat_last_n;
-    bool caching_enabled;
-    std::string grammar_file_content;
-    uint64_t start_time;
-    uint32_t vram;
-    uint32_t dram;
-    Json::Value stop_words;
-  };
+//   struct ServerInfo {
+//     LlamaServerContext ctx;
+//     std::unique_ptr<trantor::ConcurrentTaskQueue> q;
+//     std::string user_prompt;
+//     std::string ai_prompt;
+//     std::string system_prompt;
+//     std::string pre_prompt;
+//     int repeat_last_n;
+//     bool caching_enabled;
+//     std::string grammar_file_content;
+//     uint64_t start_time;
+//     uint32_t vram;
+//     uint32_t dram;
+//     Json::Value stop_words;
+//   };
 
-  // key: model_id, value: ServerInfo
-  std::unordered_map<std::string, ServerInfo> server_map_;
-  // lock the force_stop_inference_models_
-  mutable std::mutex fsi_mtx_;
-  std::unordered_set<std::string> force_stop_inference_models_;
+//   // key: model_id, value: ServerInfo
+//   std::unordered_map<std::string, ServerInfo> server_map_;
+//   // lock the force_stop_inference_models_
+//   mutable std::mutex fsi_mtx_;
+//   std::unordered_set<std::string> force_stop_inference_models_;
 
-  std::atomic<int> no_of_requests_ = 0;
-  std::atomic<int> no_of_chats_ = 0;
+//   std::atomic<int> no_of_requests_ = 0;
+//   std::atomic<int> no_of_chats_ = 0;
 
-  bool print_version_ = true;
-  std::unique_ptr<trantor::FileLogger> async_file_logger_;
+//   bool print_version_ = true;
+//   std::unique_ptr<trantor::FileLogger> async_file_logger_;
 
-#if defined(_WIN32)
-  std::vector<DLL_DIRECTORY_COOKIE> cookies_;
-#endif
+// #if defined(_WIN32)
+//   std::vector<DLL_DIRECTORY_COOKIE> cookies_;
+// #endif
 };
