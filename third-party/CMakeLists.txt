@@ -4,8 +4,8 @@ project(MyProject)
 include(ExternalProject)
 
 if(UNIX AND NOT APPLE)
-  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wl,-z,nodefaultlib -fPIC")
-  add_compile_options( -Wl,-z,nodefaultlib -fPIC)
+  set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -fPIC")
+  add_compile_options(-fPIC)
 endif()
 
 # Define variables
