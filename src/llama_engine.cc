@@ -291,6 +291,23 @@ void LlamaEngine::RegisterLibraryPath(RegisterLibraryOption opts) {
 void LlamaEngine::Load(EngineLoadOption opts) {
   LOG_INFO << "Loading engine..";
 
+  common_log_pause(common_log_main());
+  llama_log_set(
+      [](ggml_log_level level, const char* text, void* user_data) {
+        (void)level;
+        (void)user_data;
+        if (level == GGML_LOG_LEVEL_ERROR) {
+          LOG_ERROR << text;
+        } else if (level == GGML_LOG_LEVEL_DEBUG) {
+          LOG_DEBUG << text;
+        } else if (level == GGML_LOG_LEVEL_WARN) {
+          LOG_WARN << text;
+        } else {
+          LOG_INFO << text;
+        }
+      },
+      nullptr);
+
   LOG_DEBUG << "Use custom engine path: " << opts.custom_engine_path;
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
 
@@ -340,24 +357,6 @@ LlamaEngine::LlamaEngine(int log_option) {
   if (log_option == kFileLoggerOption) {
     async_file_logger_ = std::make_unique<trantor::FileLogger>();
   }
-
-  common_log_pause(common_log_main());
-
-  llama_log_set(
-      [](ggml_log_level level, const char* text, void* user_data) {
-        (void)level;
-        (void)user_data;
-        if (level == GGML_LOG_LEVEL_ERROR) {
-          LOG_ERROR << text;
-        } else if (level == GGML_LOG_LEVEL_DEBUG) {
-          LOG_DEBUG << text;
-        } else if (level == GGML_LOG_LEVEL_WARN) {
-          LOG_WARN << text;
-        } else {
-          LOG_INFO << text;
-        }
-      },
-      nullptr);
 }
 
 LlamaEngine::~LlamaEngine() {
