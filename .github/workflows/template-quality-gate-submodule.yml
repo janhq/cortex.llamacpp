@@ -362,9 +362,14 @@ jobs:
           python-version: '3.10' 
 
       - name: Run e2e submodule testing
-        if: ${{ matrix.run-e2e }}
+        if: ${{ matrix.run-e2e && matrix.name != 'arm64' }}
         run: |
           make run-e2e-submodule-test LLM_MODEL_URL=${{ env.LLM_MODEL_URL }} EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
+
+      - name: Run e2e submodule testing
+        if: ${{ matrix.run-e2e && matrix.os == 'mac' && matrix.name == 'arm64' }}
+        run: |
+          make run-e2e-submodule-test LLM_MODEL_URL=https://delta.jan.ai/tinyllama-1.1b-chat-v0.3.Q2_K.gguf EMBEDDING_MODEL_URL=${{ env.EMBEDDING_MODEL_URL }}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
