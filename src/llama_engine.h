@@ -15,11 +15,10 @@ class LlamaEngine : public EngineI {
   constexpr static auto kEngineName = "cortex.llamacpp";
 
   LlamaEngine(int log_option = 0);
+
   ~LlamaEngine() final;
 
   // #### Interface ####
-  void RegisterLibraryPath(RegisterLibraryOption opts) final;
-
   void Load(EngineLoadOption opts) final;
 
   void Unload(EngineUnloadOption opts) final;
