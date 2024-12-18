@@ -268,6 +268,28 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
                                // producing compact output.
   return Json::writeString(writer, root);
 }
+
+const std::vector<ggml_type> kv_cache_types = {
+    GGML_TYPE_F32,
+    GGML_TYPE_F16,
+    GGML_TYPE_BF16,
+    GGML_TYPE_Q8_0,
+    GGML_TYPE_Q4_0,
+    GGML_TYPE_Q4_1,
+    GGML_TYPE_IQ4_NL,
+    GGML_TYPE_Q5_0,
+    GGML_TYPE_Q5_1,
+};
+
+ggml_type kv_cache_type_from_str(const std::string & s) {
+    for (const auto & type : kv_cache_types) {
+        if (ggml_type_name(type) == s) {
+            return type;
+        }
+    }
+    throw std::runtime_error("Unsupported cache type: " + s);
+}
+
 }  // namespace
 
 void LlamaEngine::Load(EngineLoadOption opts) {
@@ -608,18 +630,19 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     params.cont_batching =
         json_body->get("cont_batching", true)
             .asBool();  // default true according to llama.cpp upstream
-
-    params.cache_type_k = json_body->get("cache_type", kTypeF16).asString();
-    if (!IsValidCacheType(params.cache_type_k)) {
+    auto cache_type_k = json_body->get("cache_type", kTypeF16).asString();
+    if (!IsValidCacheType(cache_type_k)) {
       LOG_WARN << "Unsupported cache type: " << params.cache_type_k
                << ", fallback to f16";
-      params.cache_type_k = kTypeF16;
+      params.cache_type_k = GGML_TYPE_F16;
+    } else {
+      params.cache_type_k = kv_cache_type_from_str(cache_type_k);
     }
     params.cache_type_v = params.cache_type_k;
     LOG_DEBUG << "cache_type: " << params.cache_type_k;
 
     auto fa = json_body->get("flash_attn", true).asBool();
-    auto force_enable_fa = params.cache_type_k != kTypeF16;
+    auto force_enable_fa = params.cache_type_k != GGML_TYPE_F16;
     if (force_enable_fa) {
       LOG_DEBUG << "Using KV cache quantization, force enable Flash Attention";
     }
@@ -767,7 +790,6 @@ void LlamaEngine::HandleInferenceImpl(
   data["mirostat"] = completion.mirostat;
   data["mirostat_tau"] = completion.mirostat_tau;
   data["mirostat_eta"] = completion.mirostat_eta;
-  data["penalize_nl"] = completion.penalize_nl;
   data["ignore_eos"] = completion.ignore_eos;
   data["n_probs"] = completion.n_probs;
   data["min_keep"] = completion.min_keep;
