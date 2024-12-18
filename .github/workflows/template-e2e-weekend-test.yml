@@ -31,6 +31,14 @@ jobs:
       matrix:
         include:
           - os: "linux"
+            name: "arm64"
+            runs-on: "ubuntu-2004-arm64"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
+            run-e2e: true
+            vulkan: false
+            ccache: true
+            ccache-dir: "/home/runner/.ccache"
+          - os: "linux"
             name: "amd64-avx2"
             runs-on: "ubuntu-20-04"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DGGML_NATIVE=OFF -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
