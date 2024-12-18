@@ -3,8 +3,8 @@
 $runnerName = (hostname.exe).Trim()
 
 # Remove existing actions-runner folder if it exists
-if (Test-Path -Path C:/actions-runner) {
-    Remove-Item -Recurse -Force -Path C:/actions-runner
+if (Test-Path -Path C:/workspace/actions-runner) {
+    Remove-Item -Recurse -Force -Path C:/workspace/actions-runner
 }
 
 # Get the latest version of the GitHub Actions runner
@@ -14,11 +14,11 @@ $env:RUNNER_VERSION = $response.tag_name.TrimStart('v')
 # Download and install the runner
 cmd.exe /c curl -L -o runner.zip https://github.com/actions/runner/releases/download/v$env:RUNNER_VERSION/actions-runner-win-x64-$env:RUNNER_VERSION.zip
 
-Expand-Archive -Path C:/runner.zip -DestinationPath C:/actions-runner
-Remove-Item -Path C:/runner.zip
+Expand-Archive -Path C:/workspace/runner.zip -DestinationPath C:/workspace/actions-runner
+Remove-Item -Path C:/workspace/runner.zip
 
 # Navigate to the runner directory
-Set-Location -Path C:/actions-runner
+Set-Location -Path C:/workspace/actions-runner
 
 # Configure the runner
 & .\config.cmd --unattended --replace --url https://github.com/$env:RUNNER_REPO `
