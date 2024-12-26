@@ -277,7 +277,8 @@ int main(int argc, char** argv) {
   });
 
   shutdown_handler = [&](int) {
-    running = false;
+    // only shutdown by /destroy or sent SIGINT twice
+    // running = false;
   };
 #if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
   struct sigaction sigint_action;
