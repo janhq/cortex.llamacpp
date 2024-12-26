@@ -482,10 +482,15 @@ void LlamaEngine::UnloadModel(
     std::shared_ptr<Json::Value> json_body,
     std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
   auto model_id = llama_utils::GetModelId(*json_body);
-#if defined(_WIN32) || defined(_WIN64)
+
   if (IsLlamaServerModel(model_id)) {
-    BOOL sent = GenerateConsoleCtrlEvent(
-        CTRL_C_EVENT, llama_server_map_[model_id].pi.dwProcessId);
+    bool sent = false;
+#if defined(_WIN32) || defined(_WIN64)
+    sent = GenerateConsoleCtrlEvent(CTRL_C_EVENT,
+                                    llama_server_map_[model_id].pi.dwProcessId);
+#else
+    sent = (kill(llama_server_map_[model_id].pid, SIGINT) != -1);
+#endif
     if (sent) {
       LOG_INFO << "SIGINT signal sent to child process";
       Json::Value json_resp;
@@ -500,10 +505,8 @@ void LlamaEngine::UnloadModel(
     } else {
       LOG_ERROR << "Failed to send SIGINT signal to child process";
     }
-
     return;
   }
-#endif
 
   if (CheckModelLoaded(callback, model_id)) {
     auto& l = server_map_[model_id].ctx;
@@ -1386,6 +1389,7 @@ bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
 
 bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   // TODO(sang) clean up resources if any errors
+  LOG_DEBUG << "Start to spawn llama-server";
   std::string model;
   if (auto o = json_params["model"]; !o.isNull()) {
     model = o.asString();
@@ -1438,6 +1442,49 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   } else {
     std::cout << "Server started" << std::endl;
   }
+#else
+  // Unix-like system-specific code to fork a child process
+  s.pid = fork();
+
+  if (s.pid < 0) {
+    // Fork failed
+    std::cerr << "Could not start server: " << std::endl;
+    return false;
+  } else if (s.pid == 0) {
+    // Some engines requires to add lib search path before process being created
+    std::string exe = "llama-server";
+    std::string p = (llama_utils::GetExecutableFolderContainerPath() /
+                     "engines" / "cortex.llamacpp" / exe)
+                        .string();
+    std::vector<std::string> params = ConvertJsonToParamsVector(json_params);
+    params.push_back("--host");
+    params.push_back(s.host);
+    params.push_back("--port");
+    params.push_back(std::to_string(s.port));
+    auto convert_to_char_args =
+        [](const std::vector<std::string>& args) -> std::vector<char*> {
+      std::vector<char*> char_args;
+      char_args.reserve(args.size() +
+                        1);  // Reserve space for arguments and null terminator
+
+      for (const auto& arg : args) {
+        char_args.push_back(const_cast<char*>(arg.c_str()));
+      }
+
+      char_args.push_back(nullptr);  // Add null terminator
+
+      return char_args;
+    };
+    std::vector<std::string> v;
+    v.reserve(params.size() + 1);
+    v.push_back(exe);
+    v.insert(v.end(), params.begin(), params.end());
+    auto exec_args = convert_to_char_args(v);
+    execv(p.c_str(), exec_args.data());
+  } else {
+    // Parent process
+    std::cout << "Server started" << std::endl;
+  }
 #endif
   return true;
 }
@@ -1474,6 +1521,44 @@ std::string LlamaEngine::ConvertJsonToParams(const Json::Value& root) {
   }
 
   return ss.str();
+}
+
+std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
+    const Json::Value& root) {
+  std::vector<std::string> res;
+  std::string errors;
+
+  for (const auto& member : root.getMemberNames()) {
+    if (member == "model_path") {
+      res.push_back("--model");
+      res.push_back(root[member].asString());
+      continue;
+    } else if (member == "model") {
+      continue;
+    }
+
+    res.push_back("--" + member);
+    if (root[member].isString()) {
+      res.push_back(root[member].asString());
+    } else if (root[member].isInt()) {
+      res.push_back(std::to_string(root[member].asInt()));
+    } else if (root[member].isArray()) {
+      std::stringstream ss;
+      ss << "[";
+      bool first = true;
+      for (const auto& value : root[member]) {
+        if (!first) {
+          ss << ", ";
+        }
+        ss << "\"" << value.asString() << "\"";
+        first = false;
+      }
+      ss << "] ";
+      res.push_back(ss.str());
+    }
+  }
+
+  return res;
 }
 
 bool LlamaEngine::HandleLlamaCppChatCompletion(

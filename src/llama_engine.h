@@ -66,6 +66,7 @@ class LlamaEngine : public EngineI {
 
   bool SpawnLlamaServer(const Json::Value& json_params);
   std::string ConvertJsonToParams(const Json::Value& root);
+  std::vector<std::string> ConvertJsonToParamsVector(const Json::Value& root);
 
   bool HandleLlamaCppChatCompletion(
       std::shared_ptr<Json::Value> json_body,
@@ -102,12 +103,14 @@ class LlamaEngine : public EngineI {
     int port;
 #if defined(_WIN32) || defined(_WIN64)
     PROCESS_INFORMATION pi;
+#else
+    pid_t pid;
 #endif
   };
 
   // key: model_id, value: ServerInfo
   std::unordered_map<std::string, ServerInfo> server_map_;
-  // TODO(sang) use variant map 
+  // TODO(sang) use variant map
   std::unordered_map<std::string, ServerConfig> llama_server_map_;
   // lock the force_stop_inference_models_
   mutable std::mutex fsi_mtx_;

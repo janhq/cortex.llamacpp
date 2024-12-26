@@ -206,7 +206,7 @@ std::filesystem::path GetExecutableFolderContainerPath() {
     // CTL_DBG("Executable path: " << buffer);
     return std::filesystem::path{buffer}.parent_path();
   } else {
-    CTL_ERR("Failed to get executable path");
+    LOG_ERROR << "Failed to get executable path";
     return std::filesystem::current_path();
   }
 #elif defined(_WIN32)
