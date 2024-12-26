@@ -1,0 +1,58 @@
+diff --git a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+index 21b31392..18049f0b 100644
+--- a/examples/CMakeLists.txt
++++ b/examples/CMakeLists.txt
+@@ -61,7 +61,7 @@ else()
+             # disabled on Windows because it uses internal functions not exported with LLAMA_API
+             add_subdirectory(quantize-stats)
+         endif()
+-        add_subdirectory(llava)
++        # add_subdirectory(llava)
+         if (GGML_RPC)
+             add_subdirectory(rpc)
+         endif()
+diff --git a/include/llama.h b/include/llama.h
+index efbb27d2..1d0e0e41 100644
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -448,6 +448,9 @@ extern "C" {
+ 
+     LLAMA_API const struct llama_model * llama_get_model(const struct llama_context * ctx);
+ 
++    LLAMA_API size_t const llama_get_cpu_buffer(const struct llama_model * model);
++    LLAMA_API size_t const llama_get_other_buffer(const struct llama_model * model);
++
+     LLAMA_API enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx);
+     LLAMA_API enum llama_vocab_type   llama_vocab_type  (const struct llama_model * model);
+     LLAMA_API enum llama_rope_type    llama_rope_type   (const struct llama_model * model);
+diff --git a/src/llama.cpp b/src/llama.cpp
+index b7b04a41..51c2bb93 100644
+--- a/src/llama.cpp
++++ b/src/llama.cpp
+@@ -20365,6 +20365,26 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
+     return &ctx->model;
+ }
+ 
++const size_t llama_get_cpu_buffer(const struct llama_model * model) {
++    size_t buffer{0};
++    for (const auto& buf : model->bufs) {
++        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") == 0) {
++            buffer += ggml_backend_buffer_get_size(buf.get());
++        }
++    }
++    return buffer;
++}
++
++const size_t llama_get_other_buffer(const struct llama_model * model) {
++    size_t buffer{0};
++    for (const auto& buf : model->bufs) {
++        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") != 0) {
++            buffer += ggml_backend_buffer_get_size(buf.get());
++        }
++    }
++    return buffer;
++}
++
+ enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
+     return ctx->cparams.pooling_type;
+ }
