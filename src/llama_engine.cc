@@ -634,8 +634,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 
   // Spawn llama.cpp server only if it is chat model
   if (!json_body->isMember("mmproj")) {
-    SpawnLlamaServer(*json_body);
-    return true;
+    return SpawnLlamaServer(*json_body);
   }
   common_params params;
   std::string model_type;
@@ -1388,11 +1387,24 @@ bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
 }
 
 bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
+  auto wait_for_server_up = [](const std::string& host, int port) {
+    for (size_t i = 0; i < 10; i++) {
+      httplib::Client cli(host + ":" + std::to_string(port));
+      auto res = cli.Get("/health");
+      if (res && res->status == httplib::StatusCode::OK_200) {
+        return true;
+      } else {
+        LOG_INFO << "Wait for server up: " << i;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+    }
+    return false;
+  };
+
   // TODO(sang) clean up resources if any errors
   LOG_DEBUG << "Start to spawn llama-server";
-  std::string model;
-  if (auto o = json_params["model"]; !o.isNull()) {
-    model = o.asString();
+  auto model = llama_utils::GetModelId(json_params);
+  if (!model.empty()) {
     llama_server_map_[model].host = "127.0.0.1";
     llama_server_map_[model].port =
         llama_utils::GenerateRandomInteger(39400, 39999);
@@ -1440,6 +1452,8 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
     std::cout << "Could not start server: " << GetLastError() << std::endl;
     return false;
   } else {
+    if (!wait_for_server_up(s.host, s.port))
+      return false;
     std::cout << "Server started" << std::endl;
   }
 #else
@@ -1483,6 +1497,8 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
     execv(p.c_str(), exec_args.data());
   } else {
     // Parent process
+    if (!wait_for_server_up(s.host, s.port))
+      return false;
     std::cout << "Server started" << std::endl;
   }
 #endif
@@ -1494,13 +1510,28 @@ std::string LlamaEngine::ConvertJsonToParams(const Json::Value& root) {
   std::string errors;
 
   for (const auto& member : root.getMemberNames()) {
-    if (member == "model_path") {
+    if (member == "model_path" || member == "llama_model_path") {
       ss << "--model" << " ";
       ss << "\"" << root[member].asString() << "\" ";
       continue;
-    } else if (member == "model") {
+    } else if (member == "model" || member == "model_alias" ||
+               member == "embedding") {
+      continue;
+    } else if (member == "ctx_len") {
+      ss << "--ctx-size" << " ";
+      ss << "\"" << std::to_string(root[member].asInt()) << "\" ";
+      continue;
+    } else if (member == "ngl") {
+      ss << "-ngl" << " ";
+      ss << "\"" << std::to_string(root[member].asInt()) << "\" ";
+      continue;
+    } else if (member == "model_type") {
+      if (root[member].asString() == "embedding") {
+        ss << "--embedding" << " ";
+      }
       continue;
     }
+
     ss << "--" << member << " ";
     if (root[member].isString()) {
       ss << "\"" << root[member].asString() << "\" ";
@@ -1529,11 +1560,25 @@ std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
   std::string errors;
 
   for (const auto& member : root.getMemberNames()) {
-    if (member == "model_path") {
+    if (member == "model_path" || member == "llama_model_path") {
       res.push_back("--model");
       res.push_back(root[member].asString());
       continue;
-    } else if (member == "model") {
+    } else if (member == "model" || member == "model_alias" ||
+               member == "embedding") {
+      continue;
+    } else if (member == "ctx_len") {
+      res.push_back("--ctx-size");
+      res.push_back(std::to_string(root[member].asInt()));
+      continue;
+    } else if (member == "ngl") {
+      res.push_back("-ngl");
+      res.push_back(std::to_string(root[member].asInt()));
+      continue;
+    } else if (member == "model_type") {
+      if (root[member].asString() == "embedding") {
+        res.push_back("--embedding");
+      }
       continue;
     }
 
@@ -1584,18 +1629,25 @@ bool LlamaEngine::HandleLlamaCppChatCompletion(
           req.content_receiver = [cb](const char* data, size_t data_length,
                                       uint64_t offset, uint64_t total_length) {
             std::string s(data, data_length);
-            Json::Value respData;
-            respData["data"] = s;
+            Json::Value resp_data;
             Json::Value status;
+
+            if (s.find("[DONE]") != std::string::npos) {
+              LOG_DEBUG << "[DONE]";
+              status["is_done"] = true;
+              status["has_error"] = false;
+              status["is_stream"] = true;
+              status["status_code"] = k200OK;
+              cb(std::move(status), std::move(resp_data));
+              return false;
+            }
+
+            resp_data["data"] = s;
             status["is_done"] = false;
             status["has_error"] = false;
             status["is_stream"] = true;
             status["status_code"] = k200OK;
-            cb(std::move(status), std::move(respData));
-            if (s == "[DONE]") {
-              LOG_DEBUG << "[DONE]";
-              return false;
-            }
+            cb(std::move(status), std::move(resp_data));
             LOG_DEBUG << s;
             return true;
           };

@@ -10,6 +10,10 @@
 #include <string>
 #include <vector>
 
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
+
 namespace llama_utils {
 
 inline std::string models_folder = "./models";
@@ -195,7 +199,7 @@ std::filesystem::path GetExecutableFolderContainerPath() {
     // CTL_DBG("Executable path: " << buffer);
     return std::filesystem::path{buffer}.parent_path();
   } else {
-    CTL_ERR("Failed to get executable path");
+    LOG_ERROR << "Failed to get executable path";
     return std::filesystem::current_path();
   }
 #elif defined(__linux__)

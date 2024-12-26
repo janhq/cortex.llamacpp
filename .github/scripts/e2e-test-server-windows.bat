@@ -1,4 +1,15 @@
 @echo off
+setlocal
+
+rem Bypass "Terminate Batch Job" prompt.
+if "%~1"=="-FIXED_CTRL_C" (
+   REM Remove the -FIXED_CTRL_C parameter
+   SHIFT
+) ELSE (
+   REM Run the batch with <NUL and -FIXED_CTRL_C
+   CALL <NUL %0 -FIXED_CTRL_C %*
+   GOTO :EOF
+)
 
 set "TEMP=C:\Users\%UserName%\AppData\Local\Temp"
 set "MODEL_LLM_PATH=%TEMP%\testllm"
@@ -69,6 +80,7 @@ set "curl_data3={\"llama_model_path\":\"%MODEL_LLM_PATH_STRING%\"}"
 set "curl_data4={\"llama_model_path\":\"%MODEL_EMBEDDING_PATH_STRING%\", \"embedding\": true, \"model_type\": \"embedding\"}"
 set "curl_data5={}"
 set "curl_data6={\"input\": \"Hello\", \"model\": \"test-embedding\", \"encoding_format\": \"float\"}"
+set "curl_data7={\"model\": \"test-embedding\"}"
 
 rem Print the values of curl_data for debugging
 echo curl_data1=%curl_data1%
@@ -77,6 +89,7 @@ echo curl_data3=%curl_data3%
 echo curl_data4=%curl_data4%
 echo curl_data5=%curl_data5%
 echo curl_data6=%curl_data6%
+echo curl_data7=%curl_data7%
 
 rem Run the curl commands and capture the status code
 curl.exe --connect-timeout 60 -o "%TEMP%\response1.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/loadmodel" --header "Content-Type: application/json" --data "%curl_data1%" > %TEMP%\response1.log 2>&1
@@ -94,6 +107,8 @@ curl.exe --connect-timeout 60 -o "%TEMP%\response5.log" --request GET -s -w "%%{
 curl.exe --connect-timeout 60 -o "%TEMP%\response6.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/v1/embeddings" ^
 --header "Content-Type: application/json" ^
 --data "%curl_data6%" > %TEMP%\response6.log 2>&1
+
+curl.exe --connect-timeout 60 -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/unloadmodel" --header "Content-Type: application/json" --data "%curl_data7%" 2>&1
 
 set "error_occurred=0"
 
