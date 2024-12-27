@@ -1613,6 +1613,20 @@ bool LlamaEngine::HandleLlamaCppChatCompletion(
   if (IsLlamaServerModel(model)) {
     llama_server_map_.at(model).q->runTaskInQueue(
         [this, cb = std::move(callback), json_body, model] {
+          auto include_usage = [&json_body]() -> bool {
+            auto stream = (*json_body).get("stream", false).asBool();
+            if (stream) {
+              if (json_body->isMember("stream_options") &&
+                  !(*json_body)["stream_options"].isNull()) {
+                return (*json_body)["stream_options"]
+                    .get("include_usage", false)
+                    .asBool();
+              }
+              return false;
+            }
+          }();
+
+          //
           auto& s = llama_server_map_.at(model);
           httplib::Client cli(s.host + ":" + std::to_string(s.port));
           auto data = ConvertJsonCppToNlohmann(*json_body);
@@ -1626,10 +1640,12 @@ bool LlamaEngine::HandleLlamaCppChatCompletion(
           req.method = "POST";
           req.path = "/v1/chat/completions";
           req.body = data_str;
-          req.content_receiver = [cb](const char* data, size_t data_length,
-                                      uint64_t offset, uint64_t total_length) {
+          req.content_receiver = [cb, include_usage](
+                                     const char* data, size_t data_length,
+                                     uint64_t offset, uint64_t total_length) {
             std::string s(data, data_length);
             Json::Value resp_data;
+            resp_data["data"] = s;
             Json::Value status;
 
             if (s.find("[DONE]") != std::string::npos) {
@@ -1642,7 +1658,12 @@ bool LlamaEngine::HandleLlamaCppChatCompletion(
               return false;
             }
 
-            resp_data["data"] = s;
+            // For openai api compatibility
+            if (!include_usage &&
+                s.find("completion_tokens") != std::string::npos) {
+              return true;
+            }
+
             status["is_done"] = false;
             status["has_error"] = false;
             status["is_stream"] = true;
