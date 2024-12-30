@@ -76,19 +76,19 @@ json LlamaClientSlot::GetFormatedTimings() {
 }
 
 void LlamaClientSlot::PrintTimings() const {
-  LOG_DEBUG << __func__ << ": prompt eval time = " << t_prompt_processing
-            << "ms / " << num_prompt_tokens_processed << " tokens ("
-            << t_prompt_processing / num_prompt_tokens_processed
-            << " ms per "
-               "token, "
-            << 1e3 / t_prompt_processing * num_prompt_tokens_processed
-            << " tokens per second)";
-  LOG_DEBUG << __func__ << ":        eval time = " << t_token_generation
-            << " ms / " << n_decoded << " runs   ("
-            << t_token_generation / n_decoded
-            << " ms per "
-               "token, "
-            << 1e3 / t_token_generation * n_decoded << " tokens per second)\n";
-  LOG_DEBUG << __func__ << ":       total time = "
-            << t_prompt_processing + t_token_generation << " ms";
+  LOG_INFO << __func__ << ": prompt eval time = " << t_prompt_processing
+           << "ms / " << num_prompt_tokens_processed << " tokens ("
+           << t_prompt_processing / num_prompt_tokens_processed
+           << " ms per "
+              "token, "
+           << 1e3 / t_prompt_processing * num_prompt_tokens_processed
+           << " tokens per second)";
+  LOG_INFO << __func__ << ":        eval time = " << t_token_generation
+           << " ms / " << n_decoded << " runs   ("
+           << t_token_generation / n_decoded
+           << " ms per "
+              "token, "
+           << 1e3 / t_token_generation * n_decoded << " tokens per second)\n";
+  LOG_INFO << __func__ << ":       total time = "
+           << t_prompt_processing + t_token_generation << " ms";
 }
