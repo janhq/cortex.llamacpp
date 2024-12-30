@@ -1066,7 +1066,7 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
       continue;
     }
 
-    common_embd_normalize(embd, embd_res.data(), n_embd);
+    common_embd_normalize(embd, embd_res.data(), n_embd, 2);
   }
   res.result_json = json{
       {"tokens_evaluated", slot.num_prompt_tokens},
