@@ -712,7 +712,6 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     server_map_.erase(model_id);
     return false;  // Indicate failure
   }
-  LOG_INFO << "Done load model";
 
   if (model_type == "llm") {
     server_map_[model_id].ctx.model_type = ModelType::kLlm;

@@ -211,9 +211,8 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
                 << " for context length for the image embedding";
     }
   }
-  LOG_INFO << "Before common_init_from_params";
+
   auto res = common_init_from_params(params);
-  LOG_INFO << "After common_init_from_params";
   model = res.model;
   ctx = res.context;
   if (model == nullptr) {
@@ -221,7 +220,6 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
                     {{"model", params.model}});
     return false;
   }
-  LOG_INFO << "1";
 
   if (multimodal) {
     const int n_embd_clip = clip_n_mmproj_embd(clp_ctx);
@@ -239,7 +237,7 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
       return false;
     }
   }
-  LOG_INFO << "2";
+
   if (ctx == nullptr) {
     LOG_ERROR_LLAMA("Unable to get llama.cpp context", {});
     return false;
@@ -248,7 +246,7 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
 
   add_bos_token = llama_add_bos_token(model);
   has_eos_token = !llama_add_eos_token(model);
-  LOG_INFO << "Done";
+
   return true;
 }
 
@@ -260,7 +258,7 @@ void LlamaServerContext::Initialize() {
 
   const int32_t n_ctx_slot = n_ctx / params.n_parallel;
 
-  LOG_INFO << "Available slots: ";
+  LOG_DEBUG << "Available slots: ";
   for (int i = 0; i < params.n_parallel; i++) {
     LlamaClientSlot slot;
 
@@ -268,7 +266,7 @@ void LlamaServerContext::Initialize() {
     slot.n_ctx = n_ctx_slot;
     slot.Reset();
 
-    LOG_INFO << " -> Slot " << slot.id << " - max context: " << n_ctx_slot;
+    LOG_DEBUG << " -> Slot " << slot.id << " - max context: " << n_ctx_slot;
     slots.push_back(slot);
   }
 
@@ -290,7 +288,6 @@ void LlamaServerContext::Initialize() {
   LOG_INFO << "Started background task here!";
   bgr_thread =
       std::thread(std::bind(&LlamaServerContext::DoBackgroundTasks, this));
-  LOG_INFO << "Done started background task here!";
 }
 
 void LlamaServerContext::KvCacheClear() {
