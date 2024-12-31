@@ -169,7 +169,7 @@ jobs:
           - os: "mac"
             name: "amd64"
             runs-on: "macos-selfhosted-12"
-            cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_METAL=OFF"
+            cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DGGML_NATIVE=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_METAL=OFF"
             run-e2e: true
             vulkan: false
             ccache: false
