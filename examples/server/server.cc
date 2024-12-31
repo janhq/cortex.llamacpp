@@ -8,19 +8,30 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include "trantor/utils/Logger.h"
+#include "../../src/file_logger.h"
+#include "../../src/llama_utils.h"
+
 class Server {
  public:
-  Server() {
-    dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
-    auto func = dylib_->get_function<EngineI*()>("get_engine");
-    engine_ = func();
-  }
+  Server() {}
 
   ~Server() {
     if (engine_) {
       delete engine_;
     }
+  }
+
+  void Initialize(trantor::AsyncFileLogger* logger) {
+    dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
+    auto func = dylib_->get_function<EngineI*()>("get_engine");
+    engine_ = func();
+    EngineI::EngineLoadOption opts;
+    opts.engine_path = llama_utils::GetExecutableFolderContainerPath() /
+                       "engines" / "cortex.llamacpp";
+    opts.log_path = "./logs/cortex.log";
+    opts.max_log_lines = 10000;
+    opts.logger = logger;
+    engine_->Load(opts);
   }
 
   void ForceStopInferencing(const std::string& model_id) {
@@ -86,16 +97,16 @@ inline void signal_handler(int signal) {
 using SyncQueue = Server::SyncQueue;
 
 int main(int argc, char** argv) {
-  //  std::filesystem::create_directories("./logs");
-  // trantor::AsyncFileLogger asyncFileLogger;
-  // asyncFileLogger.setFileName("logs/cortex");
-  // asyncFileLogger.startLogging();
-  // trantor::Logger::setOutputFunction(
-  //     [&](const char* msg, const uint64_t len) {
-  //       asyncFileLogger.output(msg, len);
-  //     },
-  //     [&]() { asyncFileLogger.flush(); });
-  // asyncFileLogger.setFileSizeLimit(100000000);
+  std::filesystem::create_directories("./logs");
+  trantor::FileLogger async_file_logger;
+  async_file_logger.setFileName("logs/cortex.log");
+  async_file_logger.startLogging();
+  trantor::Logger::setOutputFunction(
+      [&](const char* msg, const uint64_t len) {
+        async_file_logger.output_(msg, len);
+      },
+      [&]() { async_file_logger.flush(); });
+  async_file_logger.setFileSizeLimit(100000000);
 
   std::string hostname = "127.0.0.1";
   int port = 3928;
@@ -109,6 +120,8 @@ int main(int argc, char** argv) {
   }
 
   Server server;
+
+  server.Initialize(&async_file_logger);
   //set logger here
   // server.engine_->SetFileLogger();
 

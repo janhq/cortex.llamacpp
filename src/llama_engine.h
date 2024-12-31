@@ -6,6 +6,7 @@
 #include "cortex-common/enginei.h"
 #include "file_logger.h"
 #include "llama.h"
+#include "llama_data.h"
 #include "llama_server_context.h"
 #include "trantor/utils/ConcurrentTaskQueue.h"
 #include "trantor/utils/Logger.h"
@@ -20,34 +21,53 @@ class LlamaEngine : public EngineI {
 
   ~LlamaEngine() final;
 
-  // #### Interface ####
+  // Load the engine with the specified options.
   void Load(EngineLoadOption opts) final;
 
+  // Unload the engine with the specified options.
   void Unload(EngineUnloadOption opts) final;
 
-  void HandleChatCompletion(std::shared_ptr<Json::Value> jsonBody,
+  // Handle a chat completion request with the provided JSON body and callback.
+  void HandleChatCompletion(std::shared_ptr<Json::Value> json_body,
                             http_callback&& callback) final;
-  void HandleEmbedding(std::shared_ptr<Json::Value> jsonBody,
+
+  // Handle an embedding request with the provided JSON body and callback.
+  void HandleEmbedding(std::shared_ptr<Json::Value> json_body,
                        http_callback&& callback) final;
-  void LoadModel(std::shared_ptr<Json::Value> jsonBody,
+
+  // Load a model with the provided JSON body and callback.
+  void LoadModel(std::shared_ptr<Json::Value> json_body,
                  http_callback&& callback) final;
-  void UnloadModel(std::shared_ptr<Json::Value> jsonBody,
+
+  // Unload a model with the provided JSON body and callback.
+  void UnloadModel(std::shared_ptr<Json::Value> json_body,
                    http_callback&& callback) final;
-  void GetModelStatus(std::shared_ptr<Json::Value> jsonBody,
+
+  // Get the status of a model with the provided JSON body and callback.
+  void GetModelStatus(std::shared_ptr<Json::Value> json_body,
                       http_callback&& callback) final;
-  void GetModels(std::shared_ptr<Json::Value> jsonBody,
+
+  // Get the list of available models with the provided JSON body and callback.
+  void GetModels(std::shared_ptr<Json::Value> json_body,
                  http_callback&& callback) final;
+
+  // Set the file logger with the maximum number of log lines and log file path.
   void SetFileLogger(int max_log_lines, const std::string& log_path) final;
+
+  // Set the log level for the engine.
   void SetLogLevel(trantor::Logger::LogLevel log_level =
                        trantor::Logger::LogLevel::kInfo) final;
+
+  // Stop the inferencing process for the specified model.
   void StopInferencing(const std::string& model_id) final;
 
+
  private:
-  bool LoadModelImpl(std::shared_ptr<Json::Value> jsonBody);
+  bool LoadModelImpl(std::shared_ptr<Json::Value> json_body);
   void HandleInferenceImpl(
       llama::inferences::ChatCompletionRequest&& completion,
       http_callback&& callback);
-  void HandleEmbeddingImpl(std::shared_ptr<Json::Value> jsonBody,
+  void HandleEmbeddingImpl(std::shared_ptr<Json::Value> json_body,
                            http_callback&& callback);
   bool CheckModelLoaded(http_callback& callback, const std::string& model_id);
   void WarmUpModel(const std::string& model_id);
@@ -65,13 +85,17 @@ class LlamaEngine : public EngineI {
                                     http_callback&& callback,
                                     const std::string& model);
 
+  // Handle an OpenAI chat completion request with the provided JSON body, callback, and model.
   void HandleOpenAiChatCompletion(std::shared_ptr<Json::Value> json_body,
                                   http_callback&& callback,
                                   const std::string& model);
+
+  // Handle a non-OpenAI chat completion request with the provided JSON body, callback, and model.
   void HandleNonOpenAiChatCompletion(std::shared_ptr<Json::Value> json_body,
                                      http_callback&& callback,
                                      const std::string& model);
 
+  // Handle a LLaMA C++ embedding request with the provided JSON body, callback, and model.
   bool HandleLlamaCppEmbedding(std::shared_ptr<Json::Value> json_body,
                                http_callback&& callback,
                                const std::string& model);
@@ -79,60 +103,6 @@ class LlamaEngine : public EngineI {
   bool IsLlamaServerModel(const std::string& model) const;
 
  private:
-  struct IsDone {
-    bool is_done;
-    int operator()() { return is_done; }
-  };
-  struct HasError {
-    bool has_error;
-    int operator()() { return has_error; }
-  };
-  struct IsStream {
-    bool is_stream;
-    int operator()() { return is_stream; }
-  };
-  struct StatusCode {
-    int status_code;
-    int operator()() { return status_code; }
-  };
-  struct ResStatus {
-   private:
-    IsDone is_done;
-    HasError has_error;
-    IsStream is_stream;
-    StatusCode status_code;
-
-   public:
-    ResStatus(IsDone is_done, HasError has_error, IsStream is_stream,
-              StatusCode status_code)
-        : is_done(is_done),
-          has_error(has_error),
-          is_stream(is_stream),
-          status_code(status_code) {}
-
-    Json::Value ToJson() {
-      Json::Value status;
-      status["is_done"] = is_done();
-      status["has_error"] = has_error();
-      status["is_stream"] = is_stream();
-      status["status_code"] = status_code();
-      return status;
-    };
-  };
-
-  struct ResStreamData {
-   private:
-    std::string s;
-
-   public:
-    ResStreamData(std::string s) : s(std::move(s)) {}
-    Json::Value ToJson() {
-      Json::Value d;
-      d["data"] = s;
-      return d;
-    }
-  };
-
   struct ServerInfo {
     LlamaServerContext ctx;
     std::unique_ptr<trantor::ConcurrentTaskQueue> q;
@@ -176,7 +146,8 @@ class LlamaEngine : public EngineI {
   std::atomic<int> no_of_chats_ = 0;
 
   bool print_version_ = true;
-  std::unique_ptr<trantor::FileLogger> async_file_logger_;
+
+  EngineLoadOption load_opt_;
 
 #if defined(_WIN32)
   std::vector<DLL_DIRECTORY_COOKIE> cookies_;

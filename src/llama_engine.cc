@@ -333,7 +333,8 @@ Json::Value ParseJsonString(const std::string& json_str) {
 }  // namespace
 
 void LlamaEngine::Load(EngineLoadOption opts) {
-  LOG_INFO << "Loading engine..";
+  load_opt_ = opts;
+  LOG_DEBUG << "Loading engine..";
 
   LOG_DEBUG << "Is custom engine path: " << opts.is_custom_engine_path;
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
@@ -350,9 +351,6 @@ void LlamaEngine::Unload(EngineUnloadOption opts) {
 
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
-  if (log_option == kFileLoggerOption) {
-    async_file_logger_ = std::make_unique<trantor::FileLogger>();
-  }
 
   common_log_pause(common_log_main());
 
@@ -379,7 +377,6 @@ LlamaEngine::~LlamaEngine() {
     l.ReleaseResources();
   }
   server_map_.clear();
-  async_file_logger_.reset();
 
   LOG_INFO << "LlamaEngine destructed successfully";
 }
@@ -570,21 +567,17 @@ void LlamaEngine::StopInferencing(const std::string& model_id) {
 
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
-  if (!async_file_logger_) {
-    async_file_logger_ = std::make_unique<trantor::FileLogger>();
-  }
-
-  async_file_logger_->setFileName(log_path);
-  async_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
-  async_file_logger_->startLogging();
   trantor::Logger::setOutputFunction(
       [&](const char* msg, const uint64_t len) {
-        if (async_file_logger_)
-          async_file_logger_->output_(msg, len);
+        if (load_opt_.logger) {
+          if (auto l = static_cast<trantor::FileLogger*>(load_opt_.logger); l) {
+            l->output_(msg, len);
+          }
+        }
       },
       [&]() {
-        if (async_file_logger_)
-          async_file_logger_->flush();
+        if (load_opt_.logger)
+          load_opt_.logger->flush();
       });
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
@@ -601,8 +594,10 @@ void LlamaEngine::SetFileLogger(int max_log_lines,
         }
       },
       nullptr);
-  freopen(log_path.c_str(), "a", stderr);
-  freopen(log_path.c_str(), "a", stdout);
+  if (!freopen(log_path.c_str(), "a", stderr))
+    LOG_WARN << "Could not open stream for stderr";
+  if (!freopen(log_path.c_str(), "a", stdout))
+    LOG_WARN << "Could not open stream for stdout";
 }
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
@@ -1388,11 +1383,8 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   params += " --host " + s.host + " --port " + std::to_string(s.port);
 
   std::string exe_w = "llama-server.exe";
-  std::string current_path_w =
-      (llama_utils::GetExecutableFolderContainerPath() / "engines" /
-       "cortex.llamacpp")
-          .string();
-  std::string wcmds = current_path_w + "/" + exe_w + " " + params;
+  std::string wcmds =
+      load_opt_.engine_path.string() + "/" + exe_w + " " + params;
   LOG_DEBUG << "wcmds: " << wcmds;
   std::vector<wchar_t> mutable_cmds(wcmds.begin(), wcmds.end());
   mutable_cmds.push_back(L'\0');
@@ -1432,9 +1424,7 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   } else if (s.pid == 0) {
     // Some engines requires to add lib search path before process being created
     std::string exe = "llama-server";
-    std::string p = (llama_utils::GetExecutableFolderContainerPath() /
-                     "engines" / "cortex.llamacpp" / exe)
-                        .string();
+    std::string p = (load_opt_.engine_path / exe).string();
     std::vector<std::string> params = ConvertJsonToParamsVector(json_params);
     params.push_back("--host");
     params.push_back(s.host);

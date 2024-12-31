@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "json/value.h"
+#include "trantor/utils/AsyncFileLogger.h"
 #include "trantor/utils/Logger.h"
 
 // Interface for inference engine.
@@ -22,6 +23,7 @@ class EngineI {
     std::filesystem::path log_path;
     int max_log_lines;
     trantor::Logger::LogLevel log_level;
+    trantor::AsyncFileLogger* logger;
   };
 
   struct EngineUnloadOption {
