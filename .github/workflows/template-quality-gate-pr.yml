@@ -144,7 +144,7 @@ jobs:
             name: "amd64"
             runs-on: "macos-selfhosted-12"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{github.event.pull_request.head.sha}} -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_METAL=OFF -DGGML_NATIVE=OFF"
-            run-e2e: false
+            run-e2e: true
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
