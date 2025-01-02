@@ -147,6 +147,7 @@ class LlamaEngine : public EngineI {
 
   bool print_version_ = true;
 
+  std::unique_ptr<trantor::FileLogger> async_file_logger_;
   EngineLoadOption load_opt_;
 
 #if defined(_WIN32)

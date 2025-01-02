@@ -31,7 +31,6 @@ class Server {
                        "engines" / "cortex.llamacpp";
     opts.log_path = "./logs/cortex.log";
     opts.max_log_lines = 10000;
-    opts.logger = logger;
     engine_->Load(opts);
   }
 
@@ -124,7 +123,6 @@ int main(int argc, char** argv) {
 
   server.Initialize(&async_file_logger);
   //set logger here
-  // server.engine_->SetFileLogger();
 
   SyncJsonReader r;
   auto svr = std::make_unique<httplib::Server>();

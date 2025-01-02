@@ -20,6 +20,31 @@
 
 namespace {
 
+const std::unordered_set<std::string> kIgnoredParams = {
+    "model",        "model_alias",     "embedding",  "ai_prompt",
+    "ai_template",  "prompt_template", "mmproj",     "system_prompt",
+    "created",      "stream",          "name",       "os",
+    "owned_by",     "files",           "gpu_arch",   "quantization_method",
+    "engine",       "system_template", "max_tokens", "user_template",
+    "user_prompt",  "min_keep",        "mirostat",   "mirostat_eta",
+    "mirostat_tau", "text_model",      "version",    "n_probs",
+    "object",       "penalize_nl",     "precision",  "size",
+    "stop",         "tfs_z",           "typ_p"};
+
+const std::unordered_map<std::string, std::string> kParamsMap = {
+    {"cpu_threads", "--threads"},
+    {"n_ubatch", "--ubatch-size"},
+    {"n_batch", "--batch-size"},
+    {"n_parallel", "--parallel"},
+    {"temperature", "--temp"},
+    {"top_k", "--top-k"},
+    {"top_p", "--top-p"},
+    {"min_p", "--min-p"},
+    {"dynatemp_exponent", "--dynatemp-exp"},
+    {"ctx_len", "--ctx-size"},
+    {"ngl", "-ngl"},
+};
+
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
 constexpr const int k409Conflict = 409;
@@ -335,9 +360,9 @@ Json::Value ParseJsonString(const std::string& json_str) {
 void LlamaEngine::Load(EngineLoadOption opts) {
   load_opt_ = opts;
   LOG_DEBUG << "Loading engine..";
-
   LOG_DEBUG << "Is custom engine path: " << opts.is_custom_engine_path;
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
+  LOG_DEBUG << "Log path: " << opts.log_path.string();
 
   SetFileLogger(opts.max_log_lines, opts.log_path.string());
   SetLogLevel(opts.log_level);
@@ -351,6 +376,9 @@ void LlamaEngine::Unload(EngineUnloadOption opts) {
 
 LlamaEngine::LlamaEngine(int log_option) {
   trantor::Logger::setLogLevel(trantor::Logger::kInfo);
+  if (log_option == kFileLoggerOption) {
+    async_file_logger_ = std::make_unique<trantor::FileLogger>();
+  }
 
   common_log_pause(common_log_main());
 
@@ -377,6 +405,7 @@ LlamaEngine::~LlamaEngine() {
     l.ReleaseResources();
   }
   server_map_.clear();
+  async_file_logger_.reset();
 
   LOG_INFO << "LlamaEngine destructed successfully";
 }
@@ -513,6 +542,15 @@ void LlamaEngine::GetModelStatus(std::shared_ptr<Json::Value> json_body,
 
   auto model_id = llama_utils::GetModelId(*json_body);
   if (auto is_loaded = CheckModelLoaded(callback, model_id); is_loaded) {
+    if (IsLlamaServerModel(model_id)) {
+      Json::Value json_resp;
+      json_resp["model_loaded"] = is_loaded;
+      callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                         StatusCode{k200OK})
+                   .ToJson(),
+               std::move(json_resp));
+      return;
+    }
     // CheckModelLoaded gurantees that model_id exists in server_ctx_map;
     auto si = server_map_.find(model_id);
     Json::Value json_resp;
@@ -567,17 +605,21 @@ void LlamaEngine::StopInferencing(const std::string& model_id) {
 
 void LlamaEngine::SetFileLogger(int max_log_lines,
                                 const std::string& log_path) {
+  if (!async_file_logger_) {
+    async_file_logger_ = std::make_unique<trantor::FileLogger>();
+  }
+
+  async_file_logger_->setFileName(log_path);
+  async_file_logger_->setMaxLines(max_log_lines);  // Keep last 100000 lines
+  async_file_logger_->startLogging();
   trantor::Logger::setOutputFunction(
       [&](const char* msg, const uint64_t len) {
-        if (load_opt_.logger) {
-          if (auto l = static_cast<trantor::FileLogger*>(load_opt_.logger); l) {
-            l->output_(msg, len);
-          }
-        }
+        if (async_file_logger_)
+          async_file_logger_->output_(msg, len);
       },
       [&]() {
-        if (load_opt_.logger)
-          load_opt_.logger->flush();
+        if (async_file_logger_)
+          async_file_logger_->flush();
       });
   llama_log_set(
       [](ggml_log_level level, const char* text, void* user_data) {
@@ -607,7 +649,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   }
 
   // Spawn llama.cpp server only if it is chat model
-  if (!json_body->isMember("mmproj")) {
+  if (!json_body->isMember("mmproj") || (*json_body)["mmproj"].isNull()) {
     return SpawnLlamaServer(*json_body);
   }
   common_params params;
@@ -698,21 +740,21 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       params.cache_type_k = kv_cache_type_from_str(cache_type_k);
     }
     params.cache_type_v = params.cache_type_k;
-    LOG_DEBUG << "cache_type: " << params.cache_type_k;
+    LOG_INFO << "cache_type: " << params.cache_type_k;
 
     auto fa = json_body->get("flash_attn", true).asBool();
     auto force_enable_fa = params.cache_type_k != GGML_TYPE_F16;
     if (force_enable_fa) {
-      LOG_DEBUG << "Using KV cache quantization, force enable Flash Attention";
+      LOG_INFO << "Using KV cache quantization, force enable Flash Attention";
     }
     params.flash_attn = fa || force_enable_fa;
     if (params.flash_attn) {
-      LOG_DEBUG << "Enabled Flash Attention";
+      LOG_INFO << "Enabled Flash Attention";
     }
 
     params.use_mmap = json_body->get("use_mmap", true).asBool();
     if (!params.use_mmap) {
-      LOG_DEBUG << "Disabled mmap";
+      LOG_INFO << "Disabled mmap";
     }
     params.n_predict = json_body->get("n_predict", -1).asInt();
     params.prompt = json_body->get("prompt", "").asString();
@@ -732,7 +774,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     server_map_[model_id].repeat_last_n =
         json_body->get("repeat_last_n", 32).asInt();
     server_map_[model_id].stop_words = (*json_body)["stop"];
-    LOG_DEBUG << "stop: " << server_map_[model_id].stop_words.toStyledString();
+    LOG_INFO << "stop: " << server_map_[model_id].stop_words.toStyledString();
 
     if (!json_body->operator[]("llama_log_folder").isNull()) {
       common_log_resume(common_log_main());
@@ -1337,7 +1379,7 @@ bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
 
 bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   auto wait_for_server_up = [](const std::string& host, int port) {
-    for (size_t i = 0; i < 120; i++) {
+    for (size_t i = 0; i < 10; i++) {
       httplib::Client cli(host + ":" + std::to_string(port));
       auto res = cli.Get("/health");
       if (res && res->status == httplib::StatusCode::OK_200) {
@@ -1385,7 +1427,7 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   std::string exe_w = "llama-server.exe";
   std::string wcmds =
       load_opt_.engine_path.string() + "/" + exe_w + " " + params;
-  LOG_DEBUG << "wcmds: " << wcmds;
+  LOG_INFO << "wcmds: " << wcmds;
   std::vector<wchar_t> mutable_cmds(wcmds.begin(), wcmds.end());
   mutable_cmds.push_back(L'\0');
   // Create child process
@@ -1468,19 +1510,16 @@ std::string LlamaEngine::ConvertJsonToParams(const Json::Value& root) {
 
   for (const auto& member : root.getMemberNames()) {
     if (member == "model_path" || member == "llama_model_path") {
-      ss << "--model" << " ";
-      ss << "\"" << root[member].asString() << "\" ";
+      if (!root[member].isNull()) {
+        ss << "--model" << " ";
+        ss << "\"" << root[member].asString() << "\" ";
+      }
       continue;
-    } else if (member == "model" || member == "model_alias" ||
-               member == "embedding") {
+    } else if (kIgnoredParams.find(member) != kIgnoredParams.end()) {
       continue;
-    } else if (member == "ctx_len") {
-      ss << "--ctx-size" << " ";
-      ss << "\"" << std::to_string(root[member].asInt()) << "\" ";
-      continue;
-    } else if (member == "ngl") {
-      ss << "-ngl" << " ";
-      ss << "\"" << std::to_string(root[member].asInt()) << "\" ";
+    } else if (kParamsMap.find(member) != kParamsMap.end()) {
+      ss << kParamsMap.at(member) << " ";
+      ss << root[member].asString() << " ";
       continue;
     } else if (member == "model_type") {
       if (root[member].asString() == "embedding") {
@@ -1494,6 +1533,8 @@ std::string LlamaEngine::ConvertJsonToParams(const Json::Value& root) {
       ss << "\"" << root[member].asString() << "\" ";
     } else if (root[member].isInt()) {
       ss << root[member].asInt() << " ";
+    } else if (root[member].isDouble()) {
+      ss << root[member].asDouble() << " ";
     } else if (root[member].isArray()) {
       ss << "[";
       bool first = true;
@@ -1521,16 +1562,11 @@ std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
       res.push_back("--model");
       res.push_back(root[member].asString());
       continue;
-    } else if (member == "model" || member == "model_alias" ||
-               member == "embedding") {
+    } else if (kIgnoredParams.find(member) != kIgnoredParams.end()) {
       continue;
-    } else if (member == "ctx_len") {
-      res.push_back("--ctx-size");
-      res.push_back(std::to_string(root[member].asInt()));
-      continue;
-    } else if (member == "ngl") {
-      res.push_back("-ngl");
-      res.push_back(std::to_string(root[member].asInt()));
+    } else if (kParamsMap.find(member) != kParamsMap.end()) {
+      res.push_back(kParamsMap.at(member));
+      res.push_back(root[member].asString());
       continue;
     } else if (member == "model_type") {
       if (root[member].asString() == "embedding") {
@@ -1544,6 +1580,8 @@ std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
       res.push_back(root[member].asString());
     } else if (root[member].isInt()) {
       res.push_back(std::to_string(root[member].asInt()));
+    } else if (root[member].isDouble()) {
+      res.push_back(std::to_string(root[member].asDouble()));
     } else if (root[member].isArray()) {
       std::stringstream ss;
       ss << "[";

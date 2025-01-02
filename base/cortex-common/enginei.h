@@ -23,7 +23,6 @@ class EngineI {
     std::filesystem::path log_path;
     int max_log_lines;
     trantor::Logger::LogLevel log_level;
-    trantor::AsyncFileLogger* logger;
   };
 
   struct EngineUnloadOption {
