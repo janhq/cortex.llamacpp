@@ -1,15 +1,4 @@
 @echo off
-setlocal
-
-rem Bypass "Terminate Batch Job" prompt.
-if "%~1"=="-FIXED_CTRL_C" (
-   REM Remove the -FIXED_CTRL_C parameter
-   SHIFT
-) ELSE (
-   REM Run the batch with <NUL and -FIXED_CTRL_C
-   CALL <NUL %0 -FIXED_CTRL_C %*
-   GOTO :EOF
-)
 
 set "TEMP=C:\Users\%UserName%\AppData\Local\Temp"
 set "MODEL_LLM_PATH=%TEMP%\testllm"
@@ -31,7 +20,6 @@ echo BINARY_NAME=%BINARY_NAME%
 
 del %TEMP%\response1.log 2>nul
 del %TEMP%\response2.log 2>nul
-@REM del %TEMP%\response3.log 2>nul
 del %TEMP%\response4.log 2>nul
 del %TEMP%\response5.log 2>nul
 del %TEMP%\response6.log 2>nul
@@ -76,7 +64,6 @@ call set "MODEL_LLM_PATH_STRING=%%MODEL_LLM_PATH:\=\\%%"
 call set "MODEL_EMBEDDING_PATH_STRING=%%MODEL_EMBEDDING_PATH:\=\\%%"
 set "curl_data1={\"llama_model_path\":\"%MODEL_LLM_PATH_STRING%\"}"
 set "curl_data2={\"messages\":[{\"content\":\"Hello there\",\"role\":\"assistant\"},{\"content\":\"Write a long and sad story for me\",\"role\":\"user\"}],\"stream\":false,\"model\":\"testllm\",\"max_tokens\":50,\"stop\":[\"hello\"],\"frequency_penalty\":0,\"presence_penalty\":0,\"temperature\":0.1}"
-@REM set "curl_data3={\"llama_model_path\":\"%MODEL_LLM_PATH_STRING%\"}"
 set "curl_data4={\"llama_model_path\":\"%MODEL_EMBEDDING_PATH_STRING%\", \"embedding\": true, \"model_type\": \"embedding\"}"
 set "curl_data5={}"
 set "curl_data6={\"input\": \"Hello\", \"model\": \"test-embedding\", \"encoding_format\": \"float\"}"
@@ -85,7 +72,6 @@ set "curl_data6={\"input\": \"Hello\", \"model\": \"test-embedding\", \"encoding
 rem Print the values of curl_data for debugging
 echo curl_data1=%curl_data1%
 echo curl_data2=%curl_data2%
-@REM echo curl_data3=%curl_data3%
 echo curl_data4=%curl_data4%
 echo curl_data5=%curl_data5%
 echo curl_data6=%curl_data6%
@@ -98,8 +84,6 @@ curl.exe --connect-timeout 60 -o "%TEMP%\response2.log" -s -w "%%{http_code}" --
 --header "Content-Type: application/json" ^
 --data "%curl_data2%" > %TEMP%\response2.log 2>&1
 
-@REM curl.exe --connect-timeout 60 -o "%TEMP%\response3.log" -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/unloadmodel" --header "Content-Type: application/json" --data "%curl_data3%" > %TEMP%\response3.log 2>&1
-
 curl.exe --connect-timeout 60 -o "%TEMP%\response4.log" --request POST -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/loadmodel" --header "Content-Type: application/json" --data "%curl_data4%" > %TEMP%\response4.log 2>&1
 
 curl.exe --connect-timeout 60 -o "%TEMP%\response5.log" --request GET -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/models" --header "Content-Type: application/json" --data "%curl_data5%" > %TEMP%\response5.log 2>&1
@@ -108,14 +92,11 @@ curl.exe --connect-timeout 60 -o "%TEMP%\response6.log" -s -w "%%{http_code}" --
 --header "Content-Type: application/json" ^
 --data "%curl_data6%" > %TEMP%\response6.log 2>&1
 
-@REM curl.exe --connect-timeout 60 -s -w "%%{http_code}" --location "http://127.0.0.1:%PORT%/unloadmodel" --header "Content-Type: application/json" --data "%curl_data7%" 2>&1
-
 set "error_occurred=0"
 
 rem Read the status codes from the log files
 for /f %%a in (%TEMP%\response1.log) do set "response1=%%a"
 for /f %%a in (%TEMP%\response2.log) do set "response2=%%a"
-@REM for /f %%a in (%TEMP%\response3.log) do set "response3=%%a"
 for /f %%a in (%TEMP%\response4.log) do set "response4=%%a"
 for /f %%a in (%TEMP%\response5.log) do set "response5=%%a"
 for /f %%a in (%TEMP%\response6.log) do set "response6=%%a"
@@ -131,12 +112,6 @@ if "%response2%" neq "200" (
     type %TEMP%\response2.log
     set "error_occurred=1"
 )
-
-@REM if "%response3%" neq "200" (
-@REM     echo The third curl command failed with status code: %response3%
-@REM     type %TEMP%\response3.log
-@REM     set "error_occurred=1"
-@REM )
 
 if "%response4%" neq "200" (
     echo The fourth curl command failed with status code: %response4%
@@ -172,10 +147,6 @@ type %TEMP%\response1.log
 echo ----------------------
 echo Log run test:
 type %TEMP%\response2.log
-
-@REM echo ----------------------
-@REM echo Log unload model:
-@REM type %TEMP%\response3.log
 
 echo ----------------------
 echo Log load embedding model:
