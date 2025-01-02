@@ -1337,7 +1337,7 @@ bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
 
 bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   auto wait_for_server_up = [](const std::string& host, int port) {
-    for (size_t i = 0; i < 10; i++) {
+    for (size_t i = 0; i < 120; i++) {
       httplib::Client cli(host + ":" + std::to_string(port));
       auto res = cli.Get("/health");
       if (res && res->status == httplib::StatusCode::OK_200) {
