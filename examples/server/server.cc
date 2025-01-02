@@ -22,7 +22,8 @@ class Server {
   }
 
   void Initialize(trantor::AsyncFileLogger* logger) {
-    dylib_ = std::make_unique<dylib>("./engines/cortex.llamacpp", "engine");
+    dylib_ = std::make_unique<cortex_cpp::dylib>("./engines/cortex.llamacpp",
+                                                 "engine");
     auto func = dylib_->get_function<EngineI*()>("get_engine");
     engine_ = func();
     EngineI::EngineLoadOption opts;
@@ -43,7 +44,7 @@ class Server {
   }
 
  public:
-  std::unique_ptr<dylib> dylib_;
+  std::unique_ptr<cortex_cpp::dylib> dylib_;
   EngineI* engine_;
 
   struct SyncQueue {
