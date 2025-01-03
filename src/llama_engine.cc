@@ -270,24 +270,18 @@ std::string CreateReturnJson(const std::string& id, const std::string& model,
 }
 
 const std::vector<ggml_type> kv_cache_types = {
-    GGML_TYPE_F32,
-    GGML_TYPE_F16,
-    GGML_TYPE_BF16,
-    GGML_TYPE_Q8_0,
-    GGML_TYPE_Q4_0,
-    GGML_TYPE_Q4_1,
-    GGML_TYPE_IQ4_NL,
-    GGML_TYPE_Q5_0,
-    GGML_TYPE_Q5_1,
+    GGML_TYPE_F32,    GGML_TYPE_F16,  GGML_TYPE_BF16,
+    GGML_TYPE_Q8_0,   GGML_TYPE_Q4_0, GGML_TYPE_Q4_1,
+    GGML_TYPE_IQ4_NL, GGML_TYPE_Q5_0, GGML_TYPE_Q5_1,
 };
 
-ggml_type kv_cache_type_from_str(const std::string & s) {
-    for (const auto & type : kv_cache_types) {
-        if (ggml_type_name(type) == s) {
-            return type;
-        }
+ggml_type kv_cache_type_from_str(const std::string& s) {
+  for (const auto& type : kv_cache_types) {
+    if (ggml_type_name(type) == s) {
+      return type;
     }
-    throw std::runtime_error("Unsupported cache type: " + s);
+  }
+  throw std::runtime_error("Unsupported cache type: " + s);
 }
 
 }  // namespace
@@ -611,6 +605,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       }
     }
 
+    params.ctx_shift = json_body->get("ctx_shift", true).asBool();
     params.n_gpu_layers =
         json_body->get("ngl", 300)
             .asInt();  // change from 100 -> 300 since llama 3.1 has 292 gpu layers
