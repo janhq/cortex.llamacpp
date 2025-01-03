@@ -287,7 +287,7 @@ ggml_type kv_cache_type_from_str(const std::string& s) {
 }  // namespace
 
 void LlamaEngine::Load(EngineLoadOption opts) {
-  LOG_INFO << "Loading engine..";
+  LOG_DEBUG << "Loading engine..";
 
   LOG_DEBUG << "Is custom engine path: " << opts.is_custom_engine_path;
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
