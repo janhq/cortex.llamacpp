@@ -22,11 +22,11 @@ index 7cae1bbe..fdcbf949 100644
      LLAMA_API enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx);
      LLAMA_API enum llama_vocab_type   llama_vocab_type  (const struct llama_model * model);
      LLAMA_API enum llama_rope_type    llama_rope_type   (const struct llama_model * model);
-diff --git a/src/llama.cpp b/src/llama.cpp
-index c466cd88..15f3102c 100644
---- a/src/llama.cpp
-+++ b/src/llama.cpp
-@@ -19561,6 +19561,26 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 38a55fb2..80b3532e 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -602,6 +602,26 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
      return &ctx->model;
  }
  
