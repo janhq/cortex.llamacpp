@@ -106,6 +106,8 @@ static T json_value(const json& body, const std::string& key,
 }
 
 struct LlamaServerContext {
+  common_init_result llama_init;
+  
   llama_model* model = nullptr;
   llama_context* ctx = nullptr;
 
