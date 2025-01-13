@@ -177,14 +177,6 @@ bool IsLlava_1_6(const std::string& model) {
 }  // namespace
 
 LlamaServerContext::~LlamaServerContext() {
-  if (ctx) {
-    llama_free(ctx);
-    ctx = nullptr;
-  }
-  if (model) {
-    llama_free_model(model);
-    model = nullptr;
-  }
 }
 
 bool LlamaServerContext::LoadModel(const common_params& params_) {
@@ -212,9 +204,9 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
     }
   }
 
-  auto res = common_init_from_params(params);
-  model = res.model;
-  ctx = res.context;
+  llama_init = common_init_from_params(params);
+  model = llama_init.model.get();
+  ctx = llama_init.context.get();
   if (model == nullptr) {
     LOG_ERROR_LLAMA("llama.cpp unable to load model",
                     {{"model", params.model}});
@@ -232,8 +224,6 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
                 << n_embd_llm
                 << "). Make sure that you use the "
                    "correct mmproj file.";
-      llama_free(ctx);
-      llama_free_model(model);
       return false;
     }
   }
@@ -382,8 +372,6 @@ void LlamaServerContext::ReleaseResources() {
       bgr_thread.join();
     }
 
-    llama_free(ctx);
-    llama_free_model(model);
     ctx = nullptr;
     model = nullptr;
     LOG_INFO << "Released llama_server_context resources";

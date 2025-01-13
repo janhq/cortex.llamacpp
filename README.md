@@ -148,3 +148,4 @@ Table of parameters
 |`flash_attn` | Boolean| To enable Flash Attention, default is true|
 |`cache_type` | String| KV cache type: f16, q8_0, q4_0, default is f16|
 |`use_mmap` | Boolean| To enable mmap, default is true|
+|`ctx_shift` | Boolean| To enable context shift, default is true|

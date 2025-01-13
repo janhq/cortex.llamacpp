@@ -712,6 +712,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       }
     }
 
+    params.ctx_shift = json_body->get("ctx_shift", true).asBool();
     params.n_gpu_layers =
         json_body->get("ngl", 300)
             .asInt();  // change from 100 -> 300 since llama 3.1 has 292 gpu layers
