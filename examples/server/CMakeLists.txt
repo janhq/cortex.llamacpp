@@ -15,6 +15,7 @@ add_executable(${PROJECT_NAME}
     server.cc
     dylib.h
     httplib.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../src/file_logger.cc
 )
 
 set(THIRD_PARTY_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../build_deps/_install)
