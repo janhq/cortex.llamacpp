@@ -1429,6 +1429,7 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
   std::string wcmds =
       load_opt_.engine_path.string() + "/" + exe_w + " " + params;
   LOG_INFO << "wcmds: " << wcmds;
+  LOG_INFO << "deps_path: " << load_opt_.deps_path.string();
   std::vector<wchar_t> mutable_cmds(wcmds.begin(), wcmds.end());
   mutable_cmds.push_back(L'\0');
   // Create child process
@@ -1442,9 +1443,10 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
           FALSE,              // Set handle inheritance
           0,                  // No creation flags
           NULL,               // Use parent's environment block
-          NULL,               // Use parent's starting directory
-          &si,                // Pointer to STARTUPINFO structure
-          &s.pi))             // Pointer to PROCESS_INFORMATION structure
+          const_cast<char*>(
+              load_opt_.deps_path.string().c_str()),  // Use parent's starting directory
+          &si,                               // Pointer to STARTUPINFO structure
+          &s.pi))  // Pointer to PROCESS_INFORMATION structure
   {
     std::cout << "Could not start server: " << GetLastError() << std::endl;
     return false;
