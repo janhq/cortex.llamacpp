@@ -364,8 +364,8 @@ void LlamaEngine::Load(EngineLoadOption opts) {
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
   LOG_DEBUG << "Log path: " << opts.log_path.string();
 
-  SetFileLogger(opts.max_log_lines, opts.log_path.string());
-  SetLogLevel(opts.log_level);
+  // SetFileLogger(opts.max_log_lines, opts.log_path.string());
+  // SetLogLevel(opts.log_level);
 
   LOG_INFO << "Engine loaded successfully";
 }
