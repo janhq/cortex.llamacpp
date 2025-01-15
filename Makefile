@@ -54,15 +54,18 @@ endif
 pre-package:
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "mkdir -p cortex.llamacpp; cp build\engine.dll cortex.llamacpp\;"
+	@powershell -Command "cp build\bin\llama-server.exe cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\msvcp140.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcruntime140_1.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcruntime140.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcomp140.dll cortex.llamacpp\;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p cortex.llamacpp; \
+	cp build/bin/llama-server cortex.llamacpp/; \
 	cp build/libengine.so cortex.llamacpp/;
 else
 	@mkdir -p cortex.llamacpp; \
+	cp build/bin/llama-server cortex.llamacpp/; \
 	cp build/libengine.dylib cortex.llamacpp/;
 endif
 
@@ -97,16 +100,18 @@ ifeq ($(RUN_TESTS),false)
 	@exit 0
 endif
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; ..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; cp ..\..\..\build\bin\llama-server.exe engines\cortex.llamacpp; ..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 endif
 
@@ -118,13 +123,14 @@ endif
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "python -m pip install --upgrade pip"
 	@powershell -Command "python -m pip install requests;"
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; python ..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; cp ..\..\..\build\bin\llama-server.exe engines\cortex.llamacpp; python ..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	python -m pip install --upgrade pip;
 	python -m pip install requests;
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
 	python -m pip install --upgrade pip;
@@ -132,6 +138,7 @@ else
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 endif
 
