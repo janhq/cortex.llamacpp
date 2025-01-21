@@ -66,6 +66,13 @@ bool AreAllElementsInt32(const Json::Value& arr) {
   return true;
 }
 
+std::string ToLower(const std::string& s) {
+  std::string data = s;
+  std::transform(data.begin(), data.end(), data.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return data;
+}
+
 struct InferenceState {
   int task_id;
   LlamaServerContext& llama;
@@ -726,7 +733,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
   // For model like nomic-embed-text-v1.5.f16.gguf, etc, we don't need to warm up model.
   // So we use this variable to differentiate with other models
   if (server_map_[model_id].ctx.model_type == ModelType::kLlm) {
-    if (model_id.find("deepseek-r1") == std::string::npos) {
+    if (ToLower(model_id).find("deepseek-r1") == std::string::npos) {
       WarmUpModel(model_id);
     }
   }
@@ -849,7 +856,8 @@ void LlamaEngine::HandleInferenceImpl(
         if (auto content = get_message(message["content"]); !content.empty()) {
           formatted_output += role + content;
           if (input_role == "assistant" &&
-              (completion.model_id.find("deepseek-r1") != std::string::npos)) {
+              (ToLower(completion.model_id).find("deepseek-r1") !=
+               std::string::npos)) {
             formatted_output += "<｜end▁of▁sentence｜>";
           }
         }
