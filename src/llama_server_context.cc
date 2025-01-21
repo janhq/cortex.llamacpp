@@ -232,10 +232,11 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
     LOG_ERROR_LLAMA("Unable to get llama.cpp context", {});
     return false;
   }
+  vocab = llama_model_get_vocab(model);
   n_ctx = llama_n_ctx(ctx);
 
-  add_bos_token = llama_add_bos_token(model);
-  has_eos_token = !llama_add_eos_token(model);
+  add_bos_token = llama_add_bos_token(vocab);
+  has_eos_token = !llama_add_eos_token(vocab);
 
   return true;
 }
@@ -508,12 +509,12 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
     slot->sparams.logit_bias.clear();
 
     if (json_value(data, "ignore_eos", false) && has_eos_token) {
-      slot->sparams.logit_bias.push_back({llama_token_eos(model), -INFINITY});
+      slot->sparams.logit_bias.push_back({llama_vocab_eos(vocab), -INFINITY});
     }
 
     const auto& logit_bias = data.find("logit_bias");
     if (logit_bias != data.end() && logit_bias->is_array()) {
-      const int n_vocab = llama_n_vocab(model);
+      const int n_vocab = llama_vocab_n_tokens(vocab);
       for (const auto& el : *logit_bias) {
         // TODO: we may want to throw errors here, in case "el" is incorrect
         if (el.is_array() && el.size() == 2) {
@@ -532,7 +533,7 @@ bool LlamaServerContext::LaunchSlotWithData(LlamaClientSlot*& slot, json data) {
               slot->sparams.logit_bias.push_back({tok, bias});
             }
           } else if (el[0].is_string()) {
-            auto toks = common_tokenize(model, el[0].get<std::string>(), false);
+            auto toks = common_tokenize(vocab, el[0].get<std::string>(), false);
             for (auto tok : toks) {
               slot->sparams.logit_bias.push_back({tok, bias});
             }
@@ -788,7 +789,7 @@ bool LlamaServerContext::ProcessToken(CompletionTokenOutput& result,
     slot.has_next_token = false;
   }
 
-  if (llama_token_is_eog(model, result.tok)) {
+  if (llama_vocab_is_eog(vocab, result.tok)) {
     slot.stopped_eos = true;
     slot.has_next_token = false;
     LOG_VERBOSE("eos token found", {});
@@ -1397,14 +1398,14 @@ bool LlamaServerContext::UpdateSlots() {
             }
 
             prefix_tokens.insert(prefix_tokens.begin(),
-                                 llama_token_prefix(model));
+                                 llama_vocab_fim_pre(vocab));
             prefix_tokens.insert(prefix_tokens.begin(),
-                                 llama_token_bos(model));  // always add BOS
+                                 llama_vocab_bos(vocab));  // always add BOS
             prefix_tokens.insert(prefix_tokens.end(),
-                                 llama_token_suffix(model));
+                                 llama_vocab_fim_suf(vocab));
             prefix_tokens.insert(prefix_tokens.end(), suffix_tokens.begin(),
                                  suffix_tokens.end());
-            prefix_tokens.push_back(llama_token_middle(model));
+            prefix_tokens.push_back(llama_vocab_fim_mid(vocab));
             prompt_tokens = prefix_tokens;
           } else {
             prompt_tokens =
