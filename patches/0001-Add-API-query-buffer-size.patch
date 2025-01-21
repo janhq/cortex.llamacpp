@@ -12,16 +12,15 @@ diff --git a/include/llama.h b/include/llama.h
 index 7cae1bbe..fdcbf949 100644
 --- a/include/llama.h
 +++ b/include/llama.h
-@@ -447,6 +447,9 @@ extern "C" {
+@@ -468,6 +468,8 @@ extern "C" {
+     DEPRECATED(LLAMA_API int32_t llama_n_vocab    (const struct llama_vocab * vocab), "use llama_vocab_n_tokens instead");
  
-     LLAMA_API const struct llama_model * llama_get_model(const struct llama_context * ctx);
- 
+     LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx);
 +    LLAMA_API size_t const llama_get_cpu_buffer(const struct llama_model * model);
 +    LLAMA_API size_t const llama_get_other_buffer(const struct llama_model * model);
-+
-     LLAMA_API enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx);
-     LLAMA_API enum llama_vocab_type   llama_vocab_type  (const struct llama_model * model);
-     LLAMA_API enum llama_rope_type    llama_rope_type   (const struct llama_model * model);
+     LLAMA_API enum llama_pooling_type    llama_pooling_type(const struct llama_context * ctx);
+ 
+     LLAMA_API const struct llama_vocab * llama_model_get_vocab(const struct llama_model * model);
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
 index 38a55fb2..80b3532e 100644
 --- a/src/llama-context.cpp
