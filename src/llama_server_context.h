@@ -111,6 +111,8 @@ struct LlamaServerContext {
   llama_model* model = nullptr;
   llama_context* ctx = nullptr;
 
+  const llama_vocab * vocab = nullptr;
+
   clip_ctx* clp_ctx = nullptr;
 
   common_params params;

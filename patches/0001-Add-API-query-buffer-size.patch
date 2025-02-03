@@ -4,35 +4,49 @@ Date: Mon, 30 Sep 2024 15:51:16 +0700
 Subject: [PATCH] Add API query buffer size
 
 ---
- include/llama.h |  3 +++
- src/llama.cpp   | 20 ++++++++++++++++++++
- 2 files changed, 23 insertions(+)
-
 diff --git a/include/llama.h b/include/llama.h
-index 7cae1bbe..fdcbf949 100644
+index 298b8d1b..0011dd8e 100644
 --- a/include/llama.h
 +++ b/include/llama.h
-@@ -447,6 +447,9 @@ extern "C" {
+@@ -468,6 +468,8 @@ extern "C" {
+     DEPRECATED(LLAMA_API int32_t llama_n_vocab    (const struct llama_vocab * vocab), "use llama_vocab_n_tokens instead");
  
-     LLAMA_API const struct llama_model * llama_get_model(const struct llama_context * ctx);
+     LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx);
++    LLAMA_API size_t llama_get_cpu_buffer(const struct llama_model * model);
++    LLAMA_API size_t llama_get_other_buffer(const struct llama_model * model);
+     LLAMA_API enum llama_pooling_type    llama_pooling_type(const struct llama_context * ctx);
  
-+    LLAMA_API size_t const llama_get_cpu_buffer(const struct llama_model * model);
-+    LLAMA_API size_t const llama_get_other_buffer(const struct llama_model * model);
-+
-     LLAMA_API enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx);
-     LLAMA_API enum llama_vocab_type   llama_vocab_type  (const struct llama_model * model);
-     LLAMA_API enum llama_rope_type    llama_rope_type   (const struct llama_model * model);
+     LLAMA_API const struct llama_vocab * llama_model_get_vocab(const struct llama_model * model);
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
-index 38a55fb2..80b3532e 100644
+index 671d2a81..2d802349 100644
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -602,6 +602,26 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
+@@ -606,6 +606,14 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
      return &ctx->model;
  }
  
-+const size_t llama_get_cpu_buffer(const struct llama_model * model) {
++size_t llama_get_cpu_buffer(const struct llama_model * model) {
++    return model->llama_get_cpu_buffer();
++}
++
++size_t llama_get_other_buffer(const struct llama_model * model) {
++    return model->llama_get_other_buffer();
++}
++
+ enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
+     return ctx->cparams.pooling_type;
+ }
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index 590386e6..e7ead0fb 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -3750,6 +3750,26 @@ const struct ggml_tensor * llama_model::get_tensor(const char * name) const {
+     return it->second;
+ }
+ 
++size_t llama_model::llama_get_cpu_buffer() const {
 +    size_t buffer{0};
-+    for (const auto& buf : model->bufs) {
++    for (const auto& buf : pimpl->bufs) {
 +        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") == 0) {
 +            buffer += ggml_backend_buffer_get_size(buf.get());
 +        }
@@ -40,9 +54,9 @@ index 38a55fb2..80b3532e 100644
 +    return buffer;
 +}
 +
-+const size_t llama_get_other_buffer(const struct llama_model * model) {
++size_t llama_model::llama_get_other_buffer() const {
 +    size_t buffer{0};
-+    for (const auto& buf : model->bufs) {
++    for (const auto& buf : pimpl->bufs) {
 +        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") != 0) {
 +            buffer += ggml_backend_buffer_get_size(buf.get());
 +        }
@@ -50,9 +64,24 @@ index 38a55fb2..80b3532e 100644
 +    return buffer;
 +}
 +
- enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
-     return ctx->cparams.pooling_type;
- }
+ //
+ // interface implementation
+ //
+diff --git a/src/llama-model.h b/src/llama-model.h
+index a7c30444..e04233ad 100644
+--- a/src/llama-model.h
++++ b/src/llama-model.h
+@@ -362,6 +362,10 @@ struct llama_model {
+ 
+     const struct ggml_tensor * get_tensor(const char * name) const;
+ 
++    size_t llama_get_cpu_buffer() const;
++
++    size_t llama_get_other_buffer() const;
++
+ private:
+     struct impl;
+     std::unique_ptr<impl> pimpl;
 -- 
 2.39.5 (Apple Git-154)
 

@@ -759,7 +759,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     }
     params.n_predict = json_body->get("n_predict", -1).asInt();
     params.prompt = json_body->get("prompt", "").asString();
-    params.conversation = json_body->get("conversation", false).asBool();
+    params.conversation_mode =
+        (common_conversation_mode)json_body->get("conversation", false)
+            .asBool();
     params.special = json_body->get("special", false).asBool();
 
     server_map_[model_id].caching_enabled =
