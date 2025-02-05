@@ -585,6 +585,18 @@ void LlamaEngine::GetModels(std::shared_ptr<Json::Value> json_body,
     }
   }
 
+  for (const auto& [m, s] : llama_server_map_) {
+    Json::Value val;
+    val["id"] = m;
+    val["engine"] = "cortex.llamacpp";
+    val["start_time"] = s.start_time;
+    val["model_size"] = s.model_size;
+    val["vram"] = s.vram;
+    val["ram"] = s.ram;
+    val["object"] = "model";
+    model_array.append(val);
+  }
+
   json_resp["object"] = "list";
   json_resp["data"] = model_array;
 
@@ -1506,6 +1518,15 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
     std::cout << "Server started" << std::endl;
   }
 #endif
+  s.start_time = std::chrono::system_clock::now().time_since_epoch() /
+                 std::chrono::milliseconds(1);
+  if (json_params.isMember("model_path")) {
+    s.model_size =
+        std::filesystem::file_size(json_params["model_path"].asString());
+  } else if (json_params.isMember("llama_model_path")) {
+    s.model_size =
+        std::filesystem::file_size(json_params["llama_model_path"].asString());
+  }
   return true;
 }
 

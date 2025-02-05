@@ -61,7 +61,6 @@ class LlamaEngine : public EngineI {
   // Stop the inferencing process for the specified model.
   void StopInferencing(const std::string& model_id) final;
 
-
  private:
   bool LoadModelImpl(std::shared_ptr<Json::Value> json_body);
   void HandleInferenceImpl(
@@ -132,6 +131,10 @@ class LlamaEngine : public EngineI {
 #else
     pid_t pid;
 #endif
+    uint64_t start_time;
+    uint32_t vram;
+    uint32_t ram;
+    uint64_t model_size;
   };
 
   // key: model_id, value: ServerInfo
