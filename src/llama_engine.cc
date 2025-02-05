@@ -1590,8 +1590,10 @@ std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
 
   for (const auto& member : root.getMemberNames()) {
     if (member == "model_path" || member == "llama_model_path") {
-      res.push_back("--model");
-      res.push_back(root[member].asString());
+      if (!root[member].isNull()) {
+        res.push_back("--model");
+        res.push_back(root[member].asString());
+      }
       continue;
     } else if (kIgnoredParams.find(member) != kIgnoredParams.end()) {
       continue;
