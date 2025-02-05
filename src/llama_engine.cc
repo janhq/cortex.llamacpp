@@ -1491,6 +1491,21 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
     // Some engines requires to add lib search path before process being created
     std::string exe = "llama-server";
     std::string p = (load_opt_.engine_path / exe).string();
+    if (std::filesystem::exists(p)) {
+      try {
+        std::filesystem::permissions(p,
+                                     std::filesystem::perms::owner_exec |
+                                         std::filesystem::perms::group_exec |
+                                         std::filesystem::perms::others_exec,
+                                     std::filesystem::perm_options::add);
+      } catch (const std::filesystem::filesystem_error& e) {
+        LOG_WARN << "Error: " << e.what();
+      }
+    } else {
+      LOG_ERROR << "llama-server does not exist";
+      return false;
+    }
+
     std::vector<std::string> params = ConvertJsonToParamsVector(json_params);
     params.push_back("--host");
     params.push_back(s.host);
