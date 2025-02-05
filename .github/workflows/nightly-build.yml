@@ -432,7 +432,7 @@ jobs:
       - name: Build
         id: build-and-test
         run: |
-          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}" CMAKE_LIB_FLAGS="${{ matrix.cmake-lib-flags }}" 
+          make build-example-server CMAKE_SERVER_FLAGS="${{ matrix.cmake-flags }}" CMAKE_LIB_FLAGS="${{ matrix.cmake-lib-flags }}" 
 
       - name: Pre Package
         run: |
