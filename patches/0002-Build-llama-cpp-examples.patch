@@ -24,6 +24,19 @@ index 1b7cc8c1..269d8397 100644
  target_link_libraries(${TARGET} PRIVATE common ${CMAKE_THREAD_LIBS_INIT})
  
  if (LLAMA_SERVER_SSL)
+diff --git a/examples/server/server.cpp b/examples/server/server.cpp
+index e0acc470..98d7ab3a 100644
+--- a/examples/server/server.cpp
++++ b/examples/server/server.cpp
+@@ -3343,6 +3343,8 @@ struct server_context {
+             {"n_embd",      llama_model_n_embd     (model)},
+             {"n_params",    llama_model_n_params   (model)},
+             {"size",        llama_model_size       (model)},
++            {"vram",        llama_get_other_buffer (model)},
++            {"ram",         llama_get_cpu_buffer   (model)},
+         };
+     }
+ };
 diff --git a/include/llama.h b/include/llama.h
 index 298b8d1b..0011dd8e 100644
 --- a/include/llama.h

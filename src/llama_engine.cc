@@ -1520,12 +1520,17 @@ bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
 #endif
   s.start_time = std::chrono::system_clock::now().time_since_epoch() /
                  std::chrono::milliseconds(1);
-  if (json_params.isMember("model_path")) {
-    s.model_size =
-        std::filesystem::file_size(json_params["model_path"].asString());
-  } else if (json_params.isMember("llama_model_path")) {
-    s.model_size =
-        std::filesystem::file_size(json_params["llama_model_path"].asString());
+
+  httplib::Client cli(s.host + ":" + std::to_string(s.port));
+  auto res = cli.Get("/v1/models");
+  if (res && res->status == httplib::StatusCode::OK_200) {
+    LOG_DEBUG << res->body;
+    auto b = ParseJsonString(res->body);
+    if (b.isMember("data") && b["data"].isArray() && b["data"].size() > 0) {
+      s.model_size = b["data"][0]["meta"].get("size", 0).asUInt64();
+      s.vram = b["data"][0]["meta"].get("vram", 0).asUInt64();
+      s.ram = b["data"][0]["meta"].get("ram", 0).asUInt64();
+    }
   }
   return true;
 }
