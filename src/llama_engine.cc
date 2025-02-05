@@ -407,6 +407,13 @@ LlamaEngine::~LlamaEngine() {
   server_map_.clear();
   async_file_logger_.reset();
 
+#if defined(__linux__) || defined(__APPLE__)
+  for (auto const& [_, si] : llama_server_map_) {
+    kill(si.pid, SIGTERM);
+  }
+  llama_server_map_.clear();
+#endif
+
   LOG_INFO << "LlamaEngine destructed successfully";
 }
 
@@ -503,7 +510,7 @@ void LlamaEngine::UnloadModel(std::shared_ptr<Json::Value> json_body,
     sent = GenerateConsoleCtrlEvent(CTRL_C_EVENT,
                                     llama_server_map_[model_id].pi.dwProcessId);
 #else
-    sent = (kill(llama_server_map_[model_id].pid, SIGINT) != -1);
+    sent = (kill(llama_server_map_[model_id].pid, SIGTERM) != -1);
 #endif
     if (sent) {
       LOG_INFO << "SIGINT signal sent to child process";
@@ -1748,7 +1755,7 @@ void LlamaEngine::HandleOpenAiChatCompletion(
       auto res = cli.Post("/v1/chat/completions", httplib::Headers(),
                           data_str.data(), data_str.size(), "application/json");
       if (res) {
-        LOG_INFO << res->body;
+        LOG_DEBUG << res->body;
         auto r = ParseJsonString(res->body);
         if (i == 0) {
           result = r;
@@ -1788,7 +1795,8 @@ void LlamaEngine::HandleOpenAiChatCompletion(
 void LlamaEngine::HandleNonOpenAiChatCompletion(
     std::shared_ptr<Json::Value> json_body, http_callback&& cb,
     const std::string& model) {
-  LOG_INFO << "Handle non OpenAI";
+  LOG_DEBUG << "Handle non OpenAI";
+  LOG_DEBUG << json_body->toStyledString();
   auto is_stream = (*json_body).get("stream", false).asBool();
   auto include_usage = [&json_body, is_stream]() -> bool {
     if (is_stream) {
@@ -1863,7 +1871,7 @@ void LlamaEngine::HandleNonOpenAiChatCompletion(
   // llama.cpp server only supports n = 1
   data["n"] = 1;
   auto data_str = data.dump();
-  LOG_INFO << "data_str: " << data_str;
+  LOG_DEBUG << "data_str: " << data_str;
   cli.set_read_timeout(std::chrono::seconds(60));
   int n_probs = json_body->get("n_probs", 0).asInt();
   if (is_stream) {
@@ -1878,7 +1886,7 @@ void LlamaEngine::HandleNonOpenAiChatCompletion(
                                const char* data, size_t data_length,
                                uint64_t offset, uint64_t total_length) {
       std::string s(data, data_length);
-      LOG_INFO << s;
+      LOG_DEBUG << s;
       if (s.size() > 6) {
         s = s.substr(6);
       }
@@ -1909,7 +1917,11 @@ void LlamaEngine::HandleNonOpenAiChatCompletion(
         logprobs =
             ConvertJsonCppToNlohmann(json_data["completion_probabilities"]);
       }
-      std::string to_send = json_data.get("content", "").asString();
+      std::string to_send;
+      if (json_data.isMember("choices") && json_data["choices"].isArray() &&
+          json_data["choices"].size() > 0) {
+        to_send = json_data["choices"][0].get("text", "").asString();
+      }
       const std::string str =
           "data: " +
           CreateReturnJson(llama_utils::generate_random_string(20), model,
@@ -1933,7 +1945,7 @@ void LlamaEngine::HandleNonOpenAiChatCompletion(
       auto res = cli.Post("/v1/completions", httplib::Headers(),
                           data_str.data(), data_str.size(), "application/json");
       if (res) {
-        LOG_INFO << res->body;
+        LOG_DEBUG << res->body;
         auto r = ParseJsonString(res->body);
         json logprobs;
         prompt_tokens += r["tokens_evaluated"].asInt();
@@ -2008,7 +2020,7 @@ bool LlamaEngine::HandleLlamaCppEmbedding(
                Json::Value());
           }
         });
-    LOG_INFO << "Done HandleEmbedding";
+    LOG_DEBUG << "Done HandleEmbedding";
     return true;
   }
   return false;
