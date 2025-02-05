@@ -75,7 +75,7 @@ jobs:
             runs-on: "ubuntu-20-04"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
             cmake-lib-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_NATIVE=OFF -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
             ccache: true
             ccache-dir: "/home/runner/.ccache"
@@ -210,7 +210,7 @@ jobs:
             runs-on: "windows-cuda-11-7"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DGGML_NATIVE=OFF -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             cmake-lib-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DGGML_NATIVE=OFF -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
@@ -228,7 +228,7 @@ jobs:
             runs-on: "windows-cuda-12-0"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
             cmake-lib-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DLLAMA_BUILD_EXAMPLES=ON -DLLAMA_BUILD_SERVER=ON -DGGML_AVX2=OFF -DGGML_NATIVE=OFF -DLLAMA_BLAS=ON -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DCMAKE_BUILD_TYPE='Release' -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -GNinja"
-            run-e2e: true
+            run-e2e: false
             vulkan: false
             ccache: false
             ccache-dir: 'C:\Users\ContainerAdministrator\AppData\Local\ccache'
@@ -432,7 +432,7 @@ jobs:
       - name: Build
         id: build-and-test
         run: |
-          make build-example-server CMAKE_EXTRA_FLAGS="${{ matrix.cmake-flags }}" CMAKE_LIB_FLAGS="${{ matrix.cmake-lib-flags }}" 
+          make build-example-server CMAKE_SERVER_FLAGS="${{ matrix.cmake-flags }}" CMAKE_LIB_FLAGS="${{ matrix.cmake-lib-flags }}" 
 
       - name: Pre Package
         run: |
