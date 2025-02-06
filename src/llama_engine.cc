@@ -1,9 +1,13 @@
+// clang-format off
+#include "examples/server/httplib.h"
+// clang-format on
 #include "llama_engine.h"
 #include <chrono>
 #include <cmath>
 #include <limits>
 #include <optional>
 #include "json-schema-to-grammar.h"
+#include "json/json.h"
 #include "json/writer.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
@@ -15,6 +19,31 @@
 #endif
 
 namespace {
+
+const std::unordered_set<std::string> kIgnoredParams = {
+    "model",        "model_alias",     "embedding",  "ai_prompt",
+    "ai_template",  "prompt_template", "mmproj",     "system_prompt",
+    "created",      "stream",          "name",       "os",
+    "owned_by",     "files",           "gpu_arch",   "quantization_method",
+    "engine",       "system_template", "max_tokens", "user_template",
+    "user_prompt",  "min_keep",        "mirostat",   "mirostat_eta",
+    "mirostat_tau", "text_model",      "version",    "n_probs",
+    "object",       "penalize_nl",     "precision",  "size",
+    "stop",         "tfs_z",           "typ_p"};
+
+const std::unordered_map<std::string, std::string> kParamsMap = {
+    {"cpu_threads", "--threads"},
+    {"n_ubatch", "--ubatch-size"},
+    {"n_batch", "--batch-size"},
+    {"n_parallel", "--parallel"},
+    {"temperature", "--temp"},
+    {"top_k", "--top-k"},
+    {"top_p", "--top-p"},
+    {"min_p", "--min-p"},
+    {"dynatemp_exponent", "--dynatemp-exp"},
+    {"ctx_len", "--ctx-size"},
+    {"ngl", "-ngl"},
+};
 
 constexpr const int k200OK = 200;
 constexpr const int k400BadRequest = 400;
@@ -284,13 +313,56 @@ ggml_type kv_cache_type_from_str(const std::string& s) {
   throw std::runtime_error("Unsupported cache type: " + s);
 }
 
+nlohmann::json ConvertJsonCppToNlohmann(const Json::Value& json_cpp_value) {
+  // Base cases
+  if (json_cpp_value.isNull()) {
+    return nullptr;
+  } else if (json_cpp_value.isBool()) {
+    return json_cpp_value.asBool();
+  } else if (json_cpp_value.isInt()) {
+    return json_cpp_value.asInt();
+  } else if (json_cpp_value.isUInt()) {
+    return json_cpp_value.asUInt();
+  } else if (json_cpp_value.isDouble()) {
+    return json_cpp_value.asDouble();
+  } else if (json_cpp_value.isString()) {
+    return json_cpp_value.asString();
+  }
+
+  // Recursive cases
+  if (json_cpp_value.isArray()) {
+    nlohmann::json json_array = nlohmann::json::array();
+    for (const auto& element : json_cpp_value) {
+      json_array.push_back(ConvertJsonCppToNlohmann(element));
+    }
+    return json_array;
+  } else if (json_cpp_value.isObject()) {
+    nlohmann::json json_object = nlohmann::json::object();
+    for (const auto& member : json_cpp_value.getMemberNames()) {
+      json_object[member] = ConvertJsonCppToNlohmann(json_cpp_value[member]);
+    }
+    return json_object;
+  }
+
+  // Should never reach here
+  throw std::runtime_error("Unsupported JSON value type");
+}
+
+Json::Value ParseJsonString(const std::string& json_str) {
+  Json::Value root;
+  Json::Reader reader;
+  reader.parse(json_str, root);
+  return root;
+}
+
 }  // namespace
 
 void LlamaEngine::Load(EngineLoadOption opts) {
+  load_opt_ = opts;
   LOG_DEBUG << "Loading engine..";
-
   LOG_DEBUG << "Is custom engine path: " << opts.is_custom_engine_path;
   LOG_DEBUG << "Engine path: " << opts.engine_path.string();
+  LOG_DEBUG << "Log path: " << opts.log_path.string();
 
   SetFileLogger(opts.max_log_lines, opts.log_path.string());
   SetLogLevel(opts.log_level);
@@ -335,34 +407,47 @@ LlamaEngine::~LlamaEngine() {
   server_map_.clear();
   async_file_logger_.reset();
 
+#if defined(__linux__) || defined(__APPLE__)
+  for (auto const& [_, si] : llama_server_map_) {
+    kill(si.pid, SIGTERM);
+  }
+  llama_server_map_.clear();
+#endif
+
   LOG_INFO << "LlamaEngine destructed successfully";
 }
 
-void LlamaEngine::HandleChatCompletion(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::HandleChatCompletion(std::shared_ptr<Json::Value> json_body,
+                                       http_callback&& callback) {
   // Check if model is loaded
-  if (CheckModelLoaded(callback, llama_utils::GetModelId(*json_body))) {
-    // Model is loaded
-    // Do Inference
+  auto model = llama_utils::GetModelId(*json_body);
+  if (!CheckModelLoaded(callback, model))
+    return;
+
+  if (IsLlamaServerModel(model)) {
+    HandleLlamaCppChatCompletion(json_body, std::move(callback), model);
+  } else {
     HandleInferenceImpl(llama::inferences::fromJson(json_body),
                         std::move(callback));
   }
 }
 
-void LlamaEngine::HandleEmbedding(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::HandleEmbedding(std::shared_ptr<Json::Value> json_body,
+                                  http_callback&& callback) {
   // Check if model is loaded
-  if (CheckModelLoaded(callback, llama_utils::GetModelId(*json_body))) {
-    // Run embedding
+  auto model = llama_utils::GetModelId(*json_body);
+  if (!CheckModelLoaded(callback, model))
+    return;
+
+  if (IsLlamaServerModel(model)) {
+    HandleLlamaCppEmbedding(json_body, std::move(callback), model);
+  } else {
     HandleEmbeddingImpl(json_body, std::move(callback));
   }
 }
 
-void LlamaEngine::LoadModel(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::LoadModel(std::shared_ptr<Json::Value> json_body,
+                            http_callback&& callback) {
   if (std::exchange(print_version_, false)) {
 #if defined(CORTEXLLAMA_VERSION)
     LOG_INFO << "cortex.llamacpp version: " << CORTEXLLAMA_VERSION;
@@ -373,101 +458,121 @@ void LlamaEngine::LoadModel(
   auto model_id = llama_utils::GetModelId(*json_body);
   if (model_id.empty()) {
     LOG_INFO << "Model id is empty in request";
-    Json::Value jsonResp;
-    jsonResp["message"] = "No model id found in request body";
-    Json::Value status;
-    status["is_done"] = false;
-    status["has_error"] = true;
-    status["is_stream"] = false;
-    status["status_code"] = k400BadRequest;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "No model id found in request body";
+    callback(ResStatus(IsDone{false}, HasError{true}, IsStream{false},
+                       StatusCode{k400BadRequest})
+                 .ToJson(),
+             std::move(json_resp));
     return;
   }
 
   if (auto si = server_map_.find(model_id);
-      si != server_map_.end() && si->second.ctx.model_loaded_external) {
+      (si != server_map_.end() && si->second.ctx.model_loaded_external) ||
+      IsLlamaServerModel(model_id)) {
     LOG_INFO << "Model already loaded";
-    Json::Value jsonResp;
-    jsonResp["message"] = "Model already loaded";
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = false;
-    status["is_stream"] = false;
-    status["status_code"] = k409Conflict;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "Model already loaded";
+    callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k409Conflict})
+                 .ToJson(),
+             std::move(json_resp));
     return;
   }
 
   if (!LoadModelImpl(json_body)) {
     // Error occurred during model loading
-    Json::Value jsonResp;
-    jsonResp["message"] = "Failed to load model";
-    Json::Value status;
-    status["is_done"] = false;
-    status["has_error"] = true;
-    status["is_stream"] = false;
-    status["status_code"] = k500InternalServerError;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "Failed to load model";
+    callback(ResStatus(IsDone{false}, HasError{true}, IsStream{false},
+                       StatusCode{k500InternalServerError})
+                 .ToJson(),
+             std::move(json_resp));
   } else {
     // Model loaded successfully
-    Json::Value jsonResp;
-    jsonResp["message"] = "Model loaded successfully";
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = false;
-    status["is_stream"] = false;
-    status["status_code"] = k200OK;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "Model loaded successfully";
+    callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(json_resp));
     LOG_INFO << "Model loaded successfully: " << model_id;
   }
 }
 
-void LlamaEngine::UnloadModel(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::UnloadModel(std::shared_ptr<Json::Value> json_body,
+                              http_callback&& callback) {
   auto model_id = llama_utils::GetModelId(*json_body);
+
+  if (IsLlamaServerModel(model_id)) {
+    bool sent = false;
+#if defined(_WIN32) || defined(_WIN64)
+    sent = GenerateConsoleCtrlEvent(CTRL_C_EVENT,
+                                    llama_server_map_[model_id].pi.dwProcessId);
+#else
+    sent = (kill(llama_server_map_[model_id].pid, SIGTERM) != -1);
+#endif
+    if (sent) {
+      LOG_INFO << "SIGINT signal sent to child process";
+      Json::Value json_resp;
+      json_resp["message"] = "Model unloaded successfully";
+
+      callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                         StatusCode{k200OK})
+                   .ToJson(),
+               std::move(json_resp));
+      llama_server_map_.erase(model_id);
+    } else {
+      LOG_ERROR << "Failed to send SIGINT signal to child process";
+    }
+    return;
+  }
+
   if (CheckModelLoaded(callback, model_id)) {
     auto& l = server_map_[model_id].ctx;
     l.ReleaseResources();
 
-    Json::Value jsonResp;
-    jsonResp["message"] = "Model unloaded successfully";
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = false;
-    status["is_stream"] = false;
-    status["status_code"] = k200OK;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "Model unloaded successfully";
+    callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(json_resp));
 
     server_map_.erase(model_id);
     LOG_INFO << "Model unloaded successfully";
   }
 }
 
-void LlamaEngine::GetModelStatus(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::GetModelStatus(std::shared_ptr<Json::Value> json_body,
+                                 http_callback&& callback) {
 
   auto model_id = llama_utils::GetModelId(*json_body);
   if (auto is_loaded = CheckModelLoaded(callback, model_id); is_loaded) {
+    if (IsLlamaServerModel(model_id)) {
+      Json::Value json_resp;
+      json_resp["model_loaded"] = is_loaded;
+      callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                         StatusCode{k200OK})
+                   .ToJson(),
+               std::move(json_resp));
+      return;
+    }
     // CheckModelLoaded gurantees that model_id exists in server_ctx_map;
     auto si = server_map_.find(model_id);
-    Json::Value jsonResp;
-    jsonResp["model_loaded"] = is_loaded;
-    jsonResp["model_data"] = si->second.ctx.GetModelProps().dump();
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = false;
-    status["is_stream"] = false;
-    status["status_code"] = k200OK;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["model_loaded"] = is_loaded;
+    json_resp["model_data"] = si->second.ctx.GetModelProps().dump();
+    callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(json_resp));
     LOG_INFO << "Model status responded";
   }
 }
 
-void LlamaEngine::GetModels(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::GetModels(std::shared_ptr<Json::Value> json_body,
+                            http_callback&& callback) {
   Json::Value json_resp;
   Json::Value model_array(Json::arrayValue);
   for (const auto& [m, s] : server_map_) {
@@ -487,15 +592,25 @@ void LlamaEngine::GetModels(
     }
   }
 
+  for (const auto& [m, s] : llama_server_map_) {
+    Json::Value val;
+    val["id"] = m;
+    val["engine"] = "cortex.llamacpp";
+    val["start_time"] = s.start_time;
+    val["model_size"] = s.model_size;
+    val["vram"] = s.vram;
+    val["ram"] = s.ram;
+    val["object"] = "model";
+    model_array.append(val);
+  }
+
   json_resp["object"] = "list";
   json_resp["data"] = model_array;
 
-  Json::Value status;
-  status["is_done"] = true;
-  status["has_error"] = false;
-  status["is_stream"] = false;
-  status["status_code"] = k200OK;
-  callback(std::move(status), std::move(json_resp));
+  callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                     StatusCode{k200OK})
+               .ToJson(),
+           std::move(json_resp));
   LOG_INFO << "Running models responded";
 }
 
@@ -540,11 +655,22 @@ void LlamaEngine::SetFileLogger(int max_log_lines,
         }
       },
       nullptr);
-  freopen(log_path.c_str(), "a", stderr);
-  freopen(log_path.c_str(), "a", stdout);
+  if (!freopen(log_path.c_str(), "a", stderr))
+    LOG_WARN << "Could not open stream for stderr";
+  if (!freopen(log_path.c_str(), "a", stdout))
+    LOG_WARN << "Could not open stream for stdout";
 }
 
 bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
+  if (!json_body) {
+    LOG_ERROR << "Request body is empty!";
+    return false;
+  }
+
+  // Spawn llama.cpp server only if it is chat model
+  if (!json_body->isMember("mmproj") || (*json_body)["mmproj"].isNull()) {
+    return SpawnLlamaServer(*json_body);
+  }
   common_params params;
   std::string model_type;
   auto model_id = llama_utils::GetModelId(*json_body);
@@ -634,21 +760,21 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
       params.cache_type_k = kv_cache_type_from_str(cache_type_k);
     }
     params.cache_type_v = params.cache_type_k;
-    LOG_DEBUG << "cache_type: " << params.cache_type_k;
+    LOG_INFO << "cache_type: " << params.cache_type_k;
 
     auto fa = json_body->get("flash_attn", true).asBool();
     auto force_enable_fa = params.cache_type_k != GGML_TYPE_F16;
     if (force_enable_fa) {
-      LOG_DEBUG << "Using KV cache quantization, force enable Flash Attention";
+      LOG_INFO << "Using KV cache quantization, force enable Flash Attention";
     }
     params.flash_attn = fa || force_enable_fa;
     if (params.flash_attn) {
-      LOG_DEBUG << "Enabled Flash Attention";
+      LOG_INFO << "Enabled Flash Attention";
     }
 
     params.use_mmap = json_body->get("use_mmap", true).asBool();
     if (!params.use_mmap) {
-      LOG_DEBUG << "Disabled mmap";
+      LOG_INFO << "Disabled mmap";
     }
     params.n_predict = json_body->get("n_predict", -1).asInt();
     params.prompt = json_body->get("prompt", "").asString();
@@ -670,7 +796,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     server_map_[model_id].repeat_last_n =
         json_body->get("repeat_last_n", 32).asInt();
     server_map_[model_id].stop_words = (*json_body)["stop"];
-    LOG_DEBUG << "stop: " << server_map_[model_id].stop_words.toStyledString();
+    LOG_INFO << "stop: " << server_map_[model_id].stop_words.toStyledString();
 
     if (!json_body->operator[]("llama_log_folder").isNull()) {
       common_log_resume(common_log_main());
@@ -733,19 +859,17 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 
 void LlamaEngine::HandleInferenceImpl(
     llama::inferences::ChatCompletionRequest&& completion,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+    http_callback&& callback) {
   assert(server_map_.find(completion.model_id) != server_map_.end());
   auto& si = server_map_[completion.model_id];
   if (si.ctx.model_type == ModelType::kEmbedding) {
     LOG_WARN << "Not support completion for embedding model";
-    Json::Value jsonResp;
-    jsonResp["message"] = "Not support completion for embedding model";
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = true;
-    status["is_stream"] = false;
-    status["status_code"] = k400BadRequest;
-    callback(std::move(status), std::move(jsonResp));
+    Json::Value json_resp;
+    json_resp["message"] = "Not support completion for embedding model";
+    callback(ResStatus(IsDone{true}, HasError{true}, IsStream{false},
+                       StatusCode{k400BadRequest})
+                 .ToJson(),
+             std::move(json_resp));
     return;
   }
   auto formatted_output = si.pre_prompt;
@@ -755,7 +879,7 @@ void LlamaEngine::HandleInferenceImpl(
            << "Generating response for inference request";
 
   json data;
-  json stopWords;
+  json stop_words;
   int no_images = 0;
   // To set default value
 
@@ -920,13 +1044,13 @@ void LlamaEngine::HandleInferenceImpl(
 
   data["prompt"] = formatted_output;
   for (const auto& sw : stop_words_json) {
-    stopWords.push_back(sw.asString());
+    stop_words.push_back(sw.asString());
   }
   // specify default stop words
   // Ensure success case for chatML
-  stopWords.push_back("<|im_end|>");
-  stopWords.push_back(llama_utils::rtrim(si.user_prompt));
-  data["stop"] = stopWords;
+  stop_words.push_back("<|im_end|>");
+  stop_words.push_back(llama_utils::rtrim(si.user_prompt));
+  data["stop"] = stop_words;
 
   bool is_streamed = data["stream"];
   bool include_usage = completion.include_usage;
@@ -972,14 +1096,10 @@ void LlamaEngine::HandleInferenceImpl(
                                to_send, "", include_usage, std::nullopt,
                                logprobs) +
               "\n\n";
-          Json::Value respData;
-          respData["data"] = str;
-          Json::Value status;
-          status["is_done"] = false;
-          status["has_error"] = false;
-          status["is_stream"] = true;
-          status["status_code"] = k200OK;
-          cb(std::move(status), std::move(respData));
+          cb(ResStatus(IsDone{false}, HasError{false}, IsStream{true},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             ResStreamData(str).ToJson());
 
           if (result.stop) {
             LOG_INFO << "Request " << request_id << ": " << "End of result";
@@ -989,7 +1109,6 @@ void LlamaEngine::HandleInferenceImpl(
             // The usage field on this chunk shows the token usage statistics for the entire request,
             // and the choices field will always be an empty array.
             // All other chunks will also include a usage field, but with a null value.
-            Json::Value respData;
             std::optional<Usage> u;
             if (include_usage) {
               u = Usage{result.result_json["tokens_evaluated"],
@@ -1000,13 +1119,10 @@ void LlamaEngine::HandleInferenceImpl(
                 CreateReturnJson(llama_utils::generate_random_string(20), "_",
                                  "", "stop", include_usage, u) +
                 "\n\n" + "data: [DONE]" + "\n\n";
-            respData["data"] = str;
-            Json::Value status;
-            status["is_done"] = true;
-            status["has_error"] = false;
-            status["is_stream"] = true;
-            status["status_code"] = k200OK;
-            cb(std::move(status), std::move(respData));
+            cb(ResStatus(IsDone{true}, HasError{false}, IsStream{true},
+                         StatusCode{k200OK})
+                   .ToJson(),
+               ResStreamData(str).ToJson());
             break;
           }
 
@@ -1014,14 +1130,11 @@ void LlamaEngine::HandleInferenceImpl(
           state->llama.RequestCancel(state->task_id);
           LOG_ERROR << "Request " << request_id << ": "
                     << "Error during inference";
-          Json::Value respData;
-          respData["data"] = std::string();
-          Json::Value status;
-          status["is_done"] = false;
-          status["has_error"] = true;
-          status["is_stream"] = true;
-          status["status_code"] = k200OK;
-          cb(std::move(status), std::move(respData));
+
+          cb(ResStatus(IsDone{false}, HasError{true}, IsStream{true},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             ResStreamData("").ToJson());
           break;
         }
       }
@@ -1030,14 +1143,10 @@ void LlamaEngine::HandleInferenceImpl(
       // Request completed, release it
       if (!state->llama.model_loaded_external) {
         LOG_WARN << "Model unloaded during inference";
-        Json::Value respData;
-        respData["data"] = std::string();
-        Json::Value status;
-        status["is_done"] = false;
-        status["has_error"] = true;
-        status["is_stream"] = true;
-        status["status_code"] = k200OK;
-        cb(std::move(status), std::move(respData));
+        cb(ResStatus(IsDone{false}, HasError{true}, IsStream{true},
+                     StatusCode{k200OK})
+               .ToJson(),
+           ResStreamData("").ToJson());
       }
       LOG_INFO << "Request " << request_id << ": " << "Inference completed";
     });
@@ -1047,7 +1156,7 @@ void LlamaEngine::HandleInferenceImpl(
 
     si.q->runTaskInQueue([this, n, n_probs, request_id, state,
                           cb = std::move(callback), d = std::move(data)]() {
-      Json::Value respData;
+      Json::Value resp_data;
       std::vector<int> task_ids;
       for (int i = 0; i < n; i++) {
         task_ids.push_back(state->llama.RequestCompletion(d, false, false, -1));
@@ -1076,8 +1185,8 @@ void LlamaEngine::HandleInferenceImpl(
             if (n_probs > 0) {
               logprobs = result.result_json["completion_probabilities"];
             }
-            if (respData.empty()) {
-              respData = CreateFullReturnJson(
+            if (resp_data.empty()) {
+              resp_data = CreateFullReturnJson(
                   llama_utils::generate_random_string(20), "_", to_send, "_",
                   prompt_tokens, predicted_tokens, Json::Value("stop"),
                   logprobs);
@@ -1087,34 +1196,31 @@ void LlamaEngine::HandleInferenceImpl(
                   prompt_tokens, predicted_tokens, Json::Value("stop"),
                   logprobs)["choices"][0];
               choice["index"] = index;
-              respData["choices"].append(choice);
+              resp_data["choices"].append(choice);
             }
             index += 1;
 
           } else {
             bool has_error = true;
-            respData["message"] = "Internal error during inference";
+            resp_data["message"] = "Internal error during inference";
             LOG_ERROR << "Request " << request_id << ": "
                       << "Error during inference";
             break;
           }
         }
 
-        Json::Value status;
-        status["is_done"] = true;
-        status["has_error"] = has_error;
-        status["is_stream"] = false;
-        status["status_code"] = k200OK;
-        cb(std::move(status), std::move(respData));
+        cb(ResStatus(IsDone{true}, HasError{has_error}, IsStream{false},
+                     StatusCode{k200OK})
+               .ToJson(),
+           std::move(resp_data));
         LOG_INFO << "Request " << request_id << ": " << "Inference completed";
       }
     });
   }
 }
 
-void LlamaEngine::HandleEmbeddingImpl(
-    std::shared_ptr<Json::Value> json_body,
-    std::function<void(Json::Value&&, Json::Value&&)>&& callback) {
+void LlamaEngine::HandleEmbeddingImpl(std::shared_ptr<Json::Value> json_body,
+                                      http_callback&& callback) {
   auto model_id = llama_utils::GetModelId(*json_body);
   assert(server_map_.find(model_id) != server_map_.end());
   int request_id = ++no_of_requests_;
@@ -1211,34 +1317,30 @@ void LlamaEngine::HandleEmbeddingImpl(
     usage["prompt_tokens"] = prompt_tokens;
     usage["total_tokens"] = prompt_tokens;
     root["usage"] = usage;
-    Json::Value status;
-    status["is_done"] = true;
-    status["has_error"] = false;
-    status["is_stream"] = false;
-    status["status_code"] = k200OK;
-    callback(std::move(status), std::move(root));
+    callback(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(root));
 
     LOG_INFO << "Request " << request_id << ": " << "Embedding completed";
   });
 }
 
-bool LlamaEngine::CheckModelLoaded(
-    std::function<void(Json::Value&&, Json::Value&&)>& callback,
-    const std::string& model_id) {
+bool LlamaEngine::CheckModelLoaded(http_callback& callback,
+                                   const std::string& model_id) {
   if (auto si = server_map_.find(model_id);
-      si == server_map_.end() || !si->second.ctx.model_loaded_external) {
+      (si == server_map_.end() || !si->second.ctx.model_loaded_external) &&
+      !IsLlamaServerModel(model_id)) {
     LOG_WARN << "Error: model_id: " << model_id
              << ", existed: " << (si != server_map_.end())
              << ", loaded: " << false;
-    Json::Value jsonResp;
-    jsonResp["message"] =
+    Json::Value json_resp;
+    json_resp["message"] =
         "Model has not been loaded, please load model into cortex.llamacpp";
-    Json::Value status;
-    status["is_done"] = false;
-    status["has_error"] = true;
-    status["is_stream"] = false;
-    status["status_code"] = k409Conflict;
-    callback(std::move(status), std::move(jsonResp));
+    callback(ResStatus(IsDone{false}, HasError{true}, IsStream{false},
+                       StatusCode{k409Conflict})
+                 .ToJson(),
+             std::move(json_resp));
     return false;
   }
   return true;
@@ -1295,6 +1397,652 @@ bool LlamaEngine::HasForceStopInferenceModel(const std::string& id) const {
   std::lock_guard l(fsi_mtx_);
   return force_stop_inference_models_.find(id) !=
          force_stop_inference_models_.end();
+}
+
+bool LlamaEngine::SpawnLlamaServer(const Json::Value& json_params) {
+  auto wait_for_server_up = [](const std::string& host, int port) {
+    for (size_t i = 0; i < 10; i++) {
+      httplib::Client cli(host + ":" + std::to_string(port));
+      auto res = cli.Get("/health");
+      if (res && res->status == httplib::StatusCode::OK_200) {
+        return true;
+      } else {
+        LOG_INFO << "Wait for server up: " << i;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+    }
+    return false;
+  };
+
+  LOG_DEBUG << "Start to spawn llama-server";
+  auto model = llama_utils::GetModelId(json_params);
+  if (!model.empty()) {
+    llama_server_map_[model].host = "127.0.0.1";
+    llama_server_map_[model].port =
+        llama_utils::GenerateRandomInteger(39400, 39999);
+    llama_server_map_[model].user_prompt =
+        json_params.get("user_prompt", "USER: ").asString();
+    llama_server_map_[model].ai_prompt =
+        json_params.get("ai_prompt", "ASSISTANT: ").asString();
+    llama_server_map_[model].system_prompt =
+        json_params.get("system_prompt", "ASSISTANT's RULE: ").asString();
+    llama_server_map_[model].pre_prompt =
+        json_params.get("pre_prompt", "").asString();
+  } else {
+    LOG_ERROR << "Model is empty";
+    return false;
+  }
+  auto& s = llama_server_map_[model];
+  auto n_parallel = json_params.get("n_parallel", 1).asInt();
+  if (!s.q)
+    s.q = std::make_unique<trantor::ConcurrentTaskQueue>(n_parallel, model);
+#if defined(_WIN32) || defined(_WIN64)
+  // Windows-specific code to create a new process
+  STARTUPINFO si;
+
+  ZeroMemory(&si, sizeof(si));
+  si.cb = sizeof(si);
+  ZeroMemory(&s.pi, sizeof(s.pi));
+  std::string params = ConvertJsonToParams(json_params);
+  params += " --host " + s.host + " --port " + std::to_string(s.port);
+
+  std::string exe_w = "llama-server.exe";
+  std::string wcmds =
+      load_opt_.engine_path.string() + "/" + exe_w + " " + params;
+  LOG_INFO << "wcmds: " << wcmds;
+  LOG_INFO << "deps_path: " << load_opt_.deps_path.string();
+  std::vector<wchar_t> mutable_cmds(wcmds.begin(), wcmds.end());
+  mutable_cmds.push_back(L'\0');
+  // Create child process
+  if (!CreateProcess(
+          NULL,  // No module name (use command line)
+          const_cast<char*>(
+              wcmds
+                  .c_str()),  // Command line (replace with your actual executable)
+          NULL,               // Process handle not inheritable
+          NULL,               // Thread handle not inheritable
+          FALSE,              // Set handle inheritance
+          0,                  // No creation flags
+          NULL,               // Use parent's environment block
+          const_cast<char*>(load_opt_.deps_path.string()
+                                .c_str()),  // Use parent's starting directory
+          &si,                              // Pointer to STARTUPINFO structure
+          &s.pi))  // Pointer to PROCESS_INFORMATION structure
+  {
+    std::cout << "Could not start server: " << GetLastError() << std::endl;
+    return false;
+  } else {
+    if (!wait_for_server_up(s.host, s.port)) {
+      llama_server_map_.erase(model);
+      return false;
+    }
+    std::cout << "Server started" << std::endl;
+  }
+#else
+  // Unix-like system-specific code to fork a child process
+  s.pid = fork();
+
+  if (s.pid < 0) {
+    // Fork failed
+    std::cerr << "Could not start server: " << std::endl;
+    llama_server_map_.erase(model);
+    return false;
+  } else if (s.pid == 0) {
+    // Some engines requires to add lib search path before process being created
+    std::string exe = "llama-server";
+    std::string p = (load_opt_.engine_path / exe).string();
+    if (std::filesystem::exists(p)) {
+      try {
+        std::filesystem::permissions(p,
+                                     std::filesystem::perms::owner_exec |
+                                         std::filesystem::perms::group_exec |
+                                         std::filesystem::perms::others_exec,
+                                     std::filesystem::perm_options::add);
+      } catch (const std::filesystem::filesystem_error& e) {
+        LOG_WARN << "Error: " << e.what();
+      }
+    } else {
+      LOG_ERROR << "llama-server does not exist";
+      return false;
+    }
+
+    std::vector<std::string> params = ConvertJsonToParamsVector(json_params);
+    params.push_back("--host");
+    params.push_back(s.host);
+    params.push_back("--port");
+    params.push_back(std::to_string(s.port));
+    auto convert_to_char_args =
+        [](const std::vector<std::string>& args) -> std::vector<char*> {
+      std::vector<char*> char_args;
+      char_args.reserve(args.size() +
+                        1);  // Reserve space for arguments and null terminator
+
+      for (const auto& arg : args) {
+        char_args.push_back(const_cast<char*>(arg.c_str()));
+      }
+
+      char_args.push_back(nullptr);  // Add null terminator
+
+      return char_args;
+    };
+    std::vector<std::string> v;
+    v.reserve(params.size() + 1);
+    v.push_back(exe);
+    v.insert(v.end(), params.begin(), params.end());
+    auto exec_args = convert_to_char_args(v);
+    execv(p.c_str(), exec_args.data());
+  } else {
+    // Parent process
+    if (!wait_for_server_up(s.host, s.port)) {
+      llama_server_map_.erase(model);
+      return false;
+    }
+    std::cout << "Server started" << std::endl;
+  }
+#endif
+  s.start_time = std::chrono::system_clock::now().time_since_epoch() /
+                 std::chrono::milliseconds(1);
+
+  httplib::Client cli(s.host + ":" + std::to_string(s.port));
+  auto res = cli.Get("/v1/models");
+  if (res && res->status == httplib::StatusCode::OK_200) {
+    LOG_DEBUG << res->body;
+    auto b = ParseJsonString(res->body);
+    if (b.isMember("data") && b["data"].isArray() && b["data"].size() > 0) {
+      s.model_size = b["data"][0]["meta"].get("size", 0).asUInt64();
+      s.vram = b["data"][0]["meta"].get("vram", 0).asUInt64();
+      s.ram = b["data"][0]["meta"].get("ram", 0).asUInt64();
+    }
+  }
+  return true;
+}
+
+std::string LlamaEngine::ConvertJsonToParams(const Json::Value& root) {
+  std::stringstream ss;
+  std::string errors;
+
+  for (const auto& member : root.getMemberNames()) {
+    if (member == "model_path" || member == "llama_model_path") {
+      if (!root[member].isNull()) {
+        ss << "--model" << " ";
+        ss << "\"" << root[member].asString() << "\" ";
+      }
+      continue;
+    } else if (kIgnoredParams.find(member) != kIgnoredParams.end()) {
+      continue;
+    } else if (kParamsMap.find(member) != kParamsMap.end()) {
+      ss << kParamsMap.at(member) << " ";
+      ss << root[member].asString() << " ";
+      continue;
+    } else if (member == "model_type") {
+      if (root[member].asString() == "embedding") {
+        ss << "--embedding" << " ";
+      }
+      continue;
+    }
+
+    ss << "--" << member << " ";
+    if (root[member].isString()) {
+      ss << "\"" << root[member].asString() << "\" ";
+    } else if (root[member].isInt()) {
+      ss << root[member].asInt() << " ";
+    } else if (root[member].isDouble()) {
+      ss << root[member].asDouble() << " ";
+    } else if (root[member].isArray()) {
+      ss << "[";
+      bool first = true;
+      for (const auto& value : root[member]) {
+        if (!first) {
+          ss << ", ";
+        }
+        ss << "\"" << value.asString() << "\"";
+        first = false;
+      }
+      ss << "] ";
+    }
+  }
+
+  return ss.str();
+}
+
+std::vector<std::string> LlamaEngine::ConvertJsonToParamsVector(
+    const Json::Value& root) {
+  std::vector<std::string> res;
+  std::string errors;
+
+  for (const auto& member : root.getMemberNames()) {
+    if (member == "model_path" || member == "llama_model_path") {
+      if (!root[member].isNull()) {
+        res.push_back("--model");
+        res.push_back(root[member].asString());
+      }
+      continue;
+    } else if (kIgnoredParams.find(member) != kIgnoredParams.end()) {
+      continue;
+    } else if (kParamsMap.find(member) != kParamsMap.end()) {
+      res.push_back(kParamsMap.at(member));
+      res.push_back(root[member].asString());
+      continue;
+    } else if (member == "model_type") {
+      if (root[member].asString() == "embedding") {
+        res.push_back("--embedding");
+      }
+      continue;
+    }
+
+    res.push_back("--" + member);
+    if (root[member].isString()) {
+      res.push_back(root[member].asString());
+    } else if (root[member].isInt()) {
+      res.push_back(std::to_string(root[member].asInt()));
+    } else if (root[member].isDouble()) {
+      res.push_back(std::to_string(root[member].asDouble()));
+    } else if (root[member].isArray()) {
+      std::stringstream ss;
+      ss << "[";
+      bool first = true;
+      for (const auto& value : root[member]) {
+        if (!first) {
+          ss << ", ";
+        }
+        ss << "\"" << value.asString() << "\"";
+        first = false;
+      }
+      ss << "] ";
+      res.push_back(ss.str());
+    }
+  }
+
+  return res;
+}
+
+bool LlamaEngine::HandleLlamaCppChatCompletion(
+    std::shared_ptr<Json::Value> json_body, http_callback&& callback,
+    const std::string& model) {
+  if (IsLlamaServerModel(model)) {
+    llama_server_map_.at(model).q->runTaskInQueue(
+        [this, cb = std::move(callback), json_body, model] {
+          auto oaicompat = [&json_body]() -> bool {
+            if (json_body->isMember("logprobs") &&
+                (*json_body)["logprobs"].asBool()) {
+              return false;
+            }
+            if (json_body->isMember("prompt") &&
+                !(*json_body)["prompt"].asString().empty()) {
+              return false;
+            }
+            return true;
+          }();
+          if (oaicompat) {
+            HandleOpenAiChatCompletion(json_body,
+                                       const_cast<http_callback&&>(cb), model);
+          } else {
+            HandleNonOpenAiChatCompletion(
+                json_body, const_cast<http_callback&&>(cb), model);
+          }
+        });
+    LOG_DEBUG << "Done HandleChatCompletion";
+    return true;
+  }
+  return false;
+}
+
+void LlamaEngine::HandleOpenAiChatCompletion(
+    std::shared_ptr<Json::Value> json_body, http_callback&& cb,
+    const std::string& model) {
+  auto is_stream = (*json_body).get("stream", false).asBool();
+  auto include_usage = [&json_body, is_stream]() -> bool {
+    if (is_stream) {
+      if (json_body->isMember("stream_options") &&
+          !(*json_body)["stream_options"].isNull()) {
+        return (*json_body)["stream_options"]
+            .get("include_usage", false)
+            .asBool();
+      }
+      return false;
+    }
+    return false;
+  }();
+
+  auto n = [&json_body, is_stream]() -> int {
+    if (is_stream)
+      return 1;
+    return (*json_body).get("n", 1).asInt();
+  }();
+
+  auto& s = llama_server_map_.at(model);
+
+  // Format logit_bias
+  if (json_body->isMember("logit_bias")) {
+    auto logit_bias =
+        llama::inferences::ChatCompletionRequest::ConvertLogitBiasToArray(
+            (*json_body)["logit_bias"]);
+    (*json_body)["logit_bias"] = logit_bias;
+  }
+
+  httplib::Client cli(s.host + ":" + std::to_string(s.port));
+  auto data = ConvertJsonCppToNlohmann(*json_body);
+
+  // llama.cpp server only supports n = 1
+  data["n"] = 1;
+  auto data_str = data.dump();
+  LOG_DEBUG << "data_str: " << data_str;
+  cli.set_read_timeout(std::chrono::seconds(60));
+  if (is_stream) {
+    // std::cout << "> ";
+    httplib::Request req;
+    req.headers = httplib::Headers();
+    req.set_header("Content-Type", "application/json");
+    req.method = "POST";
+    req.path = "/v1/chat/completions";
+    req.body = data_str;
+    req.content_receiver = [cb, include_usage, n, is_stream](
+                               const char* data, size_t data_length,
+                               uint64_t offset, uint64_t total_length) {
+      std::string s(data, data_length);
+      if (s.find("[DONE]") != std::string::npos) {
+        LOG_DEBUG << "[DONE]";
+        cb(ResStatus(IsDone{true}, HasError{false}, IsStream{true},
+                     StatusCode{k200OK})
+               .ToJson(),
+           ResStreamData(s).ToJson());
+        return false;
+      }
+
+      // For openai api compatibility
+      if (!include_usage && s.find("completion_tokens") != std::string::npos) {
+        return true;
+      }
+
+      cb(ResStatus(IsDone{false}, HasError{false}, IsStream{true},
+                   StatusCode{k200OK})
+             .ToJson(),
+         ResStreamData(s).ToJson());
+      LOG_DEBUG << s;
+      return true;
+    };
+    cli.send(req);
+    LOG_DEBUG << "Sent";
+  } else {
+    Json::Value result;
+    // multiple choices
+    for (int i = 0; i < n; i++) {
+      auto res = cli.Post("/v1/chat/completions", httplib::Headers(),
+                          data_str.data(), data_str.size(), "application/json");
+      if (res) {
+        LOG_DEBUG << res->body;
+        auto r = ParseJsonString(res->body);
+        if (i == 0) {
+          result = r;
+        } else {
+          r["choices"][0]["index"] = i;
+          result["choices"].append(r["choices"][0]);
+          result["usage"]["completion_tokens"] =
+              result["usage"]["completion_tokens"].asInt() +
+              r["usage"]["completion_tokens"].asInt();
+          result["usage"]["prompt_tokens"] =
+              result["usage"]["prompt_tokens"].asInt() +
+              r["usage"]["prompt_tokens"].asInt();
+          result["usage"]["total_tokens"] =
+              result["usage"]["total_tokens"].asInt() +
+              r["usage"]["total_tokens"].asInt();
+        }
+
+        if (i == n - 1) {
+          cb(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(result));
+        }
+
+      } else {
+        std::cout << "Error" << std::endl;
+        cb(ResStatus(IsDone{true}, HasError{true}, IsStream{false},
+                     StatusCode{k500InternalServerError})
+               .ToJson(),
+           Json::Value());
+        break;
+      }
+    }
+  }
+}
+
+void LlamaEngine::HandleNonOpenAiChatCompletion(
+    std::shared_ptr<Json::Value> json_body, http_callback&& cb,
+    const std::string& model) {
+  LOG_DEBUG << "Handle non OpenAI";
+  LOG_DEBUG << json_body->toStyledString();
+  auto is_stream = (*json_body).get("stream", false).asBool();
+  auto include_usage = [&json_body, is_stream]() -> bool {
+    if (is_stream) {
+      if (json_body->isMember("stream_options") &&
+          !(*json_body)["stream_options"].isNull()) {
+        return (*json_body)["stream_options"]
+            .get("include_usage", false)
+            .asBool();
+      }
+      return false;
+    }
+    return false;
+  }();
+
+  auto n = [&json_body, is_stream]() -> int {
+    if (is_stream)
+      return 1;
+    return (*json_body).get("n", 1).asInt();
+  }();
+
+  auto& s = llama_server_map_.at(model);
+
+  // Format logit_bias
+  if (json_body->isMember("logit_bias")) {
+    auto logit_bias =
+        llama::inferences::ChatCompletionRequest::ConvertLogitBiasToArray(
+            (*json_body)["logit_bias"]);
+    (*json_body)["logit_bias"] = logit_bias;
+  }
+
+  httplib::Client cli(s.host + ":" + std::to_string(s.port));
+  auto get_message = [](const Json::Value& msg_content) -> std::string {
+    if (msg_content.isArray()) {
+      for (const auto& mc : msg_content) {
+        if (mc["type"].asString() == "text") {
+          return mc["text"].asString();
+        }
+      }
+    } else {
+      return msg_content.asString();
+    }
+    return "";
+  };
+
+  // If prompt is provided, use it as the prompt
+  if (!json_body->isMember("prompt") ||
+      (*json_body)["prompt"].asString().empty()) {
+    auto formatted_output = s.pre_prompt;
+    for (const auto& message : (*json_body)["messages"]) {
+      auto input_role = message["role"].asString();
+      std::string role;
+      if (input_role == "user") {
+        role = s.user_prompt;
+      } else if (input_role == "assistant") {
+        role = s.ai_prompt;
+      } else if (input_role == "system") {
+        role = s.system_prompt;
+      } else {
+        role = input_role;
+      }
+
+      if (auto content = get_message(message["content"]); !content.empty()) {
+        formatted_output += role + content;
+      }
+    }
+    formatted_output += s.ai_prompt;
+    (*json_body)["prompt"] = formatted_output;
+  }
+
+  auto data = ConvertJsonCppToNlohmann(*json_body);
+
+  // llama.cpp server only supports n = 1
+  data["n"] = 1;
+  auto data_str = data.dump();
+  LOG_DEBUG << "data_str: " << data_str;
+  cli.set_read_timeout(std::chrono::seconds(60));
+  int n_probs = json_body->get("n_probs", 0).asInt();
+  if (is_stream) {
+    // std::cout << "> ";
+    httplib::Request req;
+    req.headers = httplib::Headers();
+    req.set_header("Content-Type", "application/json");
+    req.method = "POST";
+    req.path = "/v1/completions";
+    req.body = data_str;
+    req.content_receiver = [cb, include_usage, n, is_stream, n_probs, model](
+                               const char* data, size_t data_length,
+                               uint64_t offset, uint64_t total_length) {
+      std::string s(data, data_length);
+      LOG_DEBUG << s;
+      if (s.size() > 6) {
+        s = s.substr(6);
+      }
+      auto json_data = ParseJsonString(s);
+
+      // DONE
+      if (json_data.isMember("timings")) {
+        std::optional<Usage> u;
+        if (include_usage) {
+          u = Usage{json_data["tokens_evaluated"].asInt(),
+                    json_data["tokens_predicted"].asInt()};
+        }
+        const std::string str =
+            "data: " +
+            CreateReturnJson(llama_utils::generate_random_string(20), model, "",
+                             "stop", include_usage, u) +
+            "\n\n" + "data: [DONE]" + "\n\n";
+
+        cb(ResStatus(IsDone{true}, HasError{false}, IsStream{is_stream},
+                     StatusCode{k200OK})
+               .ToJson(),
+           ResStreamData(str).ToJson());
+        return false;
+      }
+
+      json logprobs;
+      if (n_probs > 0) {
+        logprobs =
+            ConvertJsonCppToNlohmann(json_data["completion_probabilities"]);
+      }
+      std::string to_send;
+      if (json_data.isMember("choices") && json_data["choices"].isArray() &&
+          json_data["choices"].size() > 0) {
+        to_send = json_data["choices"][0].get("text", "").asString();
+      }
+      const std::string str =
+          "data: " +
+          CreateReturnJson(llama_utils::generate_random_string(20), model,
+                           to_send, "", include_usage, std::nullopt, logprobs) +
+          "\n\n";
+      cb(ResStatus(IsDone{false}, HasError{false}, IsStream{true},
+                   StatusCode{k200OK})
+             .ToJson(),
+         ResStreamData(str).ToJson());
+
+      return true;
+    };
+    cli.send(req);
+    LOG_DEBUG << "Sent";
+  } else {
+    Json::Value result;
+    int prompt_tokens = 0;
+    int predicted_tokens = 0;
+    // multiple choices
+    for (int i = 0; i < n; i++) {
+      auto res = cli.Post("/v1/completions", httplib::Headers(),
+                          data_str.data(), data_str.size(), "application/json");
+      if (res) {
+        LOG_DEBUG << res->body;
+        auto r = ParseJsonString(res->body);
+        json logprobs;
+        prompt_tokens += r["tokens_evaluated"].asInt();
+        predicted_tokens += r["tokens_predicted"].asInt();
+        std::string to_send = r["content"].asString();
+        llama_utils::ltrim(to_send);
+        if (n_probs > 0) {
+          logprobs = ConvertJsonCppToNlohmann(r["completion_probabilities"]);
+        }
+
+        if (i == 0) {
+          result = CreateFullReturnJson(
+              llama_utils::generate_random_string(20), model, to_send, "_",
+              prompt_tokens, predicted_tokens, Json::Value("stop"), logprobs);
+        } else {
+          auto choice = CreateFullReturnJson(
+              llama_utils::generate_random_string(20), model, to_send, "_",
+              prompt_tokens, predicted_tokens, Json::Value("stop"),
+              logprobs)["choices"][0];
+          choice["index"] = i;
+          result["choices"].append(choice);
+          result["usage"]["completion_tokens"] = predicted_tokens;
+          result["usage"]["prompt_tokens"] = prompt_tokens;
+          result["usage"]["total_tokens"] = predicted_tokens + prompt_tokens;
+        }
+
+        if (i == n - 1) {
+          cb(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                       StatusCode{k200OK})
+                 .ToJson(),
+             std::move(result));
+        }
+
+      } else {
+        LOG_ERROR << "Error";
+        cb(ResStatus(IsDone{true}, HasError{true}, IsStream{false},
+                     StatusCode{k500InternalServerError})
+               .ToJson(),
+           Json::Value());
+        break;
+      }
+    }
+  }
+}
+
+bool LlamaEngine::HandleLlamaCppEmbedding(
+    std::shared_ptr<Json::Value> json_body, http_callback&& callback,
+    const std::string& model) {
+  if (IsLlamaServerModel(model)) {
+    llama_server_map_.at(model).q->runTaskInQueue(
+        [this, cb = std::move(callback), json_body, model] {
+          auto& s = llama_server_map_.at(model);
+          httplib::Client cli(s.host + ":" + std::to_string(s.port));
+          auto data = ConvertJsonCppToNlohmann(*json_body);
+          auto data_str = data.dump();
+
+          LOG_DEBUG << "data_str: " << data_str;
+          auto res =
+              cli.Post("/v1/embeddings", httplib::Headers(), data_str.data(),
+                       data_str.size(), "application/json");
+          if (res) {
+            // std::cout << res->body << std::endl;
+            cb(ResStatus(IsDone{true}, HasError{false}, IsStream{false},
+                         StatusCode{k200OK})
+                   .ToJson(),
+               ParseJsonString(res->body));
+          } else {
+            std::cout << "Error" << std::endl;
+            cb(ResStatus(IsDone{true}, HasError{true}, IsStream{false},
+                         StatusCode{k500InternalServerError})
+                   .ToJson(),
+               Json::Value());
+          }
+        });
+    LOG_DEBUG << "Done HandleEmbedding";
+    return true;
+  }
+  return false;
+}
+
+bool LlamaEngine::IsLlamaServerModel(const std::string& model) const {
+  return llama_server_map_.find(model) != llama_server_map_.end();
 }
 
 extern "C" {
