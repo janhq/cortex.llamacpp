@@ -3,11 +3,16 @@
 #include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <ostream>
 #include <random>
 #include <regex>
 #include <string>
 #include <vector>
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#endif
 
 namespace llama_utils {
 
@@ -174,6 +179,49 @@ inline std::string GetModelId(const Json::Value& jsonBody) {
     }
   }
   return {};
+}
+
+inline int GenerateRandomInteger(int min, int max) {
+  static std::random_device rd;   // Seed for the random number engine
+  static std::mt19937 gen(rd());  // Mersenne Twister random number engine
+  std::uniform_int_distribution<> dis(
+      min, max);  // Distribution for the desired range
+
+  return dis(gen);  // Generate and return a random integer within the range
+}
+
+std::filesystem::path GetExecutableFolderContainerPath() {
+#if defined(__APPLE__) && defined(__MACH__)
+  char buffer[1024];
+  uint32_t size = sizeof(buffer);
+
+  if (_NSGetExecutablePath(buffer, &size) == 0) {
+    // CTL_DBG("Executable path: " << buffer);
+    return std::filesystem::path{buffer}.parent_path();
+  } else {
+    LOG_ERROR << "Failed to get executable path";
+    return std::filesystem::current_path();
+  }
+#elif defined(__linux__)
+  char buffer[1024];
+  ssize_t len = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+  if (len != -1) {
+    buffer[len] = '\0';
+    // CTL_DBG("Executable path: " << buffer);
+    return std::filesystem::path{buffer}.parent_path();
+  } else {
+    LOG_ERROR << "Failed to get executable path";
+    return std::filesystem::current_path();
+  }
+#elif defined(_WIN32)
+  wchar_t buffer[MAX_PATH];
+  GetModuleFileNameW(NULL, buffer, MAX_PATH);
+  // CTL_DBG("Executable path: " << buffer);
+  return std::filesystem::path{buffer}.parent_path();
+#else
+  LOG_ERROR << "Unsupported platform!";
+  return std::filesystem::current_path();
+#endif
 }
 
 }  // namespace llama_utils
