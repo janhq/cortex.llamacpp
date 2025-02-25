@@ -20,7 +20,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         ref: main
@@ -38,9 +38,10 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.PAT_SERVICE_ACCOUNT }}
       run: |
         cd llama.cpp
-        latest_release=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.tag_name')
-        release_name=$(curl -s https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.name')
+        latest_release=$(curl -L https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.tag_name')
+        release_name=$(curl -L https://api.github.com/repos/ggerganov/llama.cpp/releases/latest | jq -r '.name')
         echo "::set-output name=release_name::$release_name"
+        ls -al
         git fetch
         current_commit=$(git rev-parse HEAD)
         git checkout $latest_release
@@ -76,7 +77,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         fetch-depth: 0
@@ -123,7 +124,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: recursive
         ref: main
@@ -148,7 +149,7 @@ jobs:
           local max_retries=3
           local tag
           while [ $retries -lt $max_retries ]; do
-            tag=$(curl -s https://api.github.com/repos/janhq/cortex.llamacpp/releases/latest | jq -r .tag_name)
+            tag=$(curl -L https://api.github.com/repos/janhq/cortex.llamacpp/releases/latest | jq -r .tag_name)
             if [ -n "$tag" ] && [ "$tag" != "null" ]; then
               echo $tag
               return
