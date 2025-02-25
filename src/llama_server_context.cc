@@ -190,7 +190,7 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
       return false;
     }
 
-    // https://github.com/ggerganov/llama.cpp/blob/master/examples/llava/README.md
+    // https://github.com/ggml-org/llama.cpp/blob/master/examples/llava/README.md
     // note llava-1.6 needs more context than llava-1.5, at least 3000 is needed (just run it at -c 4096)
     if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {
       params.n_ctx = 4096;
