@@ -539,10 +539,10 @@ jobs:
     steps:
       - name: Download cuda dependencies from s3 and create checksum
         run: |
-          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz -O /tmp/cuda-12-0-linux-amd64.tar.gz
-          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz -O /tmp/cuda-11-7-linux-amd64.tar.gz
-          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz -O /tmp/cuda-12-0-windows-amd64.tar.gz
-          wget http://minio.jan.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz -O /tmp/cuda-11-7-windows-amd64.tar.gz
+          wget https://minio.menlo.ai:9000/cicd/dist/cuda-dependencies/12.0/linux/cuda.tar.gz -O /tmp/cuda-12-0-linux-amd64.tar.gz
+          wget https://minio.menlo.ai:9000/cicd/dist/cuda-dependencies/11.7/linux/cuda.tar.gz -O /tmp/cuda-11-7-linux-amd64.tar.gz
+          wget https://minio.menlo.ai:9000/cicd/dist/cuda-dependencies/12.0/windows/cuda.tar.gz -O /tmp/cuda-12-0-windows-amd64.tar.gz
+          wget https://minio.menlo.ai:9000/cicd/dist/cuda-dependencies/11.7/windows/cuda.tar.gz -O /tmp/cuda-11-7-windows-amd64.tar.gz
 
           version=${{ needs.create-draft-release.outputs.version }}
           outputs=${{ toJson(needs.read.outputs.result) }}
