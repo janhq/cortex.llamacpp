@@ -1,0 +1,117 @@
+diff --git a/examples/CMakeLists.txt b/examples/CMakeLists.txt
+index 21b31392..18049f0b 100644
+--- a/examples/CMakeLists.txt
++++ b/examples/CMakeLists.txt
+@@ -61,7 +61,7 @@ else()
+             # disabled on Windows because it uses internal functions not exported with LLAMA_API
+             add_subdirectory(quantize-stats)
+         endif()
+-        add_subdirectory(llava)
++        # add_subdirectory(llava)
+         if (GGML_RPC)
+             add_subdirectory(rpc)
+         endif()
+diff --git a/examples/server/CMakeLists.txt b/examples/server/CMakeLists.txt
+index 1b7cc8c1..269d8397 100644
+--- a/examples/server/CMakeLists.txt
++++ b/examples/server/CMakeLists.txt
+@@ -34,7 +34,7 @@ endforeach()
+ add_executable(${TARGET} ${TARGET_SRCS})
+ install(TARGETS ${TARGET} RUNTIME)
+ 
+-target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR})
++target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/llama.cpp)
+ target_link_libraries(${TARGET} PRIVATE common ${CMAKE_THREAD_LIBS_INIT})
+ 
+ if (LLAMA_SERVER_SSL)
+diff --git a/examples/server/server.cpp b/examples/server/server.cpp
+index e0acc470..98d7ab3a 100644
+--- a/examples/server/server.cpp
++++ b/examples/server/server.cpp
+@@ -3343,6 +3343,8 @@ struct server_context {
+             {"n_embd",      llama_model_n_embd     (model)},
+             {"n_params",    llama_model_n_params   (model)},
+             {"size",        llama_model_size       (model)},
++            {"vram",        llama_get_other_buffer (model)},
++            {"ram",         llama_get_cpu_buffer   (model)},
+         };
+     }
+ };
+diff --git a/include/llama.h b/include/llama.h
+index 298b8d1b..0011dd8e 100644
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -468,6 +468,8 @@ extern "C" {
+     DEPRECATED(LLAMA_API int32_t llama_n_vocab    (const struct llama_vocab * vocab), "use llama_vocab_n_tokens instead");
+ 
+     LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx);
++    LLAMA_API size_t llama_get_cpu_buffer(const struct llama_model * model);
++    LLAMA_API size_t llama_get_other_buffer(const struct llama_model * model);
+     LLAMA_API enum llama_pooling_type    llama_pooling_type(const struct llama_context * ctx);
+ 
+     LLAMA_API const struct llama_vocab * llama_model_get_vocab(const struct llama_model * model);
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 671d2a81..2d802349 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -606,6 +606,14 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
+     return &ctx->model;
+ }
+ 
++size_t llama_get_cpu_buffer(const struct llama_model * model) {
++    return model->llama_get_cpu_buffer();
++}
++
++size_t llama_get_other_buffer(const struct llama_model * model) {
++    return model->llama_get_other_buffer();
++}
++
+ enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
+     return ctx->cparams.pooling_type;
+ }
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index 590386e6..e7ead0fb 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -3750,6 +3750,26 @@ const struct ggml_tensor * llama_model::get_tensor(const char * name) const {
+     return it->second;
+ }
+ 
++size_t llama_model::llama_get_cpu_buffer() const {
++    size_t buffer{0};
++    for (const auto& buf : pimpl->bufs) {
++        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") == 0) {
++            buffer += ggml_backend_buffer_get_size(buf.get());
++        }
++    }
++    return buffer;
++}
++
++size_t llama_model::llama_get_other_buffer() const {
++    size_t buffer{0};
++    for (const auto& buf : pimpl->bufs) {
++        if (strcmp(ggml_backend_buffer_name(buf.get()), "CPU") != 0) {
++            buffer += ggml_backend_buffer_get_size(buf.get());
++        }
++    }
++    return buffer;
++}
++
+ //
+ // interface implementation
+ //
+diff --git a/src/llama-model.h b/src/llama-model.h
+index a7c30444..e04233ad 100644
+--- a/src/llama-model.h
++++ b/src/llama-model.h
+@@ -362,6 +362,10 @@ struct llama_model {
+ 
+     const struct ggml_tensor * get_tensor(const char * name) const;
+ 
++    size_t llama_get_cpu_buffer() const;
++
++    size_t llama_get_other_buffer() const;
++
+ private:
+     struct impl;
+     std::unique_ptr<impl> pimpl;
