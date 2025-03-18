@@ -22,10 +22,10 @@ This guide provides step-by-step instructions for building cortex.llamacpp from 
 First, you need to clone the cortex.llamacpp repository:
 
 ```bash
-git clone --recurse https://github.com/janhq/cortex.llamacpp.git
+git clone --recurse https://github.com/menloresearch/cortex.llamacpp.git
 ```
 
-If you don't have git, you can download the source code as a file archive from [cortex.llamacpp GitHub](https://github.com/janhq/cortex.llamacpp). 
+If you don't have git, you can download the source code as a file archive from [cortex.llamacpp GitHub](https://github.com/menloresearch/cortex.llamacpp). 
 
 ## Build library with server example
 - **On Windows**
