@@ -3,26 +3,25 @@ From: James Nguyen <jamesnguyen@Jamess-Laptop.local>
 Date: Mon, 30 Sep 2024 15:51:16 +0700
 Subject: [PATCH] Add API query buffer size
 
----
 diff --git a/include/llama.h b/include/llama.h
-index 298b8d1b..0011dd8e 100644
+index 25a9f827..7ac85597 100644
 --- a/include/llama.h
 +++ b/include/llama.h
-@@ -468,6 +468,8 @@ extern "C" {
+@@ -471,6 +471,8 @@ extern "C" {
      DEPRECATED(LLAMA_API int32_t llama_n_vocab    (const struct llama_vocab * vocab), "use llama_vocab_n_tokens instead");
  
      LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx);
 +    LLAMA_API size_t llama_get_cpu_buffer(const struct llama_model * model);
 +    LLAMA_API size_t llama_get_other_buffer(const struct llama_model * model);
-     LLAMA_API enum llama_pooling_type    llama_pooling_type(const struct llama_context * ctx);
+     LLAMA_API    struct llama_kv_cache * llama_get_kv_self (      struct llama_context * ctx);
+     LLAMA_API  enum llama_pooling_type   llama_pooling_type(const struct llama_context * ctx); // TODO: rename to llama_get_pooling_type
  
-     LLAMA_API const struct llama_vocab * llama_model_get_vocab(const struct llama_model * model);
 diff --git a/src/llama-context.cpp b/src/llama-context.cpp
-index 671d2a81..2d802349 100644
+index aa363df6..a21aba4a 100644
 --- a/src/llama-context.cpp
 +++ b/src/llama-context.cpp
-@@ -606,6 +606,14 @@ const struct llama_model * llama_get_model(const struct llama_context * ctx) {
-     return &ctx->model;
+@@ -2367,6 +2367,14 @@ const llama_model * llama_get_model(const llama_context * ctx) {
+     return &ctx->get_model();
  }
  
 +size_t llama_get_cpu_buffer(const struct llama_model * model) {
@@ -33,14 +32,14 @@ index 671d2a81..2d802349 100644
 +    return model->llama_get_other_buffer();
 +}
 +
- enum llama_pooling_type llama_pooling_type(const struct llama_context * ctx) {
-     return ctx->cparams.pooling_type;
+ llama_kv_cache * llama_get_kv_self(llama_context * ctx) {
+     return ctx->get_kv_self();
  }
 diff --git a/src/llama-model.cpp b/src/llama-model.cpp
-index 590386e6..e7ead0fb 100644
+index 0ae75415..94799efb 100644
 --- a/src/llama-model.cpp
 +++ b/src/llama-model.cpp
-@@ -3750,6 +3750,26 @@ const struct ggml_tensor * llama_model::get_tensor(const char * name) const {
+@@ -4072,6 +4072,26 @@ const ggml_tensor * llama_model::get_tensor(const char * name) const {
      return it->second;
  }
  
@@ -64,14 +63,14 @@ index 590386e6..e7ead0fb 100644
 +    return buffer;
 +}
 +
- //
- // interface implementation
- //
+ struct llm_build_llama : public llm_graph_context {
+     llm_build_llama(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+         const int64_t n_embd_head = hparams.n_embd_head_v;
 diff --git a/src/llama-model.h b/src/llama-model.h
-index a7c30444..e04233ad 100644
+index a9da1215..1790f227 100644
 --- a/src/llama-model.h
 +++ b/src/llama-model.h
-@@ -362,6 +362,10 @@ struct llama_model {
+@@ -382,6 +382,10 @@ struct llama_model {
  
      const struct ggml_tensor * get_tensor(const char * name) const;
  
@@ -79,9 +78,6 @@ index a7c30444..e04233ad 100644
 +
 +    size_t llama_get_other_buffer() const;
 +
- private:
-     struct impl;
-     std::unique_ptr<impl> pimpl;
--- 
-2.39.5 (Apple Git-154)
-
+     // TODO: move this to new llm_arch_model_i interface
+     llama_memory_i * create_memory() const; // TODO: params
+ 
