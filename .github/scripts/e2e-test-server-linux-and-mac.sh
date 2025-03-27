@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## Example run command
-# ./linux-and-mac.sh './jan/plugins/@janhq/inference-plugin/dist/server/nitro_mac_arm64' https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+# ./linux-and-mac.sh './jan/plugins/@menloresearch/inference-plugin/dist/server/nitro_mac_arm64' https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF/resolve/main/tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 
 # Check for required arguments
 if [[ $# -ne 3 ]]; then
