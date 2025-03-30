@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "json/value.h"
+#include "trantor/utils/AsyncFileLogger.h"
 #include "trantor/utils/Logger.h"
 
 // Interface for inference engine.

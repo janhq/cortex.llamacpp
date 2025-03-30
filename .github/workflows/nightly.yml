@@ -86,7 +86,7 @@ jobs:
     - name: Apply patch file
       run: |
         cd llama.cpp
-        git apply ../patches/0001-Add-API-query-buffer-size.patch
+        git apply ../patches/0002-Build-llama-cpp-examples.patch
 
     - name: Wait for CI to pass
       env:
@@ -134,7 +134,7 @@ jobs:
     - name: Apply patch file
       run: |
         cd llama.cpp
-        git apply ../patches/0001-Add-API-query-buffer-size.patch
+        git apply ../patches/0002-Build-llama-cpp-examples.patch
 
     - name: Configure Git
       run: |

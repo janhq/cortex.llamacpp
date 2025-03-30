@@ -1,6 +1,7 @@
 # Makefile for Cortex llamacpp engine - Build, Lint, Test, and Clean
 
-CMAKE_EXTRA_FLAGS ?= ""
+CMAKE_SERVER_FLAGS ?= ""
+CMAKE_LIB_FLAGS ?= ""
 RUN_TESTS ?= false
 LLM_MODEL_URL ?= "https://delta.jan.ai/tinyllama-1.1b-chat-v0.3.Q2_K.gguf"
 EMBEDDING_MODEL_URL ?= "https://catalog.jan.ai/dist/models/embeds/nomic-embed-text-v1.5.f16.gguf"
@@ -21,29 +22,34 @@ build-lib:
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "cmake -S ./third-party -B ./build_deps/third-party -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CUDA_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER=cl -DCMAKE_C_COMPILER=cl -DCMAKE_BUILD_TYPE=Release -GNinja;"
 	@powershell -Command "cmake --build ./build_deps/third-party --config Release -j4;"
-	@powershell -Command "mkdir -p build; cd build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
+	@powershell -Command "mkdir -p build; cd build; cmake .. $(CMAKE_SERVER_FLAGS); cmake --build . --config Release;"
+	@powershell -Command "cd build; cp bin/llama-server.exe bin/llama-server-cp.exe; rm -r CMakeFiles; rm -r CMakeCache.txt; cmake .. $(CMAKE_LIB_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)
 	@cmake -S ./third-party -B ./build_deps/third-party;
 	@make -C ./build_deps/third-party -j4;
 	@rm -rf ./build_deps/third-party;
 	@mkdir build && cd build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CMAKE_SERVER_FLAGS); \
+	cmake --build . --config Release --parallel 4; \
+	cp bin/llama-server bin/llama-server-cp; \
+	rm -rf CMakeFiles CMakeCache.txt; \
+	cmake .. $(CMAKE_LIB_FLAGS); \
 	cmake --build . --config Release --parallel 4;
 else
 	@cmake -S ./third-party -B ./build_deps/third-party
 	@make -C ./build_deps/third-party -j4
 	@rm -rf ./build_deps/third-party
 	@mkdir build && cd build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CMAKE_SERVER_FLAGS); \
 	make -j4;
 endif
 
 build-example-server: build-lib
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake .. $(CMAKE_EXTRA_FLAGS); cmake --build . --config Release;"
+	@powershell -Command "mkdir -p .\examples\server\build; cd .\examples\server\build; cmake .. $(CMAKE_SERVER_FLAGS); cmake --build . --config Release;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build && cd examples/server/build; \
-	cmake .. $(CMAKE_EXTRA_FLAGS); \
+	cmake .. $(CMAKE_SERVER_FLAGS); \
 	cmake --build . --config Release;
 else
 	@mkdir -p examples/server/build && cd examples/server/build; \
@@ -54,15 +60,18 @@ endif
 pre-package:
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "mkdir -p cortex.llamacpp; cp build\engine.dll cortex.llamacpp\;"
+	@powershell -Command "cp build\bin\llama-server-cp.exe cortex.llamacpp\llama-server.exe;"
 	@powershell -Command "cp .\.github\patches\windows\msvcp140.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcruntime140_1.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcruntime140.dll cortex.llamacpp\;"
 	@powershell -Command "cp .\.github\patches\windows\vcomp140.dll cortex.llamacpp\;"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p cortex.llamacpp; \
+	cp build/bin/llama-server-cp cortex.llamacpp/llama-server; \
 	cp build/libengine.so cortex.llamacpp/;
 else
 	@mkdir -p cortex.llamacpp; \
+	cp build/bin/llama-server cortex.llamacpp/; \
 	cp build/libengine.dylib cortex.llamacpp/;
 endif
 
@@ -97,16 +106,18 @@ ifeq ($(RUN_TESTS),false)
 	@exit 0
 endif
 ifeq ($(OS),Windows_NT)
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; ..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; cp ..\..\..\build\bin\llama-server.exe engines\cortex.llamacpp; ..\..\..\.github\scripts\e2e-test-server-windows.bat server.exe $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	chmod +x ../../../.github/scripts/e2e-test-server-linux-and-mac.sh && ../../../.github/scripts/e2e-test-server-linux-and-mac.sh ./server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 endif
 
@@ -118,13 +129,14 @@ endif
 ifeq ($(OS),Windows_NT)
 	@powershell -Command "python -m pip install --upgrade pip"
 	@powershell -Command "python -m pip install requests;"
-	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; python ..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
+	@powershell -Command "mkdir -p examples\server\build\engines\cortex.llamacpp; cd examples\server\build; cp ..\..\..\build\engine.dll engines\cortex.llamacpp; cp ..\..\..\build\bin\llama-server.exe engines\cortex.llamacpp; python ..\..\..\.github\scripts\e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);"
 else ifeq ($(shell uname -s),Linux)
 	python -m pip install --upgrade pip;
 	python -m pip install requests;
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.so engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 else
 	python -m pip install --upgrade pip;
@@ -132,6 +144,7 @@ else
 	@mkdir -p examples/server/build/engines/cortex.llamacpp; \
 	cd examples/server/build/; \
 	cp ../../../build/libengine.dylib engines/cortex.llamacpp/; \
+	cp ../../../build/bin/llama-server engines/cortex.llamacpp/; \
 	python  ../../../.github/scripts/e2e-test-server.py server $(LLM_MODEL_URL) $(EMBEDDING_MODEL_URL);
 endif
 
