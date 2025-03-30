@@ -59,6 +59,13 @@ If you don't have git, you can download the source code as a file archive from [
   make build-example-server CMAKE_EXTRA_FLAGS="-DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DGGML_CUDA=ON"
   ```
 
+- **On Linux with Intel oneMKL:**
+
+  ```bash
+  source /opt/intel/oneapi/setvars.sh
+  make build-example-server CMAKE_EXTRA_FLAGS="-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=Intel10_64lp -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DLLAMA_NATIVE=ON"
+  ``` 
+
 # Quickstart
 **Step 1: Downloading a Model**
 
