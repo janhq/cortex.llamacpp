@@ -119,6 +119,14 @@ jobs:
             ccache: true
             ccache-dir: "/home/runner/.ccache"
           - os: "linux"
+            name: "amd64-mkl-2024-1"
+            runs-on: "ubuntu-22-04-oneapi-2024-1"
+            cmake-flags: "-DLLAMA_NATIVE=ON -DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=Intel10_64lp -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx"
+            run-e2e: false
+            vulkan: false
+            sccache: false
+            sccache-conf-path: "/tmp/sccache.conf"
+          - os: "linux"
             name: "amd64-avx2-cuda-11-7"
             runs-on: "ubuntu-20-04-cuda-11-7"
             cmake-flags: "-DCORTEXLLAMA_VERSION=${{needs.create-draft-release.outputs.version}} -DBUILD_SHARED_LIBS=OFF -DLLAMA_BUILD_COMMON=ON -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF -DGGML_CUDA=ON -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_BUILD_TYPE='Release' -GNinja"
