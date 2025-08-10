@@ -11,6 +11,7 @@
 
 // External
 
+#include "src/llama-model.h"
 #include "llama_client_slot.h"
 
 #if defined(_WIN32)
@@ -107,11 +108,11 @@ static T json_value(const json& body, const std::string& key,
 
 struct LlamaServerContext {
   common_init_result llama_init;
-  
+
   llama_model* model = nullptr;
   llama_context* ctx = nullptr;
 
-  const llama_vocab * vocab = nullptr;
+  const llama_vocab* vocab = nullptr;
 
   clip_ctx* clp_ctx = nullptr;
 
