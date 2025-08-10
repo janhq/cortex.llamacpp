@@ -149,7 +149,7 @@ jobs:
           local max_retries=3
           local tag
           while [ $retries -lt $max_retries ]; do
-            tag=$(curl -L https://api.github.com/repos/janhq/cortex.llamacpp/releases/latest | jq -r .tag_name)
+            tag=$(curl -L https://api.github.com/repos/menloresearch/cortex.llamacpp/releases/latest | jq -r .tag_name)
             if [ -n "$tag" ] && [ "$tag" != "null" ]; then
               echo $tag
               return
